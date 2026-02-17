@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}세무사 전달 패키지 | 쓸수있어{% endblock %}
+
+
+{% block content %}
+<div class="container package-page">
+
+  <div class="page-head">
+    <div>
+      <div class="h1">세무사 전달 패키지</div>
+      <div class="p">{{ month_first.strftime("%Y-%m") }} · 월 요약 + 누락 리스트 + 첨부파일 ZIP</div>
+    </div>
+
+    <div class="page-actions">
+      <div class="month-switch">
+        <a class="btn small ghost" href="{{ url_for('web_package.page', month=prev_month) }}">◀</a>
+        <span class="badge primary">{{ month_key }}</span>
+        <a class="btn small ghost" href="{{ url_for('web_package.page', month=next_month) }}">▶</a>
+      </div>
+
+      <a class="btn ghost" href="{{ url_for('web_vault.index', month=month_key) }}">증빙 보관함</a>
+      <a class="btn primary" href="{{ url_for('web_package.download', month=month_key) }}">ZIP 다운로드</a>
+    </div>
+  </div>
+
+  {% set denom = (attached_total + missing_total) %}
+  {% set ready = (100 if denom == 0 else (attached_total * 100 / denom)) %}
+
+  <div class="grid cols-2" style="margin-bottom:12px;">
+    <div class="card pad vault-flat">
+      <div class="cardTitle">
+        <span>전달 준비 상태</span>
+        {% if missing_total > 0 %}
+          <span class="badge warn">누락 {{ missing_total }}건</span>
+        {% else %}
+          <span class="badge good">준비 완료</span>
+        {% endif %}
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="small-note muted2" style="margin-bottom:6px;">증빙 첨부 진행률</div>
+        <div class="progress"><div style="width: {{ "%.0f"|format(ready) }}%;"></div></div>
+        <div class="small-note muted2" style="margin-top:8px;">
+          {{ "%.0f"|format(ready) }}% · 첨부 {{ attached_total }} / {{ denom }}
+        </div>
+      </div>
+
+      <div class="metrics" style="margin-top:12px;">
+        <div class="metric">
+          <div class="label">총 수입</div>
+          <div class="value">{{ "{:,}".format(gross_income) }}원</div>
+          <div class="hint">입금 합계</div>
+        </div>
+        <div class="metric">
+          <div class="label">총 지출</div>
+          <div class="value">{{ "{:,}".format(total_out) }}원</div>
+          <div class="hint">출금 합계</div>
+        </div>
+        <div class="metric">
+          <div class="label">누락</div>
+          <div class="value">{{ missing_total }}건</div>
+          <div class="hint">필수 {{ missing_required }} · 확인 {{ missing_maybe }}</div>
+        </div>
+      </div>
+
+      {% if missing_total > 0 %}
+        <div style="margin-top:10px;">
+          <a class="btn warn-tinted" href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_required') }}">
+            누락부터 정리하기 <span class="btn-count">{{ missing_required }}</span>
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card pad vault-flat">
+      <div class="cardTitle">
+        <span>ZIP 구성</span>
+        <span class="badge">자동 생성</span>
+      </div>
+
+      <div class="vmeta" style="margin-top:10px;">
+        <span class="tag good">README.txt (요약)</span>
+        <span class="tag">transactions.csv (거래+분류+증빙)</span>
+        <span class="tag warn">missing_evidence.csv (누락)</span>
+        <span class="tag">attachments/ (첨부)</span>
+      </div>
+
+      <div class="panel" style="margin-top:12px;">
+        <div class="panel-title">권장 흐름</div>
+        <div class="panel-text">
+          1) 누락(필수)부터 1~3건만 처리<br>
+          2) ZIP 다운로드<br>
+          3) 세무사 전달
+        </div>
+      </div>
+
+      <div class="small-note muted2" style="margin-top:10px;">
+        누락 리스트가 길어도 아래 박스에서만 스크롤됩니다.
+      </div>
+    </div>
+  </div>
+
+    <!-- Missing list (scroll inside box + page scroll still works) -->
+  <details class="card pad vault-flat" open>
+    <summary style="cursor:pointer; font-weight:950; display:flex; align-items:center; gap:10px;">
+      <span>증빙 누락 리스트</span>
+      {% if missing_total > 0 %}
+        <span class="badge warn">누락 {{ missing_total }}건</span>
+      {% else %}
+        <span class="badge good">누락 0건</span>
+      {% endif %}
+      <span class="muted2" style="font-weight:700;">(이 박스 안에서만 스크롤)</span>
+    </summary>
+
+    <!-- ✅ 사용자가 바로 이해하도록 라벨 뜻을 명확히 -->
+    <div class="small-note muted2" style="margin-top:10px; line-height:1.5;">
+      <b>필수</b>: 세무 처리에 꼭 필요한 증빙(카드전표/현금영수증/세금계산서 등)이 필요해요.<br>
+      <b>확인</b>: 업무 경비라면 증빙이 필요할 수 있어요(개인/불필요면 “불필요”로 처리).
+    </div>
+
+    <!-- ✅ 페이지 전체 스크롤은 그대로 + 이 박스도 독립 스크롤 -->
+    <div class="vault-scroll vault-scroll--xl" style="margin-top:12px;">
+      {% if missing_rows and missing_rows|length > 0 %}
+        <div class="vlist vault-vlist">
+          {% for ev, tx in missing_rows %}
+            <div class="vitem vault-item" style="align-items:flex-start;">
+              <div class="vault-main">
+                <div class="vault-topline">
+                  <span class="strong">{{ tx.counterparty or "(거래처 미기재)" }}</span>
+                  <span class="muted2">{% if tx.occurred_at %}{{ tx.occurred_at.strftime("%m-%d") }}{% endif %}</span>
+
+                  <!-- ✅ 용어를 더 직관적으로 -->
+                  <span class="chip dir out">지출</span>
+
+                  {% if ev.requirement == "required" %}
+                    <span class="chip ev bad">증빙 필수 · 미첨부</span>
+                  {% else %}
+                    <span class="chip ev warn">증빙 확인 · 미첨부</span>
+                  {% endif %}
+
+                  <span class="amount">{{ "{:,}".format(tx.amount_krw) }}원</span>
+                </div>
+
+                <div class="vault-subline">{{ tx.memo or "메모 없음" }}</div>
+              </div>
+
+              <div class="vault-actions">
+                <a class="btn small" href="{{ url_for('web_vault.index', month=month_key, q=tx.counterparty or '') }}">증빙 업로드</a>
+                <a class="btn small ghost" href="{{ url_for('web_calendar.day_detail', ymd=tx.occurred_at.strftime('%Y-%m-%d')) }}">당일 보기</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <div class="h2">누락이 없어요</div>
+          <div class="p" style="margin-top:6px;">지금 바로 ZIP을 내려받아 전달하면 됩니다.</div>
+        </div>
+      {% endif %}
+    </div>
+  </details>
+
+
+</div>
+{% endblock %}

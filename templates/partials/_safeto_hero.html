@@ -1,0 +1,59 @@
+{# templates/partials/_safeto_hero.html #}
+<section class="hero">
+  <div class="heroTop">
+    <div>
+      {% if guest_mode %}
+        <span class="kicker">체험 모드</span>
+      {% else %}
+        <span class="kicker">대시보드</span>
+      {% endif %}
+
+      <div class="h">지금 써도 되는 돈</div>
+      <div class="num mono">{{ "{:,}".format(safe_to_spend|int) }}원</div>
+
+      <div class="muted" style="margin-top:8px;">
+        잔고가 아니라, <b>세금/예비비로 빠질 돈을 먼저 떼고</b> 남은 기준이에요.
+      </div>
+    </div>
+
+    <div class="actions">
+      {% if session.get("user_id") %}
+        <form action="{{ url_for('web_auth.logout') }}" method="post" style="margin:0; display:inline-flex;">
+          <button class="btn" type="submit">로그아웃</button>
+        </form>
+
+        {% if guest_mode %}
+          <a class="btn solid" href="{{ url_for('web_overview.overview') }}">요약으로</a>
+        {% else %}
+          <a class="btn" href="{{ url_for('web_main.main') }}">체험으로</a>
+        {% endif %}
+      {% else %}
+        <a class="btn" href="{{ url_for('web_auth.login', next=next_after_auth) }}">로그인</a>
+        <a class="btn solid" href="{{ url_for('web_auth.register', next=next_after_auth) }}">회원가입</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="miniRow">
+    <div class="mini">
+      <div class="label">이번 달 예상 입금</div>
+      <div class="val mono">{{ "{:,}".format(rev|int) }}원</div>
+      <div class="sub">들어올 돈</div>
+    </div>
+    <div class="mini">
+      <div class="label">이번 달 대략 비용</div>
+      <div class="val mono">{{ "{:,}".format(exp|int) }}원</div>
+      <div class="sub">나갈 돈</div>
+    </div>
+    <div class="mini">
+      <div class="label">남는 돈(입금-비용)</div>
+      <div class="val mono">{{ "{:,}".format(profit|int) }}원</div>
+      <div class="sub">기준 전</div>
+    </div>
+    <div class="mini">
+      <div class="label">먼저 떼어둔 돈</div>
+      <div class="val mono">{{ "{:,}".format(reserve_amount|int) }}원</div>
+      <div class="sub">안전적립 {{ (rate*100)|round(0)|int }}%</div>
+    </div>
+  </div>
+</section>

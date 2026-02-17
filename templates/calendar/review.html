@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}정리하기{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap">
+
+  <!-- =========================
+       Header
+  ========================= -->
+  <div class="page-head">
+    <div>
+      <div class="h1">정리하기</div>
+      <div class="p">{{ month_first.strftime('%Y-%m') }} · 남은 것부터 처리하면 “세금/증빙”이 편해져요</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_calendar.month_calendar', month=month_key) }}">캘린더</a>
+      <a class="btn" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금 보관함</a>
+      <a class="btn primary" href="{{ url_for('web_package.page', month=month_key) }}">세무사 전달 패키지</a>
+    </div>
+  </div>
+
+  <!-- =========================
+       Tabs + Actionbar
+  ========================= -->
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="tabs">
+      <a class="tab {% if focus=='evidence_required' %}active{% endif %}"
+         href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_required', q=q, limit=limit) }}">
+        필수 영수증 <span class="count">{{ counts.get('evidence_required', 0) }}</span>
+      </a>
+      <a class="tab {% if focus=='income_unknown' %}active{% endif %}"
+         href="{{ url_for('web_calendar.review', month=month_key, focus='income_unknown', q=q, limit=limit) }}">
+        수입 분류 <span class="count">{{ counts.get('income_unknown', 0) }}</span>
+      </a>
+      <a class="tab {% if focus=='expense_unknown' %}active{% endif %}"
+         href="{{ url_for('web_calendar.review', month=month_key, focus='expense_unknown', q=q, limit=limit) }}">
+        지출 분류 <span class="count">{{ counts.get('expense_unknown', 0) }}</span>
+      </a>
+      <a class="tab {% if focus=='evidence_maybe' %}active{% endif %}"
+         href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_maybe', q=q, limit=limit) }}">
+        검토 영수증 <span class="count">{{ counts.get('evidence_maybe', 0) }}</span>
+      </a>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="actionbar" style="gap:10px;">
+      <!-- Search -->
+      <form class="search" method="GET" action="{{ url_for('web_calendar.review') }}">
+        <input type="hidden" name="month" value="{{ month_key }}">
+        <input type="hidden" name="focus" value="{{ focus }}">
+        <input type="hidden" name="limit" value="{{ limit }}">
+        <input name="q" placeholder="거래처/메모 검색" value="{{ q }}">
+        <button class="btn small ghost" type="submit">검색</button>
+      </form>
+
+      <!-- Right cluster -->
+      <div class="row" style="flex-wrap:wrap; gap:8px;">
+        <span class="badge">{{ title }}</span>
+        <span class="badge {% if totals.get(focus, 0) > 0 %}warn{% endif %}">
+          남은 {{ totals.get(focus, 0) }}건
+        </span>
+
+        {# 10분 모드 토글: limit=30을 “10분 모드”로 간주 #}
+        {% set is_ten = (limit|int <= 40) %}
+        {% if is_ten %}
+          <a class="btn small ghost"
+             href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=200) }}">
+            전체 보기
+          </a>
+          <span class="badge">10분 모드 · {{ limit }}개만</span>
+        {% else %}
+          <a class="btn small"
+             href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=30) }}">
+            10분 모드
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if focus in ('income_unknown', 'expense_unknown') %}
+      <div style="margin-top:10px;" class="note">
+        “항상”을 체크하면 <b>같은 거래처</b>는 다음부터 자동 분류돼요.
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- =========================
+       List
+  ========================= -->
+  {% if items %}
+    <div class="vlist">
+      {% for item in items %}
+        {% set tx = item.tx %}
+        <div class="vitem" id="tx-{{ tx.id }}" style="align-items:flex-start; gap:14px;">
+          <!-- Left -->
+          <div style="min-width:0; flex:1;">
+            <div class="vtitle" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <span class="strong">{{ tx.counterparty or '거래처 없음' }}</span>
+              <span class="muted2">{{ tx.occurred_at.strftime('%m-%d %H:%M') }}</span>
+
+              {% if tx.direction == 'in' %}
+                <span class="pill good">수입</span>
+              {% else %}
+                <span class="pill">지출</span>
+              {% endif %}
+
+              {% if focus in ('evidence_required','evidence_maybe') %}
+                {% if focus == 'evidence_required' %}
+                  <span class="pill warn">필수</span>
+                {% else %}
+                  <span class="pill">검토</span>
+                {% endif %}
+              {% endif %}
+            </div>
+
+            {% if tx.memo %}
+              <div class="vsub">{{ tx.memo }}</div>
+            {% else %}
+              <div class="vsub muted2">메모 없음</div>
+            {% endif %}
+          </div>
+
+          <!-- Right -->
+          <div class="vright" style="display:flex; flex-direction:column; gap:10px; align-items:flex-end;">
+            <div class="vamt {% if tx.direction=='in' %}pos{% else %}neg{% endif %}">
+              {% if tx.direction=='in' %}+{% else %}-{% endif %}{{ tx.amount_krw|krw }}
+            </div>
+
+            {% if focus == 'income_unknown' %}
+              <form method="POST" action="{{ url_for('web_calendar.review_set_income', tx_id=tx.id) }}"
+                    class="actions-inline" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                <input type="hidden" name="month" value="{{ month_key }}">
+                <input type="hidden" name="focus" value="{{ focus }}">
+                <input type="hidden" name="q" value="{{ q }}">
+                <input type="hidden" name="limit" value="{{ limit }}">
+
+                <label class="chk"><input type="checkbox" name="always" value="1">항상</label>
+                <button class="btn small primary" type="submit" name="status" value="income">수입</button>
+                <button class="btn small ghost" type="submit" name="status" value="non_income">비수입</button>
+              </form>
+
+            {% elif focus == 'expense_unknown' %}
+              <form method="POST" action="{{ url_for('web_calendar.review_set_expense', tx_id=tx.id) }}"
+                    class="actions-inline" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                <input type="hidden" name="month" value="{{ month_key }}">
+                <input type="hidden" name="focus" value="{{ focus }}">
+                <input type="hidden" name="q" value="{{ q }}">
+                <input type="hidden" name="limit" value="{{ limit }}">
+
+                <label class="chk"><input type="checkbox" name="always" value="1">항상</label>
+                <button class="btn small primary" type="submit" name="status" value="business">업무</button>
+                <button class="btn small ghost" type="submit" name="status" value="personal">개인</button>
+                <button class="btn small ghost" type="submit" name="status" value="mixed">혼합</button>
+              </form>
+
+            {% else %}
+              <form method="POST" action="{{ url_for('web_calendar.review_set_evidence', tx_id=tx.id) }}"
+                    class="actions-inline" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                <input type="hidden" name="month" value="{{ month_key }}">
+                <input type="hidden" name="focus" value="{{ focus }}">
+                <input type="hidden" name="q" value="{{ q }}">
+                <input type="hidden" name="limit" value="{{ limit }}">
+
+                <button class="btn small primary" type="submit" name="action" value="attached">첨부함</button>
+                <button class="btn small ghost" type="submit" name="action" value="not_needed">불필요</button>
+                <button class="btn small ghost" type="submit" name="action" value="missing">아직</button>
+              </form>
+            {% endif %}
+
+            <a class="btn small ghost"
+               href="{{ url_for('web_calendar.day_detail', ymd=tx.occurred_at.strftime('%Y-%m-%d')) }}">
+              당일 보기
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if totals.get(focus, 0) > (items|length) %}
+      <div class="card pad" style="margin-top:12px;">
+        <div class="row" style="justify-content:space-between; gap:10px; flex-wrap:wrap;">
+          <div class="muted2">
+            지금 {{ items|length }}개만 표시 중이에요.
+            {% if limit|int < 200 %} (10분 모드){% endif %}
+          </div>
+          <div class="row" style="gap:8px; flex-wrap:wrap;">
+            <a class="btn small ghost"
+               href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=200) }}">
+              전체 보기
+            </a>
+            <a class="btn small"
+               href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=30) }}">
+              10분 모드
+            </a>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+  {% else %}
+    <div class="card pad">
+      <div class="empty">{{ title }} 항목이 없어요.</div>
+      <div class="row" style="margin-top:10px; gap:8px; flex-wrap:wrap;">
+        <a class="btn small ghost" href="{{ url_for('web_calendar.month_calendar', month=month_key) }}">캘린더로</a>
+        <a class="btn small" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금 보관함</a>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+
+{# 앵커로 이동했을 때 시야 중앙쯤 오게 (UX) #}
+<script>
+(function(){
+  if (!location.hash) return;
+  const el = document.querySelector(location.hash);
+  if (!el) return;
+  try{
+    el.scrollIntoView({behavior:"smooth", block:"center"});
+  }catch(e){}
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}보관함 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <section class="card pad">
+    <div class="row" style="justify-content:space-between; align-items:flex-end;">
+      <div>
+        <div class="h2">보관함</div>
+        <div class="small-note muted2" style="margin-top:4px;">
+          증빙은 서버에 보관되며(기본 최대 5년) · 필요할 때 내 기기로 백업 다운로드 · 원하면 즉시 삭제 가능
+        </div>
+      </div>
+      <div class="row" style="gap:8px; flex-wrap:wrap;">
+        <a class="btn small" href="{{ url_for('web_vault.export_all') }}">전체 백업</a>
+        <a class="btn small" href="{{ url_for('web_calendar.tax_package', month=month_key) }}">세무사 패키지</a>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <form method="GET" class="row" style="gap:10px; align-items:flex-end;">
+      <label class="field" style="max-width:240px;">
+        <span class="label">월 선택</span>
+        <input type="month" name="month" value="{{ month_key }}" onchange="this.form.submit()" />
+      </label>
+      <div class="small-note muted2" style="padding-bottom:10px;">
+        첨부 {{ counts.attached }}건 · 누락 {{ counts.missing }}건 · 전체 {{ counts.total }}건
+      </div>
+    </form>
+
+    <div style="height:12px;"></div>
+
+    {% if items|length == 0 %}
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="h2">이 달 거래가 없어요</div>
+        <div class="p" style="margin-top:8px;">CSV 업로드/연동 후 다시 확인해보세요.</div>
+      </div>
+    {% else %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width:110px;">날짜</th>
+            <th>거래</th>
+            <th style="width:140px;">금액</th>
+            <th style="width:360px;">증빙</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in items %}
+            <tr>
+              <td class="mono">{{ it.date }}</td>
+              <td>
+                <div style="font-weight:900;">{{ it.counterparty }}</div>
+                <div class="small-note muted2" style="margin-top:4px;">
+                  {% if it.requirement == 'required' %}
+                    증빙 필수
+                  {% elif it.requirement == 'maybe' %}
+                    증빙 필요(확인)
+                  {% else %}
+                    증빙 불필요
+                  {% endif %}
+                </div>
+              </td>
+              <td class="mono" style="font-weight:900;">-{{ "{:,}".format(it.amount|int) }}원</td>
+              <td>
+                {% if it.has_file %}
+                  <div class="row" style="gap:8px; flex-wrap:wrap;">
+                    <a class="btn small" href="{{ url_for('web_inbox.evidence_download', evidence_id=it.evidence_id) }}">다운로드</a>
+                    <form method="POST" action="{{ url_for('web_inbox.evidence_delete', evidence_id=it.evidence_id) }}">
+                      <input type="hidden" name="tab" value="evidence">
+                      <input type="hidden" name="next" value="{{ url_for('web_calendar.vault', month=month_key) }}">
+                      <button class="btn small warn" type="submit">즉시 삭제</button>
+                    </form>
+                    <span class="small-note muted2">만료: {{ it.retention_until or '-' }}</span>
+                  </div>
+                  {% if it.filename %}
+                    <div class="small-note muted2" style="margin-top:6px;">{{ it.filename }}</div>
+                  {% endif %}
+                {% else %}
+                  {% if it.status == 'not_needed' or it.requirement == 'not_needed' %}
+                    <span class="badge">불필요</span>
+                  {% elif it.status == 'attached' %}
+                    <div class="row" style="gap:8px; flex-wrap:wrap;">
+                      <span class="badge ok">첨부(파일 없음)</span>
+                      <span class="small-note muted2">필요하면 파일로 보관해도 돼요</span>
+                    </div>
+                    <div style="height:6px;"></div>
+                    <form method="POST" action="{{ url_for('web_inbox.evidence_upload', evidence_id=it.evidence_id) }}" enctype="multipart/form-data">
+                      <input type="hidden" name="tab" value="evidence">
+                      <input type="hidden" name="next" value="{{ url_for('web_calendar.vault', month=month_key) }}">
+                      <div class="row" style="gap:8px;">
+                        <input class="file" type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required>
+                        <button class="btn small" type="submit">파일로 보관</button>
+                      </div>
+                    </form>
+                  {% else %}
+                    <form method="POST" action="{{ url_for('web_inbox.evidence_upload', evidence_id=it.evidence_id) }}" enctype="multipart/form-data">
+                      <input type="hidden" name="tab" value="evidence">
+                      <input type="hidden" name="next" value="{{ url_for('web_calendar.vault', month=month_key) }}">
+                      <div class="row" style="gap:8px;">
+                        <input class="file" type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required>
+                        <button class="btn small primary" type="submit">업로드</button>
+                      </div>
+                    </form>
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    <div class="hr"></div>
+
+    <div class="card pad" style="box-shadow:none;background:var(--surface-2); border:1px solid rgba(239,68,68,.20);">
+      <div class="row" style="justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:900;">전체 즉시 삭제</div>
+          <div class="small-note muted2" style="margin-top:4px;">
+            서버에 저장된 모든 증빙 파일을 영구 삭제합니다. 삭제 전 “전체 백업”을 내려받는 걸 권장해요.
+          </div>
+        </div>
+        <form method="POST" action="{{ url_for('web_vault.delete_all') }}" class="row" style="gap:8px; align-items:flex-end;">
+          <input type="hidden" name="next" value="{{ url_for('web_calendar.vault', month=month_key) }}">
+          <label class="field" style="max-width:180px;">
+            <span class="label">확인 문구</span>
+            <input name="confirm" placeholder="DELETE" autocomplete="off">
+          </label>
+          <button class="btn warn" type="submit">모든 증빙 삭제</button>
+        </form>
+      </div>
+    </div>
+
+  </section>
+
+</div>
+{% endblock %}

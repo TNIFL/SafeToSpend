@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}요약 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <section class="card pad">
+    <div class="row" style="justify-content:space-between;">
+      <div>
+        <div class="h2">이번 달 요약</div>
+        <div class="small-note muted2" style="margin-top:4px;">{{ month_key }}</div>
+      </div>
+      <div class="row">
+        <span class="badge primary">리스크 중심</span>
+        <a class="btn small" href="{{ url_for('web_inbox.index') }}">처리함</a>
+        <a class="btn small ghost" href="{{ url_for('web_calendar.tax_package', month=month_key) }}">세무사 패키지</a>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="kpiRow">
+      <div class="kpi">
+        <div class="label">세금 금고 부족액</div>
+        <div class="value big mono">{{ "{:,}".format(tax_shortfall|int) }}원</div>
+        <div class="hint">
+          목표 {{ (tax_target_rate*100)|round(0)|int }}% · 목표 {{ "{:,}".format(tax_target|int) }}원 · 현재 {{ "{:,}".format(tax_buffer|int) }}원
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="label">증빙 누락</div>
+        <div class="value big mono">{{ evidence_missing_count }}</div>
+        <div class="hint">필수/애매 중 미첨부</div>
+      </div>
+      <div class="kpi">
+        <div class="label">혼재 의심</div>
+        <div class="value big mono">{{ mixed_count }}</div>
+        <div class="hint">아직 확정 안 된 지출</div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="grid cols-2">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>이번 주 할 일 1개</span>
+          <span class="badge {% if weekly_task_level=='bad' %}bad{% elif weekly_task_level=='warn' %}warn{% else %}primary{% endif %}">
+            {{ weekly_task_badge }}
+          </span>
+        </div>
+        <div class="p" style="margin-top:10px;">
+          <b style="color:var(--text);">{{ weekly_task_title }}</b><br>
+          {{ weekly_task_desc }}
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <a class="btn primary" href="{{ weekly_task_url }}">{{ weekly_task_cta }}</a>
+          <a class="btn" href="{{ url_for('web_inbox.index') }}">전체 보기</a>
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>이번 달 입력</span>
+          <span class="badge">CSV 기준</span>
+        </div>
+        <div class="hr"></div>
+
+        <div class="stack" style="gap:10px;">
+          <div class="row" style="justify-content:space-between;">
+            <span class="muted">수입(입금)</span>
+            <span class="mono" style="font-weight:900;">{{ "{:,}".format(gross_income|int) }}원</span>
+          </div>
+          <div class="row" style="justify-content:space-between;">
+            <span class="muted">지출</span>
+            <span class="mono" style="font-weight:900;">{{ "{:,}".format(expenses|int) }}원</span>
+          </div>
+
+          <div class="hr"></div>
+
+          <div>
+            <div class="small-note"><b>세금 금고 충족도</b></div>
+            {% set pct = tax_progress_percent %}
+            <div style="margin-top:8px;" class="progress">
+              <div style="width: {{ pct }}%;"></div>
+            </div>
+            <div class="small-note muted2" style="margin-top:8px;">
+              {{ pct|round(0)|int }}% · 부족 {{ "{:,}".format(tax_shortfall|int) }}원
+            </div>
+          </div>
+
+          <a class="btn full" href="{{ url_for('web_inbox.index') }}">처리함에서 해결하기</a>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# =========================
+# Virtualenv
+# =========================
+.venv/
+venv/
+ENV/
+env/
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Flask / runtime
+# =========================
+instance/
+*.log
+logs/
+tmp/
+.cache/
+
+# =========================
+# Database / local artifacts
+# (Postgres는 보통 파일이 없지만, 혹시 남는 로컬 파일 대비)
+# =========================
+*.sqlite3
+*.db
+*.dump
+*.sql
+
+# =========================
+# Uploads / evidence vault (런타임 생성물)
+# =========================
+uploads/
+evidence/
+evidence_vault/
+storage/
+
+# =========================
+# Migrations 캐시만 제외 (마이그레이션 자체는 커밋 대상)
+# =========================
+migrations/**/__pycache__/
+
+# =========================
+# Test / coverage
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+coverage.xml
+
+# =========================
+# Type checker / lint
+# =========================
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+*.egg-info/
+dist/
+build/
+
+# =========================
+# IDE / OS
+# =========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

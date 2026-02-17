@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}메인 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="wrap">
+
+  <div class="topRow">
+    <div>
+      <div class="pageTitle">메인(체험)</div>
+      <div class="pageSub">먼저 써보고, 마음에 들면 저장하면 돼요. 강제 없어요.</div>
+    </div>
+    <div class="actions">
+      <a class="btn" href="{{ url_for('web_main.landing') }}">랜딩</a>
+    </div>
+  </div>
+
+  {% if guest_mode is not defined %}
+    {% set guest_mode = True %}
+  {% endif %}
+
+  {% set next_after_auth = url_for("web_overview.overview") %}
+  {% include "partials/_safeto_hero.html" %}
+
+  <div class="grid">
+
+    {% set post_url = url_for("web_main.main") %}
+    {% set submit_label = "계산 업데이트" %}
+    {% set helper_text = "로그인 없이도 계속 체험 가능" %}
+    {% include "partials/_quick_input.html" %}
+
+    <section class="card soft">
+      <div class="ctaBox">
+        <div class="ctaTitle">저장해서 다음에도 이어하기</div>
+        <div class="tiny" style="margin-top:6px;">
+          지금 만든 기준을 저장해두면 다음에 와도 그대로 이어져요.
+        </div>
+
+        <div class="row">
+          <a class="btn solid"
+             href="{{ url_for('web_auth.register', intent='save', next=url_for('web_dashboard.index')) }}">
+            회원가입하고 저장
+          </a>
+          <a class="btn"
+             href="{{ url_for('web_auth.login', intent='save', next=url_for('web_dashboard.index')) }}">
+            로그인하고 저장
+          </a>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="ctaTitle">이 다음 흐름</div>
+        <div class="tiny" style="margin-top:6px;">
+          저장하면 대시보드에서 <b>이번 주 할 일 1개</b>로 습관화되고,
+          나중엔 <b>입금 감지/증빙 인박스</b>로 자동화가 붙어요.
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="cardTitle">
+        <span>잠금 기능(미리보기)</span>
+        <span class="tiny">로그인 후</span>
+      </div>
+      <div class="list">
+        <div class="item">
+          <div>
+            <b>이번 주 할 일 완료 체크</b>
+            <div class="tiny">기록이 쌓이면 다음 행동이 자동으로 정해져요.</div>
+          </div>
+          <div class="right">잠김</div>
+        </div>
+        <div class="item">
+          <div>
+            <b>내 기준 저장/히스토리</b>
+            <div class="tiny">매번 입력하지 않게 만드는 핵심이에요.</div>
+          </div>
+          <div class="right">잠김</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+</div>
+{% endblock %}

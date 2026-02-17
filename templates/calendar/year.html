@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}{{ y }}년 요약{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap">
+  <div class="cal-top">
+    <div>
+      <div class="title">{{ y }}년 요약</div>
+      <div class="sub">월별 수입/지출/순이익</div>
+    </div>
+
+    <div class="cal-nav">
+      <a class="btn" href="{{ url_for('web_calendar.year_view', year=y-1) }}">←</a>
+      <a class="btn" href="{{ url_for('web_calendar.year_view', year=y) }}">올해</a>
+      <a class="btn" href="{{ url_for('web_calendar.year_view', year=y+1) }}">→</a>
+      <a class="btn ghost" href="{{ url_for('web_calendar.month_calendar', month=(y|string) ~ '-01') }}">달력</a>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi card">
+      <div class="k-label">연 수입</div>
+      <div class="k-value">+ {{ year_income|krw }}</div>
+    </div>
+    <div class="kpi card">
+      <div class="k-label">연 지출</div>
+      <div class="k-value">- {{ year_expense|krw }}</div>
+    </div>
+    <div class="kpi card">
+      <div class="k-label">연 순이익</div>
+      <div class="k-value {% if year_net>=0 %}pos{% else %}neg{% endif %}">{{ year_net|krw }}</div>
+    </div>
+  </div>
+
+  <div class="year-layout">
+    <section class="card year-main">
+      <div class="year-head">
+        <div class="year-h">월</div>
+        <div class="year-h">흐름</div>
+        <div class="year-h right">수입 / 지출 / 순이익</div>
+      </div>
+
+      {% set max_inc = (months | map(attribute='income') | max) %}
+      {% set max_exp = (months | map(attribute='expense') | max) %}
+      {% set maxbar = [max_inc, max_exp] | max %}
+
+      <div class="year-rows">
+        {% for m in months %}
+          <a class="year-row"
+             href="{{ url_for('web_calendar.month_calendar', month=m.month_key) }}">
+            <div class="year-m">{{ m.m }}월</div>
+
+            <div class="year-bars" title="거래 {{ m.cnt }}건">
+              <div class="bar in" style="width: {{ (m.income / maxbar * 100) if maxbar else 0 }}%"></div>
+              <div class="bar out" style="width: {{ (m.expense / maxbar * 100) if maxbar else 0 }}%"></div>
+            </div>
+
+            <div class="year-num">
+              <span class="in">+ {{ m.income|krw }}</span>
+              <span class="out">- {{ m.expense|krw }}</span>
+              <span class="{% if m.net>=0 %}pos{% else %}neg{% endif %}">{{ m.net|krw }}</span>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+
+    <aside class="card year-side">
+      <div class="side-title">인사이트</div>
+
+      <div class="side-block">
+        <div class="side-label">월 평균 순이익</div>
+        <div class="side-big {% if avg_net>=0 %}pos{% else %}neg{% endif %}">{{ avg_net|krw }}</div>
+        <div class="side-sub muted">12개월 기준 단순 평균</div>
+      </div>
+
+      <div class="side-block">
+        <div class="side-label">최고/최저 월</div>
+        {% if best_month %}
+          <div class="side-kv">
+            <span class="k">최고</span>
+            <a class="v" href="{{ url_for('web_calendar.month_calendar', month=best_month.month_key) }}">
+              {{ best_month.m }}월 · {{ best_month.net|krw }}
+            </a>
+          </div>
+        {% else %}
+          <div class="side-empty">데이터가 없어요.</div>
+        {% endif %}
+
+        {% if worst_month %}
+          <div class="side-kv">
+            <span class="k">최저</span>
+            <a class="v" href="{{ url_for('web_calendar.month_calendar', month=worst_month.month_key) }}">
+              {{ worst_month.m }}월 · {{ worst_month.net|krw }}
+            </a>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="side-block">
+        <div class="side-label">연간 지출 TOP</div>
+        {% if top_out %}
+          <ul class="side-list">
+            {% for r in top_out %}
+              <li><span class="name">{{ r.name }}</span><span class="amt out">- {{ (r.sum_amt or 0)|krw }}</span></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="side-empty">지출 데이터가 없어요.</div>
+        {% endif %}
+      </div>
+
+      <div class="side-block">
+        <div class="side-label">연간 수입 TOP</div>
+        {% if top_in %}
+          <ul class="side-list">
+            {% for r in top_in %}
+              <li><span class="name">{{ r.name }}</span><span class="amt in">+ {{ (r.sum_amt or 0)|krw }}</span></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="side-empty">수입 데이터가 없어요.</div>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock %}

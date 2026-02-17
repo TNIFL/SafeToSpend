@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}기록 수정{% endblock %}
+
+{% block content %}
+<div class="wrap" style="max-width:720px;">
+  <div class="top" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;margin:14px 0;">
+    <div>
+      <div class="title" style="font-size:1.25rem;font-weight:1100;letter-spacing:-.4px;">기록 수정</div>
+      <div class="sub" style="margin-top:6px;color:var(--muted);font-size:.95rem;line-height:1.5;">
+        {{ entry.created_at.strftime("%Y-%m-%d") }}
+      </div>
+    </div>
+    <div class="row" style="display:flex;gap:10px;align-items:center;">
+      <a class="btn" href="{{ url_for('web_dashboard.index') }}">돌아가기</a>
+      <form method="POST" action="{{ url_for('web_dashboard.delete_entry', entry_id=entry.id) }}">
+        <button class="btn danger" type="submit">삭제</button>
+      </form>
+    </div>
+  </div>
+
+  <section class="card" style="border-radius:20px;background:#fff;border:1px solid rgba(15,23,42,.08);padding:16px;">
+    <form method="POST">
+      <div class="form-grid" style="display:grid;gap:10px;">
+        <label class="field">
+          <span class="label">종류(kind)</span>
+          <input name="kind" value="{{ entry.kind }}">
+        </label>
+
+        <label class="field">
+          <span class="label">금액(amount)</span>
+          <input name="amount" type="number" value="{{ entry.amount }}">
+        </label>
+
+        <label class="field">
+          <span class="label">메모(note)</span>
+          <input name="note" value="{{ entry.note or '' }}">
+        </label>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button class="btn solid" type="submit" style="width:100%;">저장</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

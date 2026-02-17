@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}고정비(정기거래){% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap">
+
+  <div class="page-head">
+    <div>
+      <div class="h1">고정비(정기거래)</div>
+      <div class="p">매일/매주/매월 반복되는 거래를 등록해두면, 캘린더에 “예정”으로 표시돼요.</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_calendar.month_calendar') }}">캘린더</a>
+    </div>
+  </div>
+
+  <div class="split">
+
+    <section class="card pad">
+      <div class="cardTitle">
+        <span>내 고정비</span>
+        <span class="muted">{{ rules|length }}개</span>
+      </div>
+      <div class="hr"></div>
+
+      {% if rules %}
+        <div class="vlist">
+          {% set wd = ['월','화','수','목','금','토','일'] %}
+          {% for r in rules %}
+            <div class="vitem">
+              <div>
+                <div class="vtitle">
+                  {{ r.counterparty or '거래처 없음' }}
+                  {% if r.is_active %}
+                    <span class="badge good" style="margin-left:8px;">활성</span>
+                  {% else %}
+                    <span class="badge" style="margin-left:8px;">비활성</span>
+                  {% endif %}
+                </div>
+                <div class="vsub">
+                  {% if r.cadence == 'monthly' %}
+                    매월 {{ r.day_of_month }}일
+                  {% elif r.cadence == 'weekly' %}
+                    매주 {{ wd[r.weekday] if r.weekday is not none else '-' }}
+                  {% else %}
+                    매일
+                  {% endif %}
+                  · 시작 {{ r.start_date.strftime('%Y-%m-%d') if r.start_date else '-' }}
+                  {% if r.memo %} · {{ r.memo }}{% endif %}
+                </div>
+              </div>
+
+              <div class="vright" style="align-items:flex-end;">
+                <div class="vamt {% if r.direction=='in' %}pos{% else %}neg{% endif %}">
+                  {% if r.direction=='in' %}+{% else %}-{% endif %}{{ r.amount_krw|krw }}
+                </div>
+                <form method="POST" action="{{ url_for('web_calendar.recurring_toggle', rid=r.id) }}" style="margin-top:10px;">
+                  <input type="hidden" name="next" value="{{ url_for('web_calendar.recurring_list') }}">
+                  <button class="btn small {% if r.is_active %}ghost{% endif %}" type="submit">
+                    {% if r.is_active %}끄기{% else %}켜기{% endif %}
+                  </button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">아직 고정비가 없어요. 오른쪽에서 하나 추가해보세요.</div>
+      {% endif %}
+    </section>
+
+    <aside class="card pad">
+      <div class="cardTitle">
+        <span>새 고정비 추가</span>
+        <span class="muted">30초</span>
+      </div>
+      <div class="hr"></div>
+
+      <form method="POST" action="{{ url_for('web_calendar.recurring_create') }}" class="form-grid" id="recForm">
+        <input type="hidden" name="next" value="{{ url_for('web_calendar.recurring_list') }}">
+
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
+          <label class="field">
+            <span class="label">구분</span>
+            <select name="direction" required>
+              <option value="out">지출</option>
+              <option value="in">수입</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="label">금액(원)</span>
+            <input name="amount_krw" type="number" min="1" step="1" placeholder="예: 55000" required>
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="label">거래처</span>
+          <input name="counterparty" placeholder="예: 월세, 통신비, 넷플릭스">
+        </label>
+
+        <label class="field">
+          <span class="label">메모(선택)</span>
+          <input name="memo" placeholder="예: 사무실 월세">
+        </label>
+
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
+          <label class="field">
+            <span class="label">반복</span>
+            <select name="cadence" id="cadence" required>
+              <option value="monthly">매월</option>
+              <option value="weekly">매주</option>
+              <option value="daily">매일</option>
+            </select>
+          </label>
+
+          <label class="field" id="domWrap">
+            <span class="label">매월 날짜</span>
+            <input name="day_of_month" type="number" min="1" max="31" placeholder="예: 25">
+          </label>
+
+          <label class="field" id="wdWrap" style="display:none;">
+            <span class="label">요일</span>
+            <select name="weekday">
+              <option value="0">월</option><option value="1">화</option><option value="2">수</option>
+              <option value="3">목</option><option value="4">금</option><option value="5">토</option><option value="6">일</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="label">시작일</span>
+          <input name="start_date" type="date">
+        </label>
+
+        <button class="btn primary full" type="submit">추가</button>
+        <div class="help">* “매월”이면 날짜(1~31), “매주”면 요일을 선택하세요.</div>
+      </form>
+    </aside>
+
+  </div>
+
+</div>
+
+<script>
+  (function(){
+    const cadence = document.getElementById('cadence');
+    const domWrap = document.getElementById('domWrap');
+    const wdWrap  = document.getElementById('wdWrap');
+    function sync(){
+      const v = cadence ? cadence.value : 'monthly';
+      if(domWrap) domWrap.style.display = (v === 'monthly') ? '' : 'none';
+      if(wdWrap)  wdWrap.style.display  = (v === 'weekly') ? '' : 'none';
+    }
+    if(cadence){
+      cadence.addEventListener('change', sync);
+      sync();
+    }
+  })();
+</script>
+{% endblock %}

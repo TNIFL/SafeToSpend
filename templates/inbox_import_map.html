@@ -1,0 +1,125 @@
+<!-- templates/inbox_import_map.html -->
+{% extends "base.html" %}
+
+{% block title %}컬럼 매핑 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1 class="h1" style="margin:0; font-size:1.6rem;">컬럼 매핑</h1>
+    <p class="lead" style="margin:6px 0 0;">파일: <b>{{ filename }}</b> · 구분자: <b>{{ delimiter }}</b></p>
+  </div>
+  <a class="btn" href="{{ url_for('web_inbox.import_page') }}">다시 업로드</a>
+</div>
+
+<div class="grid" style="grid-template-columns: 1fr;">
+  <div class="card pad">
+    <h2 style="margin:0 0 10px; font-size:1.1rem;">1) 표준 필드에 CSV 컬럼을 연결하세요</h2>
+    <form action="{{ url_for('web_inbox.import_commit') }}" method="post" class="form-grid" style="max-width: 760px;">
+      <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="field">
+          <div class="label">거래일시 (필수)</div>
+          <select name="map_date" required>
+            <option value="">선택</option>
+            {% for h in headers %}
+              <option value="{{ h }}" {% if mapping.get('date')==h %}selected{% endif %}>{{ h }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label">금액 (선택: 단일 금액 컬럼)</div>
+          <select name="map_amount">
+            <option value="">미사용</option>
+            {% for h in headers %}
+              <option value="{{ h }}" {% if mapping.get('amount')==h %}selected{% endif %}>{{ h }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label">입금 금액 (선택)</div>
+          <select name="map_in_amount">
+            <option value="">미사용</option>
+            {% for h in headers %}
+              <option value="{{ h }}" {% if mapping.get('in_amount')==h %}selected{% endif %}>{{ h }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label">출금 금액 (선택)</div>
+          <select name="map_out_amount">
+            <option value="">미사용</option>
+            {% for h in headers %}
+              <option value="{{ h }}" {% if mapping.get('out_amount')==h %}selected{% endif %}>{{ h }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label">입/출 구분 (선택)</div>
+          <select name="map_direction">
+            <option value="">미사용</option>
+            {% for h in headers %}
+              <option value="{{ h }}" {% if mapping.get('direction')==h %}selected{% endif %}>{{ h }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label">거래처/가맹점 (선택)</div>
+          <select name="map_counterparty">
+            <option value="">미사용</option>
+            {% for h in headers %}
+              <option value="{{ h }}" {% if mapping.get('counterparty')==h %}selected{% endif %}>{{ h }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+          <div class="label">적요/메모 (선택)</div>
+          <select name="map_memo">
+            <option value="">미사용</option>
+            {% for h in headers %}
+              <option value="{{ h }}" {% if mapping.get('memo')==h %}selected{% endif %}>{{ h }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="helpbox">
+        <b>TIP</b><br>
+        - '금액'이 하나만 있으면 <b>금액</b>만 지정해도 됩니다.<br>
+        - '입금/출금'이 따로 있으면 <b>입금/출금</b>을 지정해 주세요. (금액은 비워도 됨)
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button class="btn solid" type="submit">이대로 가져오기</button>
+        <a class="btn" href="{{ url_for('web_inbox.import_page') }}">취소</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card pad">
+    <h2 style="margin:0 0 10px; font-size:1.1rem;">2) 미리보기</h2>
+    <div class="table">
+      <div class="tr th" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+        <div>{{ headers[0] if headers|length>0 else '' }}</div>
+        <div>{{ headers[1] if headers|length>1 else '' }}</div>
+        <div>{{ headers[2] if headers|length>2 else '' }}</div>
+        <div>{{ headers[3] if headers|length>3 else '' }}</div>
+      </div>
+      {% for row in rows %}
+        <div class="tr" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+          <div class="mono">{{ row[0] if row|length>0 else '' }}</div>
+          <div class="mono">{{ row[1] if row|length>1 else '' }}</div>
+          <div class="mono">{{ row[2] if row|length>2 else '' }}</div>
+          <div class="mono">{{ row[3] if row|length>3 else '' }}</div>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="tiny muted" style="margin-top:8px;">미리보기는 앞부분 일부만 보여줍니다.</div>
+  </div>
+</div>
+{% endblock %}

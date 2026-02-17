@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}대시보드 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .wrap{max-width:1120px;margin:0 auto;padding:18px 16px 44px;}
+  .top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px;}
+  .title{font-size:1.25rem;font-weight:1100;letter-spacing:-.4px;}
+  .sub{margin-top:6px;color:var(--muted);font-size:.95rem;line-height:1.5;}
+
+  .kpiRow{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px;}
+  .kpi{border-radius:18px;background:#fff;border:1px solid rgba(15,23,42,.08);padding:14px;}
+  .kpi .label{color:var(--muted);font-size:.88rem;}
+  .kpi .val{margin-top:8px;font-weight:1100;letter-spacing:-.6px;}
+  .kpi .big{font-size:1.9rem;line-height:1.1;}
+  .kpi .small{font-size:1.15rem;}
+  .kpi .hint{margin-top:8px;color:var(--muted);font-size:.86rem;}
+
+  .grid{display:grid;grid-template-columns:1.25fr .75fr;gap:14px;align-items:start;}
+  .card{border-radius:20px;background:#fff;border:1px solid rgba(15,23,42,.08);padding:16px;}
+  .cardTitle{font-weight:1100;letter-spacing:-.3px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+  .tiny{color:var(--muted);font-size:.9rem;line-height:1.55;}
+  .divider{height:1px;background:rgba(15,23,42,.08);margin:12px 0;}
+
+  .entryGrid{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .entry{
+    display:block;
+    text-decoration:none;
+    color:inherit;
+    border-radius:18px;
+    border:1px solid rgba(15,23,42,.08);
+    background:rgba(2,6,23,.02);
+    padding:12px;
+    transition:transform .08s ease, box-shadow .08s ease, background .08s ease;
+  }
+  .entry:hover{transform:translateY(-1px);background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.08);}
+  .entryTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+  .entryMemo{font-weight:1100;letter-spacing:-.2px;}
+  .entryDate{color:var(--muted);font-size:.82rem;white-space:nowrap;}
+  .entryRow{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .kv .k{color:var(--muted);font-size:.82rem;}
+  .kv .v{margin-top:4px;font-weight:1100;letter-spacing:-.3px;}
+
+  .form-grid{margin-top:12px;display:grid;gap:10px;}
+  .field .label{display:block;margin-bottom:8px;color:var(--muted);font-weight:900;font-size:.9rem;}
+  .field input, .field select{width:100%;height:42px;padding:0 12px;border-radius:14px;border:1px solid rgba(15,23,42,.10);background:#fff;}
+  .row{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+
+  @media (max-width:980px){
+    .kpiRow{grid-template-columns:1fr 1fr;}
+    .grid{grid-template-columns:1fr;}
+    .entryGrid{grid-template-columns:1fr;}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <div class="title">대시보드</div>
+      <div class="sub">“세금/예비비 부족”과 “개인/사업 지출 섞임”을 막는 방향으로 여기서부터 확장합니다.</div>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpiRow">
+    <div class="kpi">
+      <div class="label">지금 써도 되는 돈</div>
+      <div class="val big mono">{{ "{:,}".format(safe_to_spend|int) }}원</div>
+      <div class="hint">세금/예비비를 먼저 떼고 남은 기준</div>
+    </div>
+    <div class="kpi">
+      <div class="label">세금 폭탄 방지금(안전적립)</div>
+      <div class="val small mono">{{ "{:,}".format(reserve_amount|int) }}원</div>
+      <div class="hint">안전적립 {{ (rate*100)|round(0)|int }}%</div>
+    </div>
+    <div class="kpi">
+      <div class="label">남는 돈(입금-비용)</div>
+      <div class="val small mono">{{ "{:,}".format(profit|int) }}원</div>
+      <div class="hint">기준 전</div>
+    </div>
+    <div class="kpi">
+      <div class="label">이번 달 입력</div>
+      <div class="val small mono">{{ "{:,}".format(rev|int) }} / {{ "{:,}".format(exp|int) }}</div>
+      <div class="hint">입금 / 지출(카드값/고정비 포함)</div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- Left: entries -->
+    <section class="card">
+      <div class="cardTitle">
+        <span>최근 계산 기록</span>
+        <span class="tiny">카드를 누르면 메모/금액 수정</span>
+      </div>
+
+      {% if not entries %}
+        <div class="tiny" style="margin-top:12px;">
+          아직 기록이 없어요. 오른쪽에서 한 번 저장해보면 카드가 쌓입니다.
+        </div>
+      {% else %}
+        <div class="entryGrid">
+          {% for e in entries %}
+            <a class="entry" href="{{ url_for('web_dashboard.edit_entry', entry_id=e.id) }}">
+              <div class="entryTop">
+                <div class="entryMemo">{{ e.note or "메모 없음" }}</div>
+                <div class="entryDate">{{ e.created_at.strftime("%Y-%m-%d") }}</div>
+              </div>
+
+              <div class="entryRow">
+                <div class="kv">
+                  <div class="k">종류</div>
+                  <div class="v">{{ e.kind }}</div>
+                </div>
+                <div class="kv">
+                  <div class="k">금액</div>
+                  <div class="v mono">{{ "{:,}".format(e.amount|int) }}원</div>
+                </div>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+
+    <!-- Right: quick input -->
+    <aside class="card" id="quick">
+      <div class="cardTitle">
+        <span>빠른 입력</span>
+        <span class="tiny">저장하면 상태 + 기록이 갱신됨</span>
+      </div>
+
+      <form method="POST" action="{{ url_for('web_dashboard.index') }}" style="margin-top:12px;">
+        <div class="form-grid" style="margin-top:0;">
+          <label class="field">
+            <span class="label">메모(선택)</span>
+            <input name="memo" placeholder="예: 2월 예상 / 프로젝트A">
+          </label>
+          <label class="field">
+            <span class="label">입금</span>
+            <input name="rev" type="number" inputmode="numeric" value="{{ rev }}">
+          </label>
+          <label class="field">
+            <span class="label">지출(카드값/고정비 포함)</span>
+            <input name="exp" type="number" inputmode="numeric" value="{{ exp }}">
+          </label>
+          <label class="field">
+            <span class="label">세금 폭탄 방지금(안전적립) 비율</span>
+            <select name="rate">
+              {% set r = rate|float %}
+              <option value="0.10" {% if r == 0.10 %}selected{% endif %}>10%</option>
+              <option value="0.15" {% if r == 0.15 %}selected{% endif %}>15%</option>
+              <option value="0.20" {% if r == 0.20 %}selected{% endif %}>20%</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row">
+          <button class="btn solid" type="submit" style="flex:1;">저장</button>
+          <a class="btn" href="{{ task_anchor }}">{{ task_cta }}</a>
+        </div>
+
+        <div class="divider"></div>
+        <div class="tiny"><b>{{ task_title }}</b></div>
+      </form>
+    </aside>
+
+  </div>
+</div>
+{% endblock %}

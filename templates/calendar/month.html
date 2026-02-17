@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}캘린더{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap">
+
+  <!-- =========================
+       Header: Month + Nav
+  ========================= -->
+  <div class="cal-top">
+    <div class="cal-heading">
+      <div class="title">{{ month_first.strftime("%Y년 %m월") }} 캘린더</div>
+      <div class="sub">일별 수입·지출</div>
+    </div>
+
+    <div class="cal-nav">
+      <a class="btn sm ghost" href="{{ url_for('web_calendar.month_calendar', month=prev_month.strftime('%Y-%m')) }}">←</a>
+      <a class="btn sm" href="{{ url_for('web_calendar.month_calendar') }}">이번달</a>
+      <a class="btn sm ghost" href="{{ url_for('web_calendar.month_calendar', month=next_month.strftime('%Y-%m')) }}">→</a>
+      <a class="btn sm ghost" href="{{ url_for('web_calendar.year_view', year=month_first.year) }}">연간</a>
+    </div>
+  </div>
+
+  <!-- =========================
+       Actionbar: Search + Actions
+  ========================= -->
+  {% set todo_total = (evidence_required_missing + income_need + expense_need) %}
+
+  <div class="cal-toolbar cal-actionbar">
+    <form class="search cal-search" method="GET" action="{{ url_for('web_calendar.month_search') }}">
+      <input type="hidden" name="month" value="{{ month_key }}">
+      <input name="q" placeholder="거래처·메모 검색" value="{{ request.args.get('q','') }}">
+      <button class="btn sm ghost" type="submit">검색</button>
+    </form>
+
+    <div class="tool-actions cal-actions">
+      <a class="btn sm tinted" href="{{ url_for('web_calendar.tx_new', month=month_key) }}">+ 거래 추가</a>
+
+      <a class="btn sm {% if todo_total > 0 %}warn-tinted{% else %}ghost{% endif %}"
+         href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_required') }}">
+        정리하기
+        {% if todo_total > 0 %}
+          <span class="pill btn-count">{{ todo_total }}</span>
+        {% endif %}
+      </a>
+
+      <a class="btn sm ghost" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금 보관함</a>
+      <a class="btn sm ghost" href="{{ url_for('web_calendar.recurring_list') }}">고정비(정기)</a>
+    </div>
+  </div>
+
+  <!-- =========================
+       KPIs
+  ========================= -->
+  <div class="kpi-grid">
+    <div class="kpi card">
+      <div class="k-label">이번 달 수입</div>
+      <div class="k-value">+ {{ month_income|krw }}</div>
+    </div>
+    <div class="kpi card">
+      <div class="k-label">이번 달 지출</div>
+      <div class="k-value">- {{ month_expense|krw }}</div>
+    </div>
+    <div class="kpi card">
+      <div class="k-label">이번 달 남은 돈</div>
+      <div class="k-value {% if month_net >= 0 %}pos{% else %}neg{% endif %}">
+        {{ month_net|krw }}
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================
+       2-col layout
+  ========================= -->
+  <div class="cal-layout">
+
+    <!-- ===== Calendar ===== -->
+    <section class="card cal">
+      <div class="cal-head">
+        {% set labels = ["월","화","수","목","금","토","일"] %}
+        {% for w in labels %}
+          <div class="cal-w {% if loop.index==6 %}sat{% elif loop.index==7 %}sun{% endif %}">{{ w }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="cal-grid">
+        {% for week in grid %}
+          {% for d in week %}
+            {% set s = by_day.get(d) %}
+            {% set inc = (s.income if s else 0) %}
+            {% set exp = (s.expense if s else 0) %}
+            {% set cnt = (s.cnt if s else 0) %}
+            {% set net = inc - exp %}
+            {% set h = heat.get(d, 0) %}
+            {% set is_today = (d == today) %}
+            {% set is_out = (d.month != month_first.month) %}
+            {% set is_sat = (d.weekday() == 5) %}
+            {% set is_sun = (d.weekday() == 6) %}
+
+            <a class="cal-cell heat-{{ h }} {% if is_out %}muted{% endif %} {% if is_today %}today{% endif %} {% if is_sat %}sat{% endif %} {% if is_sun %}sun{% endif %}"
+               href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d')) }}">
+
+              <div class="cal-cell-top">
+                <div class="cal-date">{{ d.day }}</div>
+                {% if cnt %}
+                  <div class="cal-count">{{ cnt }}건</div>
+                {% endif %}
+              </div>
+
+              {% set planned = planned_by_day.get(d, []) %}
+              {% if planned and d.month == month_first.month %}
+                <div class="cal-planned">예정 <b>{{ planned|length }}</b></div>
+              {% endif %}
+
+              <div class="cal-mini">
+                <div class="cal-line in">{% if inc %}+ {{ inc|krw }}{% endif %}</div>
+                <div class="cal-line out">{% if exp %}- {{ exp|krw }}{% endif %}</div>
+              </div>
+
+              {% if inc or exp %}
+                <div class="cal-net {% if net >= 0 %}pos{% else %}neg{% endif %}">
+                  {{ net|krw }}
+                </div>
+              {% else %}
+                <div class="cal-empty">—</div>
+              {% endif %}
+            </a>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- ===== Sidebar ===== -->
+    <aside class="card cal-side">
+
+      <!-- 1) Month status -->
+      <div class="side-block">
+        <div class="side-label">이번 달 정리 상태</div>
+
+        {% if snapshot %}
+          <div class="side-text">정리 완료 · {{ snapshot.payload.closed_at[:10] }}</div>
+
+          <div class="side-kv">
+            <span class="k">순이익</span>
+            <span class="v {% if snapshot.payload.net>=0 %}pos{% else %}neg{% endif %}">
+              {{ snapshot.payload.net|krw }}
+            </span>
+          </div>
+
+          <div class="side-kv">
+            <span class="k">업무경비</span>
+            <span class="v">{{ snapshot.payload.expense_business|krw }}</span>
+          </div>
+
+          <div class="side-kv">
+            <span class="k">필수 영수증</span>
+            <span class="v {% if snapshot.payload.evidence_required_missing %}neg{% endif %}">
+              {{ snapshot.payload.evidence_required_missing }}건
+            </span>
+          </div>
+
+          <form method="POST" action="{{ url_for('web_calendar.month_close') }}" style="margin-top:10px;">
+            <input type="hidden" name="month" value="{{ month_key }}">
+            <button class="btn sm ghost" type="submit">요약 다시 계산</button>
+          </form>
+        {% else %}
+          <div class="side-text">아직 정리 전이에요. <b>정리하기</b>부터 처리하면 제일 빨라요.</div>
+
+          <form method="POST" action="{{ url_for('web_calendar.month_close') }}" style="margin-top:10px;">
+            <input type="hidden" name="month" value="{{ month_key }}">
+            <button class="btn sm" type="submit">정리 완료로 표시</button>
+          </form>
+        {% endif %}
+      </div>
+
+      <!-- 2) Tasks -->
+      <div class="side-block todo">
+        <div class="side-label">정리할 일</div>
+
+        <div class="todo-list">
+          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_required') }}">
+            <span class="k">필수 영수증</span>
+            <span class="v {% if evidence_required_missing %}warn{% endif %}">{{ evidence_required_missing }}건</span>
+          </a>
+
+          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='expense_unknown') }}">
+            <span class="k">지출 분류</span>
+            <span class="v {% if expense_need %}warn{% endif %}">{{ expense_need }}건</span>
+          </a>
+
+          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='income_unknown') }}">
+            <span class="k">수입 분류</span>
+            <span class="v {% if income_need %}warn{% endif %}">{{ income_need }}건</span>
+          </a>
+
+          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_maybe') }}">
+            <span class="k">검토 영수증</span>
+            <span class="v">{{ evidence_maybe_missing }}건</span>
+          </a>
+        </div>
+
+        <div class="todo-hint">남은 건수만 줄여도 다음 달이 훨씬 편해져요.</div>
+      </div>
+
+      <!-- 3) Tax buffer -->
+      <div class="side-block">
+        <div class="side-label">세금 보관함</div>
+        <div class="side-text">세금으로 따로 떼어둘 금액을 관리해요.</div>
+        <div class="side-actions">
+          <a class="btn sm" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">열기</a>
+        </div>
+      </div>
+
+      <!-- Extras -->
+      <details class="side-more">
+        <summary>자세히 보기</summary>
+
+        <div class="side-block">
+          <div class="side-label">계좌 연결</div>
+          {% if active_links > 0 %}
+            <div class="side-text">연결된 계좌 {{ active_links }}개 · 거래가 자동 반영됩니다.</div>
+          {% else %}
+            <div class="side-text">계좌를 연결하면 캘린더가 자동으로 채워집니다.</div>
+          {% endif %}
+          <div class="side-actions">
+            <a class="btn sm" href="{{ urls.bank }}">계좌 연결</a>
+            {% if urls.inbox %}
+              <a class="btn sm ghost" href="{{ urls.inbox }}">정리함</a>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="side-block">
+          <div class="side-label">이번 달 TOP 지출</div>
+          {% if top_out %}
+            <ul class="side-list">
+              {% for r in top_out %}
+                <li>
+                  <span class="name">{{ r.name }}</span>
+                  <span class="amt out">- {{ (r.sum_amt or 0)|krw }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="side-empty">아직 지출 데이터가 없어요.</div>
+          {% endif %}
+        </div>
+
+        <div class="side-block">
+          <div class="side-label">이번 달 TOP 수입</div>
+          {% if top_in %}
+            <ul class="side-list">
+              {% for r in top_in %}
+                <li>
+                  <span class="name">{{ r.name }}</span>
+                  <span class="amt in">+ {{ (r.sum_amt or 0)|krw }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="side-empty">아직 수입 데이터가 없어요.</div>
+          {% endif %}
+        </div>
+      </details>
+
+    </aside>
+  </div>
+</div>
+{% endblock %}

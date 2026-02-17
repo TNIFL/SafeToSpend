@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}세금 보관함{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap">
+
+  <div class="page-head">
+    <div>
+      <div class="h1">세금 보관함</div>
+      <div class="p">{{ month_first.strftime("%Y-%m") }} · 이번 달 수입 기준으로 “따로 떼둘 돈”을 관리해요</div>
+    </div>
+    <div class="actions">
+      <a class="btn" href="{{ url_for('web_calendar.month_calendar', month=month_key) }}">캘린더</a>
+      <a class="btn ghost" href="{{ url_for('web_calendar.year_view', year=month_first.year) }}">연간</a>
+    </div>
+  </div>
+
+  <div class="kpiRow">
+    <div class="kpi">
+      <div class="label">이번 달 수입</div>
+      <div class="value big">+ {{ income_total|krw }}</div>
+      <div class="hint">세율 {{ (tax_rate * 100)|round(1) }}%</div>
+    </div>
+    <div class="kpi">
+      <div class="label">권장 보관</div>
+      <div class="value big">{{ recommended|krw }}</div>
+      <div class="hint">이번 달 예상 세금(가이드)</div>
+    </div>
+    <div class="kpi">
+      <div class="label">현재 보관</div>
+      <div class="value big">{{ balance|krw }}</div>
+      {% if shortage > 0 %}
+        <div class="hint"><b class="neg">부족 {{ shortage|krw }}</b></div>
+      {% elif overage > 0 %}
+        <div class="hint"><b class="pos">여유 {{ overage|krw }}</b></div>
+      {% else %}
+        <div class="hint">권장치와 동일</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-top:12px;">
+    <div class="cardTitle">
+      <span>진행률</span>
+      <span class="muted">{{ progress_pct }}%</span>
+    </div>
+    <div class="hr"></div>
+    <div class="progress" style="margin-top:10px;">
+      <div style="width: {{ progress_pct }}%;"></div>
+    </div>
+  </div>
+
+  <div class="split" style="margin-top:14px;">
+
+    <section class="card pad">
+      <div class="cardTitle">
+        <span>빠르게 보관/해제</span>
+        <span class="muted">“따로 떼어두는 금액”만 기록해요</span>
+      </div>
+      <div class="hr"></div>
+
+      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+        <form method="POST" action="{{ url_for('web_calendar.tax_buffer_adjust') }}" class="card pad" style="box-shadow:none;">
+          <input type="hidden" name="next" value="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">
+          <div class="h2" style="margin-bottom:8px;">보관하기</div>
+          <div class="form-grid">
+            <label class="field">
+              <span class="label">금액(원)</span>
+              <input name="delta" type="number" min="1" step="100" placeholder="예: 300000">
+            </label>
+            <label class="field">
+              <span class="label">메모(선택)</span>
+              <input name="note" placeholder="예: 2월 세금 따로 보관">
+            </label>
+          </div>
+          <button class="btn primary full" type="submit" style="margin-top:10px;">+ 보관</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('web_calendar.tax_buffer_adjust') }}" class="card pad" style="box-shadow:none;">
+          <input type="hidden" name="next" value="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">
+          <div class="h2" style="margin-bottom:8px;">꺼내기</div>
+          <div class="form-grid">
+            <label class="field">
+              <span class="label">금액(원)</span>
+              <input name="delta" type="number" max="-1" step="100" placeholder="예: -200000">
+            </label>
+            <label class="field">
+              <span class="label">메모(선택)</span>
+              <input name="note" placeholder="예: 세무대리인 납부">
+            </label>
+          </div>
+          <button class="btn full" type="submit" style="margin-top:10px;">- 꺼내기</button>
+          <div class="help">음수로 입력해요. 예: -100000</div>
+        </form>
+      </div>
+    </section>
+
+    <aside class="card pad">
+      <div class="cardTitle">
+        <span>최근 내역</span>
+        <span class="muted">최신 40개</span>
+      </div>
+      <div class="hr"></div>
+
+      {% if ledger %}
+        <div class="vlist">
+          {% for r in ledger %}
+            <div class="vitem">
+              <div>
+                <div class="vtitle">{{ (r.note or "메모 없음") }}</div>
+                <div class="vsub">{{ r.created_at.strftime("%Y-%m-%d") }}</div>
+              </div>
+              <div class="vright">
+                <div class="vamt {% if r.delta_amount_krw >= 0 %}pos{% else %}neg{% endif %}">
+                  {% if r.delta_amount_krw >= 0 %}+{% endif %}{{ r.delta_amount_krw|krw }}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          아직 기록이 없어요. <b>보관하기</b>로 한 번이라도 남겨두면 추적이 쉬워집니다.
+        </div>
+      {% endif %}
+    </aside>
+
+  </div>
+
+</div>
+{% endblock %}

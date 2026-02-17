@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}증빙 자료 보관함 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container vault-page">
+
+  <!-- Header -->
+  <div class="page-head">
+    <div>
+      <div class="h1">증빙 자료 보관함</div>
+      <div class="p">{{ month_first.strftime("%Y-%m") }} · “증빙 상태”를 한 번에 정리하는 화면</div>
+    </div>
+
+    <div class="page-actions">
+      <div class="month-switch">
+        <a class="btn small ghost"
+           href="{{ url_for('web_vault.index', month=prev_month, status=status, req=req, q=q, limit=limit) }}">◀</a>
+        <span class="badge primary">{{ month_key }}</span>
+        <a class="btn small ghost"
+           href="{{ url_for('web_vault.index', month=next_month, status=status, req=req, q=q, limit=limit) }}">▶</a>
+      </div>
+
+      <a class="btn ghost" href="{{ url_for('web_package.page', month=month_key) }}">세무사 전달 패키지</a>
+      <a class="btn primary" href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_required') }}">누락부터 정리하기</a>
+    </div>
+  </div>
+
+  <!-- Summary + Legend -->
+  <div class="grid cols-2" style="margin-bottom:12px;">
+    <div class="card pad vault-flat">
+      <div class="cardTitle">
+        <span>이번 달 요약</span>
+        {% if missing_all > 0 %}
+          <span class="badge warn">누락 {{ missing_all }}건</span>
+        {% else %}
+          <span class="badge good">누락 0</span>
+        {% endif %}
+      </div>
+
+      <div class="metrics" style="margin-top:10px;">
+        <div class="metric">
+          <div class="label">첨부됨</div>
+          <div class="value">{{ attached_all }}건</div>
+          <div class="hint">파일이 서버에 저장됨</div>
+        </div>
+        <div class="metric">
+          <div class="label">누락</div>
+          <div class="value">{{ missing_all }}건</div>
+          <div class="hint">필수 {{ missing_required }} · 확인 {{ missing_maybe }}</div>
+        </div>
+        <div class="metric">
+          <div class="label">전체</div>
+          <div class="value">{{ total }}건</div>
+          <div class="hint">불필요 {{ not_needed_all }} 포함</div>
+        </div>
+      </div>
+
+      {% set progress = (0 if total == 0 else (attached_all * 100 / total)) %}
+      <div style="margin-top:12px;">
+        <div class="small-note muted2" style="margin-bottom:6px;">첨부 진행률</div>
+        <div class="progress"><div style="width: {{ "%.0f"|format(progress) }}%;"></div></div>
+        <div class="small-note muted2" style="margin-top:8px;">
+          {{ "%.0f"|format(progress) }}% · {{ attached_all }} / {{ total }}
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad vault-flat">
+      <div class="cardTitle">
+        <span>라벨 읽는 법</span>
+        <span class="badge">헷갈림 방지</span>
+      </div>
+
+      <div class="legend" style="margin-top:10px;">
+        <div class="legend-row">
+          <span class="chip dir out">출금(지출)</span>
+          <span class="muted2">= 돈이 나간 거래</span>
+        </div>
+        <div class="legend-row">
+          <span class="chip dir in">입금(수입)</span>
+          <span class="muted2">= 돈이 들어온 거래</span>
+        </div>
+        <div class="legend-row">
+          <span class="chip ev bad">증빙 누락(필수)</span>
+          <span class="muted2">= 꼭 업로드해야 함</span>
+        </div>
+        <div class="legend-row">
+          <span class="chip ev warn">증빙 누락(확인)</span>
+          <span class="muted2">= 가능하면 업로드 권장</span>
+        </div>
+        <div class="legend-row">
+          <span class="chip ev good">증빙 첨부됨</span>
+          <span class="muted2">= 업로드 완료</span>
+        </div>
+        <div class="legend-row">
+          <span class="chip ev">증빙 불필요</span>
+          <span class="muted2">= 업로드 안 해도 됨</span>
+        </div>
+      </div>
+
+      <div class="small-note muted2" style="margin-top:10px;">
+        화면에는 <b>“출금/입금”</b> + <b>“증빙 상태(한 줄)”</b>만 보여서 즉시 이해되도록 했어요.
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card pad vault-flat" style="margin-bottom:12px;">
+    <div class="tabs" style="margin-bottom:10px;">
+      <a class="tab {% if status=='all' %}active{% endif %}"
+         href="{{ url_for('web_vault.index', month=month_key, status='all', req=req, q=q, limit=limit) }}">
+        전체 <span class="count">{{ total }}</span>
+      </a>
+      <a class="tab {% if status=='missing' %}active{% endif %}"
+         href="{{ url_for('web_vault.index', month=month_key, status='missing', req=req, q=q, limit=limit) }}">
+        누락 <span class="count">{{ missing_all }}</span>
+      </a>
+      <a class="tab {% if status=='attached' %}active{% endif %}"
+         href="{{ url_for('web_vault.index', month=month_key, status='attached', req=req, q=q, limit=limit) }}">
+        첨부됨 <span class="count">{{ attached_all }}</span>
+      </a>
+      <a class="tab {% if status=='not_needed' %}active{% endif %}"
+         href="{{ url_for('web_vault.index', month=month_key, status='not_needed', req=req, q=q, limit=limit) }}">
+        불필요 <span class="count">{{ not_needed_all }}</span>
+      </a>
+    </div>
+
+    <div class="actionbar" style="margin:0;">
+      <div class="left">
+        <form class="search" method="GET" action="{{ url_for('web_vault.index') }}">
+          <input type="hidden" name="month" value="{{ month_key }}">
+          <input type="hidden" name="status" value="{{ status }}">
+          <input type="hidden" name="req" value="{{ req }}">
+          <input type="hidden" name="limit" value="{{ limit }}">
+          <input name="q" placeholder="거래처/메모/파일명 검색" value="{{ q }}">
+          <button class="btn small ghost" type="submit">검색</button>
+        </form>
+      </div>
+
+      <div class="right">
+        <div class="row" style="gap:8px;">
+          <span class="badge">요구</span>
+          <a class="btn small {% if req=='all' %}tinted{% else %}ghost{% endif %}"
+             href="{{ url_for('web_vault.index', month=month_key, status=status, req='all', q=q, limit=limit) }}">전체</a>
+          <a class="btn small {% if req=='required' %}tinted{% else %}ghost{% endif %}"
+             href="{{ url_for('web_vault.index', month=month_key, status=status, req='required', q=q, limit=limit) }}">필수만</a>
+          <a class="btn small {% if req=='maybe' %}tinted{% else %}ghost{% endif %}"
+             href="{{ url_for('web_vault.index', month=month_key, status=status, req='maybe', q=q, limit=limit) }}">확인만</a>
+          <a class="btn small {% if req=='not_needed' %}tinted{% else %}ghost{% endif %}"
+             href="{{ url_for('web_vault.index', month=month_key, status=status, req='not_needed', q=q, limit=limit) }}">불필요만</a>
+
+          <form method="GET" action="{{ url_for('web_vault.index') }}">
+            <input type="hidden" name="month" value="{{ month_key }}">
+            <input type="hidden" name="status" value="{{ status }}">
+            <input type="hidden" name="req" value="{{ req }}">
+            <input type="hidden" name="q" value="{{ q }}">
+            <select name="limit" onchange="this.form.submit()">
+              {% for n in [100,200,300,500] %}
+                <option value="{{ n }}" {% if limit==n %}selected{% endif %}>표시 {{ n }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll List Shell -->
+  <div class="card pad vault-flat vault-list-card">
+    <div class="list-head">
+      <div class="list-title">목록</div>
+      <div class="list-sub muted2">이 영역만 스크롤됩니다</div>
+    </div>
+
+    <div class="vault-scroll" data-scrollbox>
+      {% if rows and rows|length > 0 %}
+        <div class="vlist vault-vlist">
+          {% for ev, tx in rows %}
+            {% set dir_label = ("입금(수입)" if tx.direction=="in" else "출금(지출)") %}
+            {% set dir_cls = ("in" if tx.direction=="in" else "out") %}
+
+            {% if ev.requirement == "not_needed" %}
+              {% set ev_text = "증빙 불필요" %}
+              {% set ev_cls = "" %}
+            {% elif ev.status == "attached" %}
+              {% set ev_text = "증빙 첨부됨" %}
+              {% set ev_cls = "good" %}
+            {% elif ev.status == "missing" and ev.requirement == "required" %}
+              {% set ev_text = "증빙 누락(필수)" %}
+              {% set ev_cls = "bad" %}
+            {% elif ev.status == "missing" and ev.requirement == "maybe" %}
+              {% set ev_text = "증빙 누락(확인)" %}
+              {% set ev_cls = "warn" %}
+            {% else %}
+              {% set ev_text = "증빙 상태 확인" %}
+              {% set ev_cls = "warn" %}
+            {% endif %}
+
+            <div class="vitem vault-item" id="tx-{{ tx.id }}">
+              <div class="vault-main">
+                <div class="vault-topline">
+                  <span class="strong">{{ tx.counterparty or "(거래처 미기재)" }}</span>
+                  <span class="muted2">
+                    {% if tx.occurred_at %}{{ tx.occurred_at.strftime("%m-%d %H:%M") }}{% endif %}
+                  </span>
+
+                  <span class="chip dir {{ dir_cls }}">{{ dir_label }}</span>
+                  <span class="chip ev {{ ev_cls }}">{{ ev_text }}</span>
+
+                  <span class="amount">{{ "{:,}".format(tx.amount_krw) }}원</span>
+                </div>
+
+                <div class="vault-subline">
+                  {{ tx.memo or "메모 없음" }}
+                </div>
+
+                <div class="vault-meta">
+                  {% if ev.file_key and ev.status == "attached" %}
+                    <span class="tag good">파일: {{ ev.original_filename or "(파일)" }}</span>
+                    {% if ev.uploaded_at %}<span class="tag">업로드: {{ ev.uploaded_at.strftime("%Y-%m-%d") }}</span>{% endif %}
+                  {% else %}
+                    <span class="tag">파일 없음</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="vault-actions">
+                <a class="btn small ghost"
+                   href="{{ url_for('web_calendar.day_detail', ymd=tx.occurred_at.strftime('%Y-%m-%d')) }}">당일 보기</a>
+
+                {% if ev.file_key and ev.status == "attached" %}
+                  <div class="row" style="justify-content:flex-end; gap:8px;">
+                    <a class="btn small" href="{{ url_for('web_vault.download', tx_id=tx.id) }}">다운로드</a>
+                    <form method="POST" action="{{ url_for('web_vault.delete', tx_id=tx.id) }}" style="display:inline;">
+                      <button class="btn small ghost" type="submit">삭제</button>
+                    </form>
+                  </div>
+
+                  <form class="file-form" method="POST" action="{{ url_for('web_vault.upload', tx_id=tx.id) }}"
+                        enctype="multipart/form-data" data-file-form>
+                    <input type="hidden" name="next" value="{{ request.full_path }}">
+                    <input class="file-hidden" id="file-{{ tx.id }}" type="file" name="file" accept="image/*,application/pdf" required>
+                    <label class="btn small primary" for="file-{{ tx.id }}">교체 업로드</label>
+                    <span class="small-note muted2" data-file-name></span>
+                  </form>
+                {% else %}
+                  <form class="file-form" method="POST" action="{{ url_for('web_vault.upload', tx_id=tx.id) }}"
+                        enctype="multipart/form-data" data-file-form>
+                    <input type="hidden" name="next" value="{{ request.full_path }}">
+                    <input class="file-hidden" id="file-{{ tx.id }}" type="file" name="file" accept="image/*,application/pdf" required>
+                    <label class="btn small primary" for="file-{{ tx.id }}">파일 업로드</label>
+                    <span class="small-note muted2" data-file-name></span>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <div class="h2">표시할 항목이 없어요</div>
+          <div class="p" style="margin-top:6px;">필터를 바꾸거나 검색어를 지워보세요.</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Danger zone (fold) -->
+  <details class="card pad vault-flat vault-danger">
+    <summary>
+      <span class="strong">이번 달 서버 저장본 전체 삭제</span>
+      <span class="muted2">첨부 파일만 즉시 제거 (거래/증빙 목록은 유지)</span>
+    </summary>
+    <div class="danger-body">
+      <form method="POST" action="{{ url_for('web_vault.purge_month_files') }}">
+        <input type="hidden" name="month" value="{{ month_key }}">
+        <button class="btn small ghost" type="submit">이번 달 파일 전부 삭제</button>
+      </form>
+    </div>
+  </details>
+
+</div>
+
+<script>
+  // 파일 선택하면 자동 업로드 + 파일명 표시
+  document.querySelectorAll('[data-file-form]').forEach((form) => {
+    const input = form.querySelector('input[type="file"]');
+    const nameEl = form.querySelector('[data-file-name]');
+    if (!input) return;
+
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (nameEl) nameEl.textContent = file ? file.name : '';
+      if (file) form.submit();
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,18 @@
+Flask>=3.0,<4.0
+Flask-SQLAlchemy>=3.1,<4.0
+Flask-Migrate>=4.0,<5.0
+
+SQLAlchemy>=2.0,<3.0
+psycopg[binary]>=3.1,<4.0
+
+python-dotenv>=1.0,<2.0
+python-dateutil>=2.9,<3.0
+
+reportlab>=4.0,<5.0
+
+# Popbill EasyFinBank 연동
+popbill>=1.0
+
+# (팝빌/네트워크 이슈 대응에 유용)
+requests>=2.31,<3.0
+certifi>=2024.2.2

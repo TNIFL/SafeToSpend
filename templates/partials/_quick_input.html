@@ -1,0 +1,39 @@
+{# templates/partials/_quick_input.html #}
+<section class="card">
+  <div class="cardTitle" id="setup">
+    <span>빠른 업데이트</span>
+    <span class="tiny">30초</span>
+  </div>
+
+  <div class="tiny" style="margin-top:8px;">
+    값을 바꾸면 위 <b>쓸수있어</b> 숫자가 즉시 갱신돼요.
+  </div>
+
+  <form method="POST" action="{{ post_url }}" style="margin-top:12px;">
+    <div class="form-grid" style="margin-top:0;">
+      <label class="field">
+        <span class="label">입금</span>
+        <input name="rev" type="number" inputmode="numeric" value="{{ rev }}">
+      </label>
+
+      <label class="field">
+        <span class="label">비용</span>
+        <input name="exp" type="number" inputmode="numeric" value="{{ exp }}">
+      </label>
+
+      <label class="field">
+        <span class="label">안전적립 비율</span>
+        <select name="rate">
+          <option value="0.10" {% if rate == 0.10 %}selected{% endif %}>10%</option>
+          <option value="0.15" {% if rate == 0.15 %}selected{% endif %}>15%</option>
+          <option value="0.20" {% if rate == 0.20 %}selected{% endif %}>20%</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="row">
+      <button class="btn solid" type="submit">{{ submit_label }}</button>
+      <span class="tiny">{{ helper_text }}</span>
+    </div>
+  </form>
+</section>

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}거래 추가{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap">
+
+  <div class="page-head">
+    <div>
+      <div class="h1">거래 추가</div>
+      <div class="p">캘린더에 바로 반영돼요. 날짜만 맞춰두면 나머지는 빠르게.</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_calendar.month_calendar', month=month_key) }}">캘린더</a>
+    </div>
+  </div>
+
+  <div class="split">
+
+    <section class="card pad">
+      <div class="cardTitle">
+        <span>빠른 입력</span>
+        <span class="muted">필수: 구분 · 금액</span>
+      </div>
+      <div class="hr"></div>
+
+      <form method="POST" action="{{ url_for('web_calendar.tx_create') }}" class="form-grid" id="txForm">
+        <input type="hidden" name="next" value="{{ next_url }}">
+
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+          <label class="field">
+            <span class="label">날짜</span>
+            <input name="date" type="date" value="{{ default_date }}" required>
+          </label>
+          <label class="field">
+            <span class="label">시간</span>
+            <input name="time" type="time" value="12:00">
+          </label>
+        </div>
+
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+          <label class="field">
+            <span class="label">구분</span>
+            <select name="direction" required>
+              <option value="out">지출</option>
+              <option value="in">수입</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="label">금액(원)</span>
+            <input name="amount_krw" type="number" min="1" step="1" placeholder="예: 12000" required>
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="label">거래처</span>
+          <input name="counterparty" placeholder="예: 네이버, 쿠팡, 스타벅스">
+        </label>
+
+        <label class="field">
+          <span class="label">메모</span>
+          <input name="memo" placeholder="예: 광고비, 식비, 외주비">
+        </label>
+
+        <div class="row" style="justify-content:space-between; margin-top:4px;">
+          <div class="help">* 거래처/메모는 나중에 “정리하기” 정확도를 올립니다.</div>
+          <button class="btn primary" type="submit">저장</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="card pad">
+      <div class="cardTitle">
+        <span>최근 거래에서 채우기</span>
+        <span class="muted">클릭하면 폼에 자동 입력</span>
+      </div>
+      <div class="hr"></div>
+
+      {% if recent %}
+        <div class="vlist">
+          {% for t in recent %}
+            <button type="button" class="vitem vitem-btn"
+                    data-dir="{{ t.direction }}"
+                    data-amt="{{ t.amount_krw }}"
+                    data-cp="{{ t.counterparty or '' }}"
+                    data-memo="{{ t.memo or '' }}">
+              <div>
+                <div class="vtitle">{{ t.counterparty or '거래처 없음' }}</div>
+                <div class="vsub">{{ t.occurred_at.strftime('%m-%d') }} · {{ t.memo or '메모 없음' }}</div>
+              </div>
+              <div class="vright">
+                <div class="vamt {% if t.direction=='in' %}pos{% else %}neg{% endif %}">
+                  {% if t.direction=='in' %}+{% else %}-{% endif %}{{ t.amount_krw|krw }}
+                </div>
+              </div>
+            </button>
+          {% endfor %}
+        </div>
+        <div class="help" style="margin-top:10px;">최근 거래는 참고용이에요. 날짜는 위에서 선택한 날짜로 저장됩니다.</div>
+      {% else %}
+        <div class="empty">아직 거래가 없어요. 첫 거래를 추가해보세요.</div>
+      {% endif %}
+    </aside>
+
+  </div>
+
+</div>
+
+<script>
+  (function(){
+    const form = document.getElementById('txForm');
+    if(!form) return;
+    const dir = form.querySelector('[name="direction"]');
+    const amt = form.querySelector('[name="amount_krw"]');
+    const cp  = form.querySelector('[name="counterparty"]');
+    const memo= form.querySelector('[name="memo"]');
+
+    document.querySelectorAll('.vitem-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if(dir) dir.value = btn.dataset.dir || 'out';
+        if(amt) amt.value = btn.dataset.amt || '';
+        if(cp)  cp.value  = btn.dataset.cp || '';
+        if(memo)memo.value= btn.dataset.memo || '';
+        if(amt) amt.focus();
+      });
+    });
+  })();
+</script>
+{% endblock %}

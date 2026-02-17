@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}검색{% endblock %}
+{% block content %}
+<div class="wrap cal-wrap">
+  <div class="cal-top">
+    <div><div class="title">검색</div><div class="sub">{{ month_first.strftime("%Y-%m") }} · "{{ q }}"</div></div>
+    <div class="cal-nav">
+      <a class="btn" href="{{ url_for('web_calendar.month_calendar', month=month_first.strftime('%Y-%m')) }}">달력</a>
+    </div>
+  </div>
+
+  <section class="card" style="padding:14px;">
+    {% if not groups %}
+      <div class="empty big">검색 결과가 없어요.</div>
+    {% else %}
+      {% for d, items in groups %}
+        <div class="s-day">
+          <div class="s-head">
+            <div class="s-date">{{ d.strftime("%Y-%m-%d") }}</div>
+            <a class="btn sm ghost" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d')) }}">날짜 보기</a>
+          </div>
+          <div class="s-list">
+            {% for t in items %}
+              <div class="s-item">
+                <div class="s-left">
+                  <div class="s-name">{{ t.counterparty or "거래처 미상" }}</div>
+                  <div class="s-sub">{{ t.occurred_at.strftime("%H:%M") }}{% if t.memo %} · {{ t.memo }}{% endif %}</div>
+                </div>
+                <div class="s-amt {% if t.direction=='in' %}pos{% else %}neg{% endif %}">
+                  {% if t.direction=='in' %}+{% else %}-{% endif %} {{ t.amount_krw|krw }}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

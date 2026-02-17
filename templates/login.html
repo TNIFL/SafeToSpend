@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}로그인 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .auth-wrap{max-width:1100px;margin:0 auto;padding:22px 16px 44px;}
+  .auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch;}
+  .hero{border-radius:22px;border:1px solid rgba(15,23,42,.08);background:linear-gradient(180deg,#fff,rgba(2,6,23,.02));padding:18px;}
+  .kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:rgba(59,130,246,.10);border:1px solid rgba(59,130,246,.18);font-weight:1000;color:#1d4ed8;font-size:.85rem;}
+  .h1{margin-top:12px;font-size:1.6rem;line-height:1.2;font-weight:1200;letter-spacing:-.8px;}
+  .p{margin-top:10px;color:var(--muted);line-height:1.6;}
+  .card{border-radius:22px;border:1px solid rgba(15,23,42,.08);background:#fff;padding:18px;}
+  .form-grid{margin-top:12px;display:grid;gap:10px;}
+  .field .label{display:block;margin-bottom:8px;color:var(--muted);font-weight:900;font-size:.9rem;}
+  .field input{width:100%;height:44px;padding:0 12px;border-radius:14px;border:1px solid rgba(15,23,42,.10);background:#fff;}
+  .row{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  @media (max-width:980px){.auth-grid{grid-template-columns:1fr;}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-grid">
+
+    <section class="hero">
+      <span class="kicker">로그인</span>
+      <div class="h1">기준 숫자를<br>계속 이어서 관리하세요.</div>
+      <div class="p">CSV 업로드(다음 단계)로 이어지게 만들 거고, 지금은 기본 기준부터 안정화합니다.</div>
+      <div class="row">
+        <a class="btn solid" href="{{ url_for('web_auth.register') }}">회원가입</a>
+        <a class="btn" href="{{ url_for('web_main.landing') }}">랜딩으로</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <div style="font-weight:1100;letter-spacing:-.3px;">로그인</div>
+
+      <form method="POST" action="{{ url_for('web_auth.login', next=request.args.get('next')) }}" style="margin-top:12px;">
+        <div class="form-grid" style="margin-top:0;">
+          <label class="field">
+            <span class="label">이메일</span>
+            <input name="identifier" type="email" autocomplete="username" required>
+          </label>
+          <label class="field">
+            <span class="label">비밀번호</span>
+            <input name="password" type="password" autocomplete="current-password" required>
+          </label>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn solid" type="submit" style="width:100%;">로그인</button>
+        </div>
+      </form>
+
+      <div style="margin-top:12px;color:var(--muted);font-size:.9rem;">
+        계정이 없나요? <a href="{{ url_for('web_auth.register') }}">회원가입</a>
+      </div>
+    </section>
+
+  </div>
+</div>
+{% endblock %}

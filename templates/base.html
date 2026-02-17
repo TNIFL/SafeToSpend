@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}쓸수있어{% endblock %}</title>
+
+  <!-- 캐시 때문에 스타일이 안 바뀌는 경우가 많아서 v 값 꼭 올려 -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260208-4">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="{{ url_for('web_main.landing') }}">
+      <span class="logo"></span>
+      <span>쓸수있어</span>
+    </a>
+
+    <nav class="nav">
+      <a href="{{ url_for('web_main.landing') }}">소개</a>
+      <a href="{{ url_for('web_overview.overview') }}">요약</a>
+      <a href="{{ url_for('web_bank.index') }}">계좌연동</a>
+      {% if session.get("user_id") %}
+      <a class="nav-link {{ 'active' if (request.endpoint or '').startswith('web_calendar.') else '' }}"
+        href="{{ url_for('web_calendar.month_calendar') }}">
+        캘린더
+      </a>
+      {% endif %}
+      <a href="{{ url_for('web_inbox.index') }}">처리함</a>
+      {% if session.get("user_id") %}
+          <a class="nav-link {{ 'active' if (request.endpoint or '').startswith('web_vault.') else '' }}"
+             href="{{ url_for('web_vault.index') }}">
+            증빙 자료 보관함
+          </a>
+          {% endif %}
+
+      {% if session.get('user_id') %}
+        <a class="btn ghost" href="{{ url_for('web_auth.logout') }}">로그아웃</a>
+      {% else %}
+        <a class="btn ghost" href="{{ url_for('web_auth.login') }}">로그인</a>
+        <a class="btn primary" href="{{ url_for('web_auth.register') }}">시작하기</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+{% with messages = get_flashed_messages(with_categories=True) %}
+  {% if messages %}
+    <div class="flash-wrap">
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="small-note">
+      <b>면책</b>: 세무대리/법률자문이 아닌 참고용 자동 점검 도구입니다.
+    </div>
+    <div class="small-note">
+      <b>초기 가격</b>: 9,900원/월 · CSV 업로드 기반(반자동) · 공식 연동은 병렬 준비
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+{% block title %}계좌 연동 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  /* =========================
+     BANK PAGE (safe override)
+     - 중앙정렬 강제
+     - 기존 글로벌 레이아웃과 충돌 최소화
+  ========================= */
+
+  .bank-page{
+    width: min(1100px, calc(100% - 32px));
+    margin: 0 auto;
+  }
+
+  .bank-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:14px;
+    margin-bottom:14px;
+  }
+  .bank-title{
+    min-width:0;
+  }
+  .bank-title .h1{
+    font-size:22px;
+    font-weight:950;
+    letter-spacing:-0.02em;
+    line-height:1.2;
+  }
+  .bank-title .p{
+    margin-top:6px;
+    color:var(--muted);
+    line-height:1.4;
+  }
+
+  .bank-actions{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+
+  .bank-steps{
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .bank-step{
+    border:1px solid var(--line);
+    background:var(--card);
+    border-radius:14px;
+    padding:12px;
+  }
+  .bank-step .k{
+    font-size:12px;
+    color:var(--muted);
+    font-weight:850;
+  }
+  .bank-step .t{
+    margin-top:6px;
+    font-weight:950;
+  }
+  .bank-step .d{
+    margin-top:6px;
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.4;
+  }
+
+  .bank-grid{
+    display:grid;
+    grid-template-columns: 1.1fr .9fr;
+    gap:12px;
+    margin-bottom:12px;
+  }
+
+  /* 상태 카드 내부 정렬 */
+  .bank-kpis{
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap:10px;
+    margin-top:12px;
+  }
+  .bank-kpi{
+    border:1px solid var(--line);
+    background:var(--surface);
+    border-radius:12px;
+    padding:10px;
+  }
+  .bank-kpi .label{
+    font-size:12px;
+    color:var(--muted);
+    font-weight:850;
+  }
+  .bank-kpi .value{
+    margin-top:6px;
+    font-weight:950;
+    font-size:16px;
+    letter-spacing:-0.01em;
+  }
+  .bank-kpi .hint{
+    margin-top:4px;
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  /* 계좌 테이블 */
+  .acc-table{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+    overflow:hidden;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:var(--card);
+  }
+  .acc-table thead th{
+    text-align:left;
+    font-size:12px;
+    color:var(--muted);
+    padding:10px 12px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, var(--surface), var(--card));
+  }
+  .acc-table tbody td{
+    padding:12px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+    background:var(--card);
+  }
+  .acc-table tbody tr:last-child td{
+    border-bottom:none;
+  }
+
+  .acc-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .acc-left{
+    min-width:0;
+  }
+  .acc-name{
+    font-weight:950;
+    letter-spacing:-0.01em;
+  }
+  .acc-sub{
+    margin-top:6px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+    color:var(--muted);
+    font-size:13px;
+  }
+
+  .acc-right{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    align-items:flex-end;
+  }
+  .acc-controls{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+
+  /* 토글 */
+  .switch{position:relative; display:inline-block; width:46px; height:26px;}
+  .switch input{opacity:0; width:0; height:0;}
+  .slider{
+    position:absolute; inset:0;
+    cursor:pointer;
+    background:#d0d5dd;
+    border-radius:999px;
+    transition:.18s;
+  }
+  .slider:before{
+    content:"";
+    position:absolute;
+    width:20px; height:20px;
+    left:3px; top:3px;
+    background:#fff;
+    border-radius:999px;
+    transition:.18s;
+    box-shadow:0 1px 2px rgba(0,0,0,.18);
+  }
+  .switch input:checked + .slider{
+    background:rgba(34,197,94,.65);
+  }
+  .switch input:checked + .slider:before{
+    transform:translateX(20px);
+  }
+
+  .alias{
+    width:200px;
+    max-width: 48vw;
+  }
+
+  .bank-note{
+    margin-top:10px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.45;
+  }
+
+  /* 최근 로그 */
+  .joblist{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-top:10px;
+  }
+  .jobitem{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:var(--surface);
+  }
+  .jobitem .t{
+    font-weight:900;
+  }
+  .jobitem .s{
+    margin-top:4px;
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.4;
+  }
+
+  /* 반응형 */
+  @media (max-width: 980px){
+    .bank-grid{ grid-template-columns: 1fr; }
+    .bank-steps{ grid-template-columns: 1fr; }
+    .bank-actions{ justify-content:flex-start; }
+    .acc-right{ align-items:flex-start; }
+    .acc-controls{ justify-content:flex-start; }
+    .alias{ width: 100%; max-width: 100%; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bank-page">
+
+  <!-- Top -->
+  <div class="bank-top">
+    <div class="bank-title">
+      <div class="h1">계좌 연동</div>
+      <div class="p">
+        팝빌(계좌조회)로 거래내역을 자동으로 가져옵니다.<br>
+        <span class="muted">팝빌 팝업에서 계좌 등록 → 여기서 동기화 ON → “지금 동기화”</span>
+      </div>
+    </div>
+
+    <div class="bank-actions">
+      <button class="btn" type="button" id="btn-popbill-open">팝빌에서 계좌 등록/관리</button>
+      <form method="POST" action="{{ url_for('web_bank.sync_now') }}">
+        <button class="btn primary" type="submit" {% if active_count == 0 %}disabled{% endif %}>지금 동기화</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <div class="bank-steps">
+    <div class="bank-step">
+      <div class="k">STEP 1</div>
+      <div class="t">팝빌에서 계좌 등록</div>
+      <div class="d">팝업에서 계좌를 추가/삭제합니다. 등록 후 이 페이지를 새로고침하세요.</div>
+    </div>
+    <div class="bank-step">
+      <div class="k">STEP 2</div>
+      <div class="t">동기화할 계좌만 ON</div>
+      <div class="d">등록된 계좌 중, 이 서비스에서 사용할 계좌만 ON으로 켜두면 됩니다.</div>
+    </div>
+    <div class="bank-step">
+      <div class="k">STEP 3</div>
+      <div class="t">동기화</div>
+      <div class="d">“지금 동기화”를 누르면 처리함/정리하기/세무사 패키지가 갱신됩니다.</div>
+    </div>
+  </div>
+
+  <!-- Status + Guide -->
+  <div class="bank-grid">
+    <div class="card pad">
+      <div class="cardTitle">
+        <span>연동 상태</span>
+        {% if active_count > 0 %}
+          <span class="badge good">동기화 ON {{ active_count }}개</span>
+        {% else %}
+          <span class="badge warn">동기화 OFF</span>
+        {% endif %}
+      </div>
+
+      <div class="bank-kpis">
+        <div class="bank-kpi">
+          <div class="label">선택된 계좌</div>
+          <div class="value">{{ active_count }}개</div>
+          <div class="hint">동기화 ON 기준</div>
+        </div>
+        <div class="bank-kpi">
+          <div class="label">등록된 계좌(앱)</div>
+          <div class="value">{{ total_count }}개</div>
+          <div class="hint">이 앱에서 기억 중</div>
+        </div>
+        <div class="bank-kpi">
+          <div class="label">최근 동기화</div>
+          <div class="value">{% if last_synced_at %}{{ last_synced_at.strftime('%m-%d %H:%M') }}{% else %}-{% endif %}</div>
+          <div class="hint">계좌별 최신값</div>
+        </div>
+      </div>
+
+      <div class="bank-note">
+        팝빌에 계좌를 등록했는데 목록이 안 보이면, <b>팝업에서 등록 완료</b> 후 이 페이지를 <b>새로고침</b>하세요.
+      </div>
+    </div>
+
+    <div class="card pad">
+      <div class="cardTitle">
+        <span>자동화되는 것</span>
+        <span class="badge">사용자 편의</span>
+      </div>
+
+      <div class="panel" style="margin-top:12px;">
+        <div class="panel-title">왜 연동하나요?</div>
+        <div class="panel-text">
+          • 거래내역 자동 수집<br>
+          • 분류/증빙 누락 탐지 자동화<br>
+          • 월말 “세무사 전달 ZIP” 원클릭 생성
+        </div>
+      </div>
+
+      {% if not popbill_configured %}
+        <div class="bank-note">
+          <b>팝빌 설정이 아직 안 되어 있어요.</b><br>
+          서버 환경변수(.env)에 팝빌 계정/연동키가 필요합니다.
+          {% if popbill_error %}<br><span class="muted">(현재 메시지: {{ popbill_error }})</span>{% endif %}
+        </div>
+      {% elif popbill_error %}
+        <div class="bank-note">
+          <b>팝빌 연결 오류</b><br>
+          {{ popbill_error }}
+        </div>
+      {% else %}
+        <div class="bank-note">
+          <span class="muted">팝업이 차단되면 브라우저에서 팝업 허용 후 다시 시도하세요.</span>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Accounts -->
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="cardTitle" style="margin-bottom:10px;">
+      <span>계좌 목록</span>
+      <span class="badge">여기서 선택</span>
+    </div>
+
+    {% if popbill_accounts and popbill_accounts|length > 0 %}
+      <table class="acc-table">
+        <thead>
+          <tr>
+            <th>계좌</th>
+            <th style="width:360px;">동기화 / 별칭</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for acc in popbill_accounts %}
+            {% set key = (acc.bankCode, acc.accountNumber) %}
+            {% set link = link_map.get(key) %}
+
+            <tr>
+              <td>
+                <div class="acc-left">
+                  <div class="acc-name">{{ bank_name(acc.bankCode) }} · {{ acc.accountName or '계좌' }}</div>
+                  <div class="acc-sub">
+                    <span class="badge">{{ mask_account(acc.accountNumber) }}</span>
+
+                    {% if link and link.last_synced_at %}
+                      <span class="badge ghost">최근 동기화 {{ link.last_synced_at.strftime('%m-%d %H:%M') }}</span>
+                    {% else %}
+                      <span class="badge ghost">동기화 기록 없음</span>
+                    {% endif %}
+
+                    {% if link and link.is_active %}
+                      <span class="badge good">ON</span>
+                    {% else %}
+                      <span class="badge warn">OFF</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+
+              <td>
+                <div class="acc-right">
+                  <div class="acc-controls">
+                    <!-- Toggle -->
+                    <form method="POST" action="{{ url_for('web_bank.toggle') }}">
+                      <input type="hidden" name="bank_code" value="{{ acc.bankCode }}">
+                      <input type="hidden" name="account_number" value="{{ acc.accountNumber }}">
+                      <label class="switch" title="동기화 ON/OFF">
+                        <input type="checkbox" name="is_active" {% if link and link.is_active %}checked{% endif %} onchange="this.form.submit()">
+                        <span class="slider"></span>
+                      </label>
+                    </form>
+
+                    <!-- Alias -->
+                    <form method="POST" action="{{ url_for('web_bank.alias') }}" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                      <input type="hidden" name="bank_code" value="{{ acc.bankCode }}">
+                      <input type="hidden" name="account_number" value="{{ acc.accountNumber }}">
+                      <input class="alias" name="alias" placeholder="별칭(예: 사업용, 생활비)" value="{{ link.alias if link else '' }}">
+                      <button class="btn small ghost" type="submit" {% if not link %}disabled{% endif %}>저장</button>
+                    </form>
+                  </div>
+
+                  {% if not link %}
+                    <div class="bank-note" style="margin-top:0;">
+                      먼저 토글을 켜서(ON) <b>동기화 대상</b>으로 선택해 주세요.
+                    </div>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">
+        <div class="h2">등록된 계좌가 아직 없어요</div>
+        <div class="p" style="margin-top:6px;">“팝빌에서 계좌 등록/관리”에서 계좌를 추가한 뒤, 이 페이지를 새로고침하세요.</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Recent jobs -->
+  <div class="card pad">
+    <div class="cardTitle">
+      <span>최근 동기화 기록</span>
+      <span class="badge">신뢰/디버깅</span>
+    </div>
+
+    {% if recent_jobs and recent_jobs|length > 0 %}
+      <div class="joblist">
+        {% for j in recent_jobs %}
+          <div class="jobitem">
+            <div class="l" style="min-width:0;">
+              <div class="t">
+                {{ j.created_at.strftime('%m-%d %H:%M') }} · {{ job_title(j) }}
+                <span class="badge {{ job_badge(j) }}" style="margin-left:8px;">{{ j.source }}</span>
+              </div>
+              <div class="s">
+                총 {{ j.total_rows }} · 추가 {{ j.inserted_rows }} · 중복 {{ j.duplicate_rows }} · 실패 {{ j.failed_rows }}
+                {% if j.error_summary %}<br>오류: {{ j.error_summary }}{% endif %}
+              </div>
+            </div>
+            <div class="r" style="text-align:right;">
+              <div class="badge ghost">시작: {% if j.started_at %}{{ j.started_at.strftime('%H:%M:%S') }}{% else %}-{% endif %}</div>
+              <div class="badge ghost" style="margin-top:6px;">종료: {% if j.finished_at %}{{ j.finished_at.strftime('%H:%M:%S') }}{% else %}-{% endif %}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="bank-note">아직 동기화 기록이 없습니다. 위의 “지금 동기화”를 한 번 실행해보세요.</div>
+    {% endif %}
+
+    <div class="row" style="gap:8px; margin-top:12px;">
+      <form method="POST" action="{{ url_for('web_bank.sync_now') }}">
+        <button class="btn primary" type="submit" {% if active_count == 0 %}disabled{% endif %}>지금 동기화</button>
+      </form>
+      <a class="btn ghost" href="{{ url_for('web_bank.index') }}">새로고침</a>
+    </div>
+
+    {% if active_count == 0 %}
+      <div class="bank-note">
+        “지금 동기화”는 <b>동기화 ON</b>인 계좌가 있어야 동작합니다. (계좌 목록에서 토글을 켜주세요)
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const btn = document.getElementById('btn-popbill-open');
+  if(!btn) return;
+
+  btn.addEventListener('click', async () => {
+    // 팝업 차단 회피: 클릭 이벤트 안에서 먼저 창을 열어둔다
+    const w = window.open('about:blank', 'popbill_bank', `width={{ popup_w }},height={{ popup_h }},scrollbars=yes,resizable=yes`);
+    try{
+      const res = await fetch('{{ url_for('web_bank.popbill_url') }}', { credentials: 'same-origin' });
+      const data = await res.json();
+
+      if(!data.ok){
+        if(w) w.close();
+        alert(data.error || '팝빌 URL 생성에 실패했습니다.');
+        return;
+      }
+
+      if(!w){
+        alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해주세요.');
+        return;
+      }
+
+      w.location.href = data.url;
+      w.focus();
+    }catch(e){
+      if(w) w.close();
+      alert('팝빌 연결 중 오류가 발생했습니다: ' + (e?.message || e));
+    }
+  });
+})();
+</script>
+{% endblock %}

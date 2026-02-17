@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}{{ d.strftime("%Y-%m-%d") }}{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap">
+  <div class="cal-top">
+    <div>
+      <div class="title">{{ d.strftime("%Y-%m-%d") }}</div>
+      <div class="sub">일별 거래 · 수입/지출/순이익</div>
+    </div>
+
+    <div class="cal-nav">
+      <a class="btn" href="{{ url_for('web_calendar.day_detail', ymd=prev_day.strftime('%Y-%m-%d'), dir=direction, q=q) }}">←</a>
+      <a class="btn" href="{{ url_for('web_calendar.month_calendar', month=d.strftime('%Y-%m')) }}">달력</a>
+      <a class="btn" href="{{ url_for('web_calendar.day_detail', ymd=next_day.strftime('%Y-%m-%d'), dir=direction, q=q) }}">→</a>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi card">
+      <div class="k-label">오늘 수입</div>
+      <div class="k-value">+ {{ day_income|krw }}</div>
+    </div>
+    <div class="kpi card">
+      <div class="k-label">오늘 지출</div>
+      <div class="k-value">- {{ day_expense|krw }}</div>
+    </div>
+    <div class="kpi card">
+      <div class="k-label">오늘 순이익</div>
+      <div class="k-value {% if day_net >= 0 %}pos{% else %}neg{% endif %}">
+        {{ day_net|krw }}
+      </div>
+    </div>
+  </div>
+
+  <div class="day-layout">
+    <section class="card day-main">
+      <div class="day-tools">
+        <div class="seg">
+          <a class="seg-btn {% if direction=='all' %}active{% endif %}" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), dir='all', q=q) }}">전체</a>
+          <a class="seg-btn {% if direction=='in' %}active{% endif %}" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), dir='in', q=q) }}">수입</a>
+          <a class="seg-btn {% if direction=='out' %}active{% endif %}" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), dir='out', q=q) }}">지출</a>
+        </div>
+        <button type="button" class="btn sm tinted" id="openQuickAdd">
+        + 거래 추가
+        </button>
+
+
+        <form class="search" method="GET" action="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d')) }}">
+          <input type="hidden" name="dir" value="{{ direction }}">
+          <input name="q" value="{{ q }}" placeholder="거래처/메모 검색">
+          <button class="btn sm" type="submit">검색</button>
+        </form>
+      </div>
+
+      {% if not txs %}
+        <div class="empty big">이 날은 거래가 없어요.</div>
+      {% else %}
+        <div class="tx-list">
+          {% for t in txs %}
+            <div class="tx-item">
+              <div class="tx-mark {% if t.direction=='in' %}in{% else %}out{% endif %}"></div>
+
+              <div class="tx-left">
+                <div class="tx-title">
+                  <span class="tx-name">{{ t.counterparty or "거래처 미상" }}</span>
+                  <span class="tx-time">{{ t.occurred_at.strftime("%H:%M") }}</span>
+                </div>
+
+                {% if t.memo %}
+                  <div class="tx-memo">{{ t.memo }}</div>
+                {% else %}
+                  <div class="tx-memo muted">메모 없음</div>
+                {% endif %}
+
+                <div class="tx-meta">
+                  <span class="badge {% if t.direction=='in' %}in{% else %}out{% endif %}">
+                    {% if t.direction=='in' %}수입{% else %}지출{% endif %}
+                  </span>
+                  <span class="badge ghost">{{ t.source }}</span>
+                </div>
+              </div>
+
+              <div class="tx-right">
+                <div class="tx-amt {% if t.direction=='in' %}pos{% else %}neg{% endif %}">
+                  {% if t.direction=='in' %}+{% else %}-{% endif %} {{ t.amount_krw|krw }}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+
+    <aside class="card day-side">
+      <div class="side-title">오늘 요약</div>
+
+      <div class="side-block">
+        <div class="side-label">지출 TOP</div>
+        {% if top_out %}
+          <ul class="side-list">
+            {% for r in top_out %}
+              <li>
+                <span class="name">{{ r.name }}</span>
+                <span class="amt out">- {{ (r.sum_amt or 0)|krw }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="side-empty">지출 데이터가 없어요.</div>
+        {% endif %}
+      </div>
+
+      <div class="side-block">
+        <div class="side-label">수입 TOP</div>
+        {% if top_in %}
+          <ul class="side-list">
+            {% for r in top_in %}
+              <li>
+                <span class="name">{{ r.name }}</span>
+                <span class="amt in">+ {{ (r.sum_amt or 0)|krw }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="side-empty">수입 데이터가 없어요.</div>
+        {% endif %}
+      </div>
+
+      <div class="side-block hint">
+        <div class="side-label">팁</div>
+        <div class="side-text">거래처/메모를 정리해두면 자동 분류/증빙 관리로 바로 연결됩니다.</div>
+      </div>
+    </aside>
+  </div>
+</div>
+{# ===== Quick Add Modal ===== #}
+<div class="modal" id="quickAddModal" aria-hidden="true">
+  <div class="modal-backdrop" data-close></div>
+
+  <div class="modal-dialog card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">거래 추가</div>
+        <div class="modal-sub">{{ ymd }} · 날짜는 자동 설정</div>
+      </div>
+      <button type="button" class="modal-x" data-close>✕</button>
+    </div>
+
+    <form method="POST" action="{{ request.path.rstrip('/') }}/quick-add" class="modal-body form-grid">
+      <div class="modal-sub">{{ request.view_args.get('ymd') }} · 날짜는 자동 설정</div>
+      <label class="field">
+        <span class="label">구분</span>
+        <select name="direction" required>
+          <option value="out" selected>지출</option>
+          <option value="in">수입</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="label">금액(원)</span>
+        <input type="number" name="amount_krw" id="qaAmount" placeholder="예: 35000" required>
+      </label>
+
+      <label class="field">
+        <span class="label">거래처(선택)</span>
+        <input name="counterparty" placeholder="예: 쿠팡, 스타벅스, 클라이언트명">
+      </label>
+
+      <label class="field">
+        <span class="label">메모(선택)</span>
+        <input name="memo" placeholder="예: 점심 / 장비 구매 / 외주 정산">
+      </label>
+
+      <div class="row" style="margin-top:6px; justify-content:flex-end;">
+        <button type="button" class="btn sm ghost" data-close>취소</button>
+        <button class="btn sm tinted" type="submit">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  const modal = document.getElementById("quickAddModal");
+  const openBtn = document.getElementById("openQuickAdd");
+  const amount = document.getElementById("qaAmount");
+
+  function openModal(){
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden","false");
+    setTimeout(() => amount && amount.focus(), 0);
+  }
+  function closeModal(){
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden","true");
+  }
+
+  openBtn && openBtn.addEventListener("click", openModal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target && e.target.dataset && e.target.dataset.close !== undefined) closeModal();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
+  });
+})();
+</script>
+
+{% endblock %}
