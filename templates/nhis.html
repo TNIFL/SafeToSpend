@@ -1,0 +1,1865 @@
+{% extends "base.html" %}
+{% block title %}건보료 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .nhis-wrap{max-width:1140px;margin:0 auto;padding:24px 16px 56px;}
+  .nhis-card{padding:16px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:var(--shadow-sm);}
+  .nhis-title{margin:0;font-size:1.08rem;font-weight:950;letter-spacing:-.35px;}
+  .nhis-sub{margin-top:6px;color:var(--muted);font-size:.9rem;line-height:1.52;}
+  .nhis-note{margin-top:10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(15,23,42,.08);background:rgba(148,163,184,.08);font-size:.86rem;color:#334155;}
+  .nhis-note.warn{border-color:rgba(245,158,11,.26);background:rgba(245,158,11,.12);color:#92400e;}
+  .nhis-badge{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;border:1px solid var(--line);font-size:.78rem;font-weight:900;}
+  .nhis-badge.high{border-color:rgba(22,163,74,.28);background:rgba(22,163,74,.08);color:#166534;}
+  .nhis-badge.medium{border-color:rgba(37,99,235,.28);background:rgba(37,99,235,.08);color:#1d4ed8;}
+  .nhis-badge.low{border-color:rgba(245,158,11,.30);background:rgba(245,158,11,.10);color:#92400e;}
+  .nhis-accuracy-help,.nhis-source-switch{position:relative;}
+  .nhis-accuracy-help > summary,.nhis-source-switch > summary{cursor:pointer;list-style:none;font-size:.76rem;font-weight:900;color:var(--muted-2);}
+  .nhis-accuracy-help > summary::-webkit-details-marker,.nhis-source-switch > summary::-webkit-details-marker{display:none;}
+  .nhis-accuracy-help-body,.nhis-source-switch-body{position:absolute;right:0;top:calc(100% + 6px);width:min(320px,80vw);padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow-sm);z-index:22;display:grid;gap:6px;font-size:.8rem;color:#334155;line-height:1.45;}
+  .nhis-source-switch-body{width:min(360px,88vw);}
+  .nhis-source-switch-opts{display:grid;gap:6px;margin-top:2px;}
+  .nhis-source-switch-opt{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:.8rem;color:#334155;}
+  .nhis-source-switch-opt.active{border-color:rgba(37,99,235,.32);background:rgba(37,99,235,.10);color:#1d4ed8;}
+  .nhis-source-switch-opt .btn{padding:4px 8px;font-size:.74rem;}
+
+  .asset-title{margin:0;font-size:1.08rem;font-weight:950;letter-spacing:-.35px;}
+  .asset-sub{margin-top:6px;color:var(--muted);font-size:.9rem;line-height:1.55;}
+  .asset-block{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);margin-top:10px;}
+  .asset-sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .asset-sec-head h3{margin:0;font-size:.98rem;font-weight:950;}
+  .asset-fields{display:grid;gap:10px;margin-top:10px;}
+  .asset-inline{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .asset-inline.single{grid-template-columns:1fr;}
+  .asset-field{display:grid;gap:6px;}
+  .asset-label{font-size:.84rem;font-weight:900;color:var(--muted-2);}
+  .asset-input,.asset-select{width:100%;height:42px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text);outline:none;}
+  .asset-input:focus,.asset-select:focus{border-color:rgba(37,99,235,.42);box-shadow:0 0 0 4px rgba(37,99,235,.10);}
+  .asset-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;}
+  .asset-note{margin-top:8px;padding:10px 12px;border-radius:12px;border:1px solid rgba(15,23,42,.08);background:rgba(148,163,184,.08);font-size:.86rem;color:#334155;}
+  .asset-note.warn{border-color:rgba(245,158,11,.26);background:rgba(245,158,11,.12);color:#92400e;}
+  .asset-note.ok{border-color:rgba(22,163,74,.26);background:rgba(22,163,74,.10);color:#166534;}
+  .asset-pill{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;border:1px solid var(--line);font-size:.78rem;font-weight:900;}
+  .asset-pill.good{border-color:rgba(22,163,74,.26);background:rgba(22,163,74,.10);color:#166534;}
+  .asset-pill.warn{border-color:rgba(245,158,11,.26);background:rgba(245,158,11,.10);color:#92400e;}
+  .asset-hero{padding:14px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%);}
+  .asset-hero-label{font-size:.82rem;font-weight:900;color:var(--muted-2);}
+  .asset-hero-value{margin-top:4px;font-size:2rem;font-weight:950;letter-spacing:-.7px;line-height:1.1;color:#0f172a;}
+  .asset-hero-sub{margin-top:6px;font-size:.8rem;color:var(--muted);}
+  .nhis-insight-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;}
+  .nhis-insight-card{margin-top:0;}
+  .nhis-insight-card.full{grid-column:1 / -1;}
+  .nhis-insight-title{margin:0;font-size:.92rem;font-weight:900;}
+  .nhis-insight-desc{margin-top:6px;font-size:.82rem;color:var(--muted);}
+  .nhis-insight-rows{display:grid;gap:6px;margin-top:10px;}
+  .nhis-insight-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.84rem;color:#334155;}
+  .nhis-insight-row b{font-size:.96rem;color:#0f172a;}
+  .nhis-insight-meta{margin-top:8px;font-size:.78rem;color:var(--muted);}
+  .nhis-kpi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;}
+  .nhis-kpi-card{padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;display:grid;gap:6px;}
+  .nhis-kpi-label{font-size:.74rem;color:var(--muted);font-weight:850;}
+  .nhis-kpi-value{font-size:1rem;font-weight:900;color:#0f172a;letter-spacing:-.3px;}
+  .nhis-kpi-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .nhis-mini-badge{display:inline-flex;align-items:center;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:.72rem;font-weight:900;color:#475569;}
+  .nhis-mini-badge.source-auto{border-color:rgba(37,99,235,.24);background:rgba(37,99,235,.08);color:#1d4ed8;}
+  .nhis-mini-badge.source-user{border-color:rgba(20,184,166,.26);background:rgba(20,184,166,.10);color:#0f766e;}
+  .nhis-mini-badge.source-mixed{border-color:rgba(245,158,11,.28);background:rgba(245,158,11,.12);color:#92400e;}
+  .asset-kpi-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .asset-kpi-mini{padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;}
+  .asset-kpi-mini .k{font-size:.73rem;color:var(--muted);font-weight:850;}
+  .asset-kpi-mini .v{margin-top:3px;font-size:.95rem;font-weight:900;letter-spacing:-.25px;}
+  .asset-breakdown{display:grid;gap:4px;}
+  .asset-breakdown-line{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.84rem;color:#334155;}
+  .asset-breakdown-line b{font-weight:900;color:#0f172a;}
+  .asset-diagnosis{font-size:.84rem;color:#334155;line-height:1.5;}
+  .asset-meta-notes{display:grid;gap:6px;margin-top:8px;}
+  .basis-panel{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;}
+  .basis-panel > summary{cursor:pointer;list-style:none;padding:9px 12px;font-weight:900;font-size:.84rem;color:var(--muted-2);background:rgba(148,163,184,.08);}
+  .basis-panel > summary::-webkit-details-marker{display:none;}
+  .basis-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 12px;}
+  .basis-k{font-size:.75rem;font-weight:900;color:var(--muted);margin-bottom:4px;}
+  .basis-v{font-size:.81rem;color:var(--muted-2);line-height:1.5;display:grid;gap:2px;}
+
+  .asset-history-row{margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;}
+  .asset-history-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;}
+  .asset-history-remove{height:42px;min-width:42px;}
+  .asset-rent-fields{display:none;}
+  .asset-rent-fields.show{display:grid;}
+  .asset-mode-field{display:none;}
+  .asset-mode-field.show{display:grid;}
+  .asset-hybrid-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .asset-hybrid-toggle label{display:inline-flex;align-items:center;gap:8px;font-weight:900;color:#0f172a;}
+  .asset-hybrid-toggle input[type='checkbox']{width:16px;height:16px;}
+  .asset-hybrid-body{margin-top:10px;padding:12px;border:1px dashed rgba(15,23,42,.18);border-radius:12px;background:#fff;}
+  .asset-hybrid-body.collapsed{display:none;}
+  .asset-hybrid-guide{display:grid;gap:4px;margin:8px 0 10px;font-size:.82rem;color:#334155;line-height:1.5;}
+  .asset-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:.75rem;font-weight:900;border:1px solid var(--line);}
+  .asset-badge.auto{color:#1d4ed8;background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.2);}
+  .asset-badge.manual{color:#0f766e;background:rgba(20,184,166,.10);border-color:rgba(20,184,166,.2);}
+  .asset-guide{background:linear-gradient(180deg,#f8fafc 0%, #ffffff 100%);}
+  .asset-guide > summary{cursor:pointer;list-style:none;font-size:.86rem;font-weight:900;color:#0f172a;}
+  .asset-guide > summary::-webkit-details-marker{display:none;}
+  .asset-guide > summary::after{content:"열기";margin-left:8px;font-size:.74rem;color:var(--muted);}
+  .asset-guide[open] > summary::after{content:"닫기";}
+  .asset-guide-body{max-height:0;overflow:hidden;transition:max-height .24s ease;padding-top:0;}
+  .asset-guide[open] .asset-guide-body{max-height:360px;padding-top:10px;}
+  .asset-guide-list{display:grid;gap:8px;font-size:.81rem;color:#334155;line-height:1.45;}
+  .asset-hidden{display:none !important;}
+  .nhis-input-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  .nhis-input-head-left{display:grid;gap:4px;}
+  .nhis-input-head-left .nhis-title{font-size:1rem;}
+  .nhis-input-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .nhis-input-meta .asset-pill{font-size:.74rem;padding:4px 8px;}
+  .nhis-core-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px;}
+  .nhis-core-grid .asset-block{margin-top:0;}
+  .nhis-core-span{grid-column:1 / -1;}
+  .nhis-opt-detail{margin-top:8px;border:1px dashed rgba(148,163,184,.45);border-radius:10px;background:#fff;overflow:hidden;}
+  .nhis-opt-detail > summary{cursor:pointer;list-style:none;padding:8px 10px;font-size:.8rem;font-weight:900;color:#334155;}
+  .nhis-opt-detail > summary::-webkit-details-marker{display:none;}
+  .nhis-opt-detail-body{padding:0 10px 10px;}
+  .nhis-fin-amount-row{display:none;}
+  .nhis-fin-amount-row.show{display:grid;}
+  .nhis-collapsed{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;}
+  .nhis-collapsed > summary{cursor:pointer;list-style:none;padding:10px 12px;font-weight:900;font-size:.86rem;color:#0f172a;display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(148,163,184,.08);}
+  .nhis-collapsed > summary::-webkit-details-marker{display:none;}
+  .nhis-collapsed-hint{font-size:.75rem;color:var(--muted);font-weight:800;}
+  .nhis-collapsed-body{padding:10px 12px;}
+  .nhis-save-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .nhis-save-state{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;border:1px solid var(--line);font-size:.75rem;font-weight:900;}
+  .nhis-save-state.idle{background:rgba(148,163,184,.10);color:#475569;}
+  .nhis-save-state.dirty{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.28);color:#92400e;}
+  .nhis-save-state.saving{background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.26);color:#1d4ed8;}
+  .nhis-save-state.saved{background:rgba(22,163,74,.10);border-color:rgba(22,163,74,.26);color:#166534;}
+  .nhis-toast-stack{position:fixed;right:16px;bottom:18px;display:grid;gap:8px;z-index:10040;max-width:min(360px,calc(100vw - 24px));}
+  .nhis-toast{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;box-shadow:var(--shadow-sm);font-size:.83rem;line-height:1.45;color:#1f2937;opacity:0;transform:translateY(10px);transition:opacity .18s ease, transform .18s ease;}
+  .nhis-toast.show{opacity:1;transform:translateY(0);}
+  .nhis-toast.success{border-color:rgba(22,163,74,.30);background:rgba(22,163,74,.11);color:#14532d;}
+  .nhis-toast.warn{border-color:rgba(245,158,11,.30);background:rgba(245,158,11,.12);color:#92400e;}
+  .nhis-toast.error{border-color:rgba(239,68,68,.30);background:rgba(239,68,68,.10);color:#991b1b;}
+  .nhis-risk-wrap{margin-top:10px;display:grid;gap:6px;}
+  .nhis-risk-badge{display:inline-flex;align-items:center;justify-content:center;max-width:max-content;padding:4px 10px;border-radius:999px;font-size:.76rem;font-weight:900;border:1px solid var(--line);}
+  .nhis-risk-badge.low{background:rgba(34,197,94,.10);border-color:rgba(34,197,94,.30);color:#166534;}
+  .nhis-risk-badge.medium{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.32);color:#92400e;}
+  .nhis-risk-badge.high{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.32);color:#991b1b;}
+  .nhis-risk-lines{font-size:.78rem;color:#475569;line-height:1.45;}
+  .nhis-risk-lines div+div{margin-top:2px;}
+  .nhis-fin-band{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;}
+  .nhis-fin-band > summary{cursor:pointer;list-style:none;padding:10px 12px;font-size:.84rem;font-weight:900;color:#0f172a;display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(148,163,184,.08);}
+  .nhis-fin-band > summary::-webkit-details-marker{display:none;}
+  .nhis-fin-band-body{padding:10px 12px;display:grid;gap:8px;}
+  .nhis-fin-band-buttons{display:flex;gap:8px;flex-wrap:wrap;}
+  .nhis-fin-band-btn{appearance:none;border:1px solid var(--line);border-radius:999px;background:#fff;color:#1f2937;padding:6px 12px;font-size:.79rem;font-weight:800;cursor:pointer;}
+  .nhis-fin-band-btn.active{background:rgba(15,23,42,.92);color:#fff;border-color:rgba(15,23,42,.92);}
+  .nhis-fin-band-note{font-size:.79rem;color:#92400e;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.26);border-radius:10px;padding:8px 10px;}
+  .nhis-fin-band-note.asset-hidden{display:none;}
+  .nhis-policy-list{display:grid;gap:4px;margin-top:8px;font-size:.82rem;color:#334155;}
+  .nhis-retry-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+
+  @media (max-width:980px){
+    .asset-inline,.basis-grid,.asset-kpi-row,.nhis-insight-grid{grid-template-columns:1fr;}
+    .nhis-kpi-grid{grid-template-columns:1fr 1fr;}
+    .asset-history-grid{grid-template-columns:1fr 1fr;}
+    .asset-history-remove{width:100%;}
+    .asset-hero-value{font-size:1.75rem;}
+    .nhis-core-grid{grid-template-columns:1fr;}
+    .nhis-save-top{width:100%;}
+    .nhis-save-top .btn{flex:1;}
+    .nhis-toast-stack{right:10px;left:10px;max-width:none;}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="nhis-wrap has-side-guide-layout">
+  {% set current_month_label = month_key or selected_month or profile.target_month or '-' %}
+  {% set november_month_label = (current_month_label[:4] ~ '-11') if current_month_label and (current_month_label|length >= 4) else '11월' %}
+  {% set nhis_compare = feedback.nhis_compare if feedback and feedback.nhis_compare else {} %}
+  {% set nhis_income_source = feedback.nhis_income_source if feedback and feedback.nhis_income_source else {} %}
+  {% set tax_income_source = feedback.tax_income_source if feedback and feedback.tax_income_source else {} %}
+  {% set source_badge_ctx = source_badge if source_badge else {} %}
+  {% set nhis_whatis_payload = feedback.nhis_whatis_payload if feedback and feedback.nhis_whatis_payload else {} %}
+  {% set current_estimate = feedback.nhis_estimate if feedback and feedback.nhis_estimate else {} %}
+  {% set november_estimate = feedback.nhis_november_estimate if feedback and feedback.nhis_november_estimate else {} %}
+  {% set estimate_member_type = current_estimate.get('member_type', 'unknown') %}
+  {% set whatif_base = nhis_whatis_payload.get('base', {}) if nhis_whatis_payload else {} %}
+  {% set current_income_breakdown = current_estimate.get('income_premium_krw', 0)|int %}
+  {% set current_property_breakdown = current_estimate.get('property_premium_krw', 0)|int %}
+  {% set current_health_breakdown = current_estimate.get('health_est_krw', (current_income_breakdown + current_property_breakdown))|int %}
+  {% set current_ltc_breakdown = current_estimate.get('ltc_est_krw', 0)|int %}
+  {% set completion_ratio_for_risk = (feedback.completion_ratio|int) if feedback else 0 %}
+  {% set current_total_breakdown = (feedback.current_nhis_est_krw if feedback else 0)|int %}
+  {% set property_base_after = whatif_base.get('property_base_after_deduction_krw', 0)|int %}
+  {% set annual_fin_now = whatif_base.get('annual_fin_income_krw', 0)|int %}
+  {% set source_badge_text = source_badge_ctx.label if source_badge_ctx and source_badge_ctx.label else '자동 추정' %}
+  {% set source_badge_class = source_badge_ctx.css if source_badge_ctx and source_badge_ctx.css else 'source-auto' %}
+  {% set source_badge_detail = source_badge_ctx.detail if source_badge_ctx and source_badge_ctx.detail else '건보/세금 모두 자동 추정 기준' %}
+  {% set nhis_meta = nhis_result_meta if nhis_result_meta else {} %}
+  {% set nhis_recovery_cta_ctx = nhis_recovery_cta if nhis_recovery_cta else {} %}
+  {% set nhis_req = nhis_required_inputs if nhis_required_inputs else {} %}
+  {% set nhis_high_missing = nhis_req.get('high_confidence_missing_fields', []) if nhis_req else [] %}
+  {% set nhis_block_reason = nhis_req.get('blocked_reason', '') if nhis_req else '' %}
+  {% set nhis_accuracy_level = nhis_meta.get('accuracy_level', 'limited') if nhis_meta else 'limited' %}
+  {% set nhis_blocked = nhis_accuracy_level == 'blocked' %}
+  {% set nhis_limited = nhis_accuracy_level == 'limited' %}
+  {% set refs_valid = official_refs_valid if official_refs_valid is defined else true %}
+  {% set cause_base_raw = (current_income_breakdown + current_property_breakdown)|int %}
+  {% set cause_data_insufficient = cause_base_raw <= 0 %}
+  {% if cause_base_raw > 0 %}
+    {% set income_ratio_pct = ((current_income_breakdown * 100 / cause_base_raw)|round(0, 'common'))|int %}
+    {% if income_ratio_pct < 0 %}{% set income_ratio_pct = 0 %}{% endif %}
+    {% if income_ratio_pct > 100 %}{% set income_ratio_pct = 100 %}{% endif %}
+    {% set property_ratio_pct = 100 - income_ratio_pct %}
+  {% else %}
+    {% set income_ratio_pct = 0 %}
+    {% set property_ratio_pct = 0 %}
+  {% endif %}
+  {% if income_ratio_pct >= property_ratio_pct %}
+    {% set cause_top1_label = "소득 영향" %}
+    {% set cause_top1_ratio = income_ratio_pct %}
+    {% set cause_top2_label = "자산 영향" %}
+    {% set cause_top2_ratio = property_ratio_pct %}
+  {% else %}
+    {% set cause_top1_label = "자산 영향" %}
+    {% set cause_top1_ratio = property_ratio_pct %}
+    {% set cause_top2_label = "소득 영향" %}
+    {% set cause_top2_ratio = income_ratio_pct %}
+  {% endif %}
+  {% set november_diff = (feedback.november_diff_krw if feedback else 0)|int %}
+  {% set november_risk_level = '' %}
+  {% set november_risk_label = '' %}
+  {% if refs_valid and completion_ratio_for_risk >= 40 %}
+    {% if (november_diff|abs) >= 20000 and completion_ratio_for_risk >= 60 %}
+      {% set november_risk_level = 'high' %}
+      {% set november_risk_label = '높음' %}
+    {% elif (november_diff|abs) >= 5000 and completion_ratio_for_risk >= 40 %}
+      {% set november_risk_level = 'medium' %}
+      {% set november_risk_label = '보통' %}
+    {% else %}
+      {% set november_risk_level = 'low' %}
+      {% set november_risk_label = '낮음' %}
+    {% endif %}
+  {% endif %}
+  {% set show_november_risk = (november_risk_level|length > 0) %}
+  {% set change_data_insufficient = ((feedback.current_nhis_est_krw|int) <= 0 and (feedback.november_nhis_est_krw|int) <= 0) %}
+  {% if november_diff > 0 %}
+    {% set november_diff_prefix = "+" %}
+  {% elif november_diff < 0 %}
+    {% set november_diff_prefix = "-" %}
+  {% else %}
+    {% set november_diff_prefix = "" %}
+  {% endif %}
+  {% set diagnosis_threshold_krw = 5000 %}
+  {% if cause_data_insufficient %}
+    {% set diagnosis_text = "입력 정보가 아직 적어 기본 기준으로 계산했어요(추정)." %}
+  {% elif current_income_breakdown >= (current_property_breakdown * 3) %}
+    {% set diagnosis_text = "이번 금액은 소득 영향이 큽니다(추정)." %}
+  {% elif current_property_breakdown >= current_income_breakdown %}
+    {% set diagnosis_text = "이번 금액은 자산 영향이 큽니다(추정)." %}
+  {% else %}
+    {% set diagnosis_text = "이번 금액은 소득/자산 영향이 함께 반영됐어요(추정)." %}
+  {% endif %}
+  {% if november_diff|abs >= diagnosis_threshold_krw %}
+    {% set diagnosis_text = diagnosis_text + " 11월 기준에서 변동 가능성이 있어요(추정)." %}
+  {% endif %}
+  {% set save_feedback = save_feedback or {} %}
+  {% set save_feedback_saved = save_feedback.saved if save_feedback and save_feedback.saved is not none else false %}
+  {% set save_feedback_token = save_feedback.save_token if save_feedback and save_feedback.save_token else '' %}
+  {% set retry_requested = request.args.get('retry') in ['1', 'true', 'yes', 'y'] %}
+  {% set refs_message = official_refs_message if official_refs_message is defined else '' %}
+  {% set refs_reason = official_refs_reason if official_refs_reason is defined else '' %}
+  {% set refs_last_checked = official_refs_last_checked if official_refs_last_checked is defined else '' %}
+  {% set show_source_switch_advanced = (debug_nhis or request.args.get('debug') == '1') %}
+  {% set source_query_mode = (request.args.get('source') or '')|lower %}
+  {% set source_auto_url = url_for('web_profile.nhis_page', month=month_key) %}
+  {% set source_nhis_url = url_for('web_profile.nhis_page', month=month_key, source='nhis') %}
+  {% set source_assets_url = url_for('web_profile.nhis_page', month=month_key, source='assets') %}
+  {% set nhis_refresh_url = url_for('web_profile.nhis_page', month=month_key, source='nhis') %}
+
+  <div id="nhis-page-feedback"
+       data-saved="{{ '1' if save_feedback_saved else '0' }}"
+       data-save-token="{{ save_feedback_token }}"
+       data-month-key="{{ month_key }}"
+       data-source-mode="{{ source_mode }}"></div>
+  <div id="nhis-toast-stack" class="nhis-toast-stack" aria-live="polite" aria-atomic="false"></div>
+
+  <div class="page-head">
+    <div class="page-head-main">
+      <h1 class="nhis-title">건보료</h1>
+      <div class="nhis-sub">이 화면이 최신 기준입니다. 월 건보료 확인부터 원인/변동 가능성/입력/근거까지 한 번에 처리해요.</div>
+      <div class="small-note muted2" style="margin-top:4px;">숫자는 ‘사용한 입력 출처’에 따라 달라질 수 있어요(추정).</div>
+    </div>
+    <div class="actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <a class="btn ghost small" href="#asset-diagnosis">입력으로 이동</a>
+      {% if show_source_switch_advanced %}
+        <details class="nhis-source-switch">
+          <summary>입력 출처 바꾸기(고급)</summary>
+          <div class="nhis-source-switch-body">
+            <div class="small-note muted2">같은 달이라도 사용한 입력 출처에 따라 숫자가 달라질 수 있어요(추정).</div>
+            <div class="nhis-source-switch-opts">
+              <div class="nhis-source-switch-opt {% if source_query_mode not in ['nhis','assets'] %}active{% endif %}">
+                <span>자동으로 합친 값(권장)</span>
+                <a class="btn ghost small" href="{{ source_auto_url }}">선택</a>
+              </div>
+              <div class="nhis-source-switch-opt {% if source_mode == 'nhis' %}active{% endif %}">
+                <span>이 화면에서 입력한 값만</span>
+                <a class="btn ghost small" href="{{ source_nhis_url }}">선택</a>
+              </div>
+              <div class="nhis-source-switch-opt {% if source_mode == 'assets' %}active{% endif %}">
+                <span>자산에서 입력한 값만</span>
+                <a class="btn ghost small" href="{{ source_assets_url }}">선택</a>
+              </div>
+            </div>
+          </div>
+        </details>
+      {% endif %}
+      <a class="btn ghost small" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금보관함</a>
+      <span class="nhis-badge {{ estimate.confidence_level }}">
+        정확도 {{ "높음" if estimate.confidence_level == "high" else ("중간" if estimate.confidence_level == "medium" else "낮음") }}
+      </span>
+      <details class="nhis-accuracy-help">
+        <summary>기준 보기</summary>
+        <div class="nhis-accuracy-help-body">
+          <div>높음: 가입유형/거주/소득 핵심 입력이 충분해요.</div>
+          <div>중간: 핵심 입력이 일부만 채워져 있어요.</div>
+          <div>낮음: 미입력/모름이 많아 기본 기준으로 계산해요.</div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  {% if source_notice and show_source_switch_advanced %}
+    <div class="nhis-note">{{ source_notice }}</div>
+  {% endif %}
+  {% set official_data_entrypoint_id = "nhis-official-data-entrypoint" %}
+  {% set official_data_entrypoint_title = "NHIS 자료 가져오기 안내" %}
+  {% set official_data_entrypoint_summary = "보험료 납부확인서와 자격득실확인서를 어디서 찾는지, 올리면 건보료 숫자가 어떻게 좋아지는지 먼저 확인하세요." %}
+  {% set official_data_entrypoint_note = "민감할 수 있는 자료라 기본은 필요한 값만 정리하고, 원본은 항상 저장하지 않는 방향으로 검토하고 있어요." %}
+  {% set official_data_upload_href = url_for('web_official_data.upload_page', document_type='nhis_payment_confirmation') %}
+  {% set official_data_upload_label = "NHIS 자료 바로 올리기" %}
+  {% set official_data_entrypoint_label = "NHIS 자료 안내 보기" %}
+  {% set official_data_entrypoint_anchor = "nhis" %}
+  {% include "partials/official_data_entrypoints.html" %}
+  {% if retry_requested %}
+    <div class="nhis-note warn nhis-retry-row">
+      <span>저장에 실패했어요. 입력을 확인한 뒤 다시 시도해 주세요.</span>
+    </div>
+  {% endif %}
+  {% if nhis_meta %}
+    <div class="nhis-note {% if nhis_meta.level != 'normal' %}warn{% endif %}">
+      <b>{{ nhis_meta.label }}</b> · {{ nhis_meta.message }}
+      {% if nhis_meta.detail %}
+        <div style="margin-top:4px;">{{ nhis_meta.detail }}</div>
+      {% endif %}
+    </div>
+  {% endif %}
+  {% if nhis_recovery_cta_ctx and nhis_recovery_cta_ctx.show %}
+    <div class="nhis-note warn">
+      <b>{{ nhis_recovery_cta_ctx.title }}</b>
+      <div style="margin-top:4px;">{{ nhis_recovery_cta_ctx.description }}</div>
+      {% if nhis_meta and nhis_meta.reason == 'missing_membership_type' %}
+        <form method="post" action="{{ url_for('web_profile.nhis_membership_type_quick_save') }}" style="margin-top:8px;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="month" value="{{ month_key }}">
+          <input type="hidden" name="next" value="{{ url_for('web_profile.nhis_page', month=month_key, source='nhis') }}">
+          <input type="hidden" name="recovery_source" value="nhis_nhis_page_inline_card">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <select class="asset-select" name="member_type" style="max-width:220px;">
+              <option value="employee">직장가입자</option>
+              <option value="regional">지역가입자</option>
+              <option value="dependent">피부양자</option>
+            </select>
+            <button class="btn small primary" type="submit">가입유형 먼저 저장</button>
+          </div>
+        </form>
+      {% endif %}
+      {% if nhis_recovery_cta_ctx.missing_labels %}
+        <div style="margin-top:4px;">누락 항목: {{ nhis_recovery_cta_ctx.missing_labels|join(', ') }}</div>
+      {% endif %}
+      <div class="asset-actions" style="margin-top:8px;">
+        <a class="btn small ghost" href="{{ nhis_recovery_cta_ctx.url }}">건보 입력 화면으로 이동(보조)</a>
+      </div>
+    </div>
+  {% endif %}
+  {% if nhis_block_reason or nhis_high_missing %}
+    <div class="nhis-note warn">
+      99% 필수 입력 상태:
+      {% if nhis_block_reason %}
+        가입유형 확인이 필요해요.
+      {% elif nhis_high_missing %}
+        미입력 항목 -
+        {% if 'salary_monthly_krw' in nhis_high_missing %}직장 월 보수{% endif %}
+        {% if 'non_salary_annual_income_krw' in nhis_high_missing %}{% if 'salary_monthly_krw' in nhis_high_missing %}, {% endif %}보수 외 소득(연){% endif %}
+        {% if 'property_tax_base_total_krw' in nhis_high_missing %}{% if ('salary_monthly_krw' in nhis_high_missing) or ('non_salary_annual_income_krw' in nhis_high_missing) %}, {% endif %}재산세 과세표준{% endif %}
+        {% if 'annual_income_krw' in nhis_high_missing %}{% if ('salary_monthly_krw' in nhis_high_missing) or ('non_salary_annual_income_krw' in nhis_high_missing) or ('property_tax_base_total_krw' in nhis_high_missing) %}, {% endif %}연소득 총액{% endif %}
+      {% endif %}
+    </div>
+  {% endif %}
+  <div class="nhis-note">
+    건보료는 공단 고지액이 아닌 추정치예요. 가입유형/소득 반영시점/재산 기준과 감면 조건에 따라 실제와 차이가 날 수 있어요.
+  </div>
+  {% set guide_title = "건보료 화면 사용법" %}
+  {% set guide_lines = [
+    "상단에서 이번 달과 11월 건보료를 먼저 확인하세요.",
+    "빠른 입력 3개만 채워도 바로 계산 결과를 볼 수 있어요.",
+    "근거 보기를 열면 계산 이유를 한 번에 확인할 수 있어요."
+  ] %}
+  {% set guide_hint = "결과 준비 중이면 입력 저장 후 다시 확인을 눌러주세요." %}
+  {% set guide_cta_text = "건보료 가이드" %}
+  {% set guide_cta_href = url_for('web_dashboard.guide', month=month_key, from='nhis') ~ '#nhis' %}
+  {% set guide_more_href = url_for('web_dashboard.guide', month=month_key, from='nhis') ~ '#messages' %}
+  {% include "components/usage_side_guide.html" %}
+
+  <section class="nhis-card" style="margin-top:12px;">
+    {% if refs_valid and (not nhis_blocked) %}
+    <div class="asset-hero">
+      <div class="asset-hero-label">월 건보료 · 현재 적용({{ current_month_label }})</div>
+      <div class="asset-hero-value" id="kpi-current-nhis">{% if nhis_limited %}~{% endif %}{{ "{:,}".format(feedback.current_nhis_est_krw|int) }}원</div>
+      <div class="asset-hero-sub">매달 납부 · 11월에 월 금액이 바뀔 수 있어요(추정)</div>
+      <div class="nhis-kpi-badges" style="margin-top:8px;">
+        <span class="nhis-mini-badge {{ source_badge_class }}">출처: {{ source_badge_text }}</span>
+        <span class="nhis-mini-badge">기준: {{ current_month_label }}</span>
+      </div>
+      <div class="nhis-insight-meta">{{ source_badge_detail }}(추정)</div>
+      {% if show_november_risk %}
+        <div class="nhis-risk-wrap">
+          <span class="nhis-risk-badge {{ november_risk_level }}">11월 상승 위험도 {{ november_risk_label }}</span>
+          <div class="nhis-risk-lines">
+            <div>현재 입력 기준으로 11월 월 보험료가 변할 수 있어요(추정).</div>
+            {% if completion_ratio_for_risk < 80 %}
+              <div>입력을 더 채우면 정확도가 올라가요.</div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="nhis-kpi-grid">
+      <div class="nhis-kpi-card">
+        <div class="nhis-kpi-label">11월({{ november_month_label }}) 건보료(추정)</div>
+        <div class="nhis-kpi-value" id="kpi-nov-nhis">{{ "{:,}".format(feedback.november_nhis_est_krw|int) }}원</div>
+      </div>
+      <div class="nhis-kpi-card">
+        <div class="nhis-kpi-label">11월 예상 차이(추정)</div>
+        <div class="nhis-kpi-value" id="kpi-nov-diff">{{ november_diff_prefix }}{{ "{:,}".format(november_diff|abs) }}원</div>
+      </div>
+    </div>
+    <div class="asset-note" style="margin-top:10px;">
+      <b>한 줄 진단:</b> <span id="nhis-diagnosis-line">{{ diagnosis_text }}</span>
+    </div>
+
+    <div class="nhis-insight-grid">
+      <div class="asset-block nhis-insight-card" id="nhis-cause-card">
+        <h3 class="nhis-insight-title">왜 이 금액이 나왔나요? (추정)</h3>
+        <div class="nhis-insight-rows">
+          <div class="nhis-insight-row"><span>{{ cause_top1_label }}(추정)</span><b>{% if cause_data_insufficient %}정보 부족{% else %}{{ cause_top1_ratio }}%{% endif %}</b></div>
+          <div class="nhis-insight-row"><span>{{ cause_top2_label }}(추정)</span><b>{% if cause_data_insufficient %}정보 부족{% else %}{{ cause_top2_ratio }}%{% endif %}</b></div>
+          <div class="nhis-insight-row"><span>장기요양(추정)</span><b>{{ "{:,}".format(current_ltc_breakdown|int) }}원</b></div>
+        </div>
+        <div class="nhis-insight-meta">장기요양은 건강보험료에 자동으로 붙어요(추정).</div>
+        {% if cause_data_insufficient %}
+          <div class="nhis-insight-meta">입력 정보가 아직 부족해서 원인 비중은 참고용이에요(추정).</div>
+        {% endif %}
+      </div>
+
+      {% if annual_fin_now >= 8000000 and annual_fin_now <= 12000000 %}
+        <div class="asset-block nhis-insight-card full" id="nhis-fin-boundary-card" data-debug-nhis="{{ '1' if debug_nhis else '0' }}">
+          <script type="application/json" id="nhis-fin-payload">{{ nhis_whatis_payload|tojson }}</script>
+          <h3 class="nhis-insight-title">금융소득 1,000만 기준 확인 (추정)</h3>
+          <div class="nhis-insight-desc">1,000만 전후에서 반영 방식이 달라질 수 있어요(추정).</div>
+          <div class="asset-actions" style="margin-top:8px;">
+            <button class="btn ghost" type="button" id="btn-fin-threshold-check">1,000만 기준으로 계산해보기</button>
+          </div>
+          <div class="asset-note ok asset-hidden" id="nhis-fin-check-result"></div>
+          <div class="asset-note warn asset-hidden" id="nhis-fin-check-error"></div>
+        </div>
+      {% else %}
+        <div class="asset-block nhis-insight-card full">
+          <h3 class="nhis-insight-title">금융소득 1,000만 기준 확인 (추정)</h3>
+          <div class="nhis-insight-desc">이 카드는 금융소득(이자+배당) 합이 연 800만~1,200만원 구간일 때만 보여요(추정).</div>
+        </div>
+      {% endif %}
+    </div>
+
+    <details class="basis-panel">
+      <summary>①~⑥ 분해 보기(추정)</summary>
+      <div class="basis-grid">
+        <div class="asset-breakdown">
+          <div class="asset-breakdown-line"><span>① 소득월액보험료(추정)</span><b id="breakdown-income">{{ "{:,}".format(current_income_breakdown) }}원</b></div>
+          <div class="asset-breakdown-line"><span>③ 재산보험료(추정)</span><b id="breakdown-property">{{ "{:,}".format(current_property_breakdown) }}원</b></div>
+          <div class="asset-breakdown-line"><span>④ 건강보험료(추정)</span><b id="breakdown-health">{{ "{:,}".format(current_health_breakdown) }}원</b></div>
+          <div class="asset-breakdown-line"><span>⑤ 장기요양보험료(추정)</span><b id="breakdown-ltc">{{ "{:,}".format(current_ltc_breakdown) }}원</b></div>
+          <div class="asset-breakdown-line"><span>⑥ 최종(추정)</span><b id="breakdown-total">{{ "{:,}".format(current_total_breakdown) }}원</b></div>
+        </div>
+        <div class="asset-note" style="margin-top:0;">
+          <div>출처: {{ source_badge_text }} · 기준: {{ current_month_label }}(추정)</div>
+          <div style="margin-top:4px;">{{ source_badge_detail }}(추정)</div>
+          <div style="margin-top:4px;">세금 영향(추정): <b id="kpi-tax">{{ "{:,}".format(feedback.tax_due_est_krw|int) }}원</b></div>
+        </div>
+      </div>
+    </details>
+
+    <details class="basis-panel">
+      <summary>진단 더 보기</summary>
+      <div class="basis-grid">
+        <div>
+          <div class="asset-diagnosis">{{ diagnosis_text }}</div>
+          <div class="asset-meta-notes">
+            <div class="asset-note" style="margin-top:0;" id="feedback-note">{{ feedback.note }}</div>
+            <div class="asset-note" style="margin-top:0;" id="completion-note">
+              완료율 <b id="kpi-completion">{{ feedback.completion_ratio|int }}%</b>
+              {% if feedback.completion_ratio|int >= 80 %}
+                <span class="asset-pill good" style="margin-left:6px;" id="kpi-completion-badge">완료</span>
+              {% else %}
+                <span class="asset-pill warn" style="margin-left:6px;" id="kpi-completion-badge">추가 입력 권장</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="basis-v">
+          {% if estimate_member_type == 'employee' %}
+            <div>현재는 직장가입자 기준(월 보수 중심)으로 계산 중이에요(추정).</div>
+          {% elif estimate_member_type == 'dependent' %}
+            <div>현재는 피부양자 기준이라 별도 보험료가 0원에 가까울 수 있어요(추정).</div>
+          {% endif %}
+          {% if nhis_compare and nhis_compare.same_cycle_active %}
+            <div>선택한 달은 이미 11월 반영 기준이 적용된 기간이라 차이가 작거나 없을 수 있어요(추정).</div>
+          {% endif %}
+          {% if nhis_compare and nhis_compare.zero_diff_reason %}
+            {% set zero_diff_reason_text = (nhis_compare.zero_diff_reason|string)|trim %}
+            <div>{{ zero_diff_reason_text }}{% if '추정' not in zero_diff_reason_text %} (추정){% endif %}</div>
+          {% endif %}
+          <div>건보료는 매월 납부해요. (보통 다음 달 10일까지)</div>
+          <div>수익은 지난달 기준이 아니라, 보통 신고된 소득/재산 자료가 반영돼요. (추정)</div>
+          <div>11월은 ‘내는 달’이 아니라 ‘월 보험료가 바뀌기 쉬운 달’이에요. (추정)</div>
+        </div>
+      </div>
+    </details>
+
+    <details class="basis-panel" style="margin-top:10px;">
+      <summary>근거 보기(추정)</summary>
+      <div class="basis-grid">
+        <div>
+          <div class="basis-k">현재 적용({{ current_month_label }})</div>
+          <div class="basis-v">
+            <div>이 결과는 {{ source_badge_text }} 입력을 사용했고, {{ current_month_label }} 기준으로 계산했습니다(추정).</div>
+            <div>① 소득 영향(추정): {{ "{:,}".format(current_estimate.get('income_premium_krw', 0)|int) }}원</div>
+            <div>② 재산부과점수(추정): {{ "{:,.2f}".format(current_estimate.get('property_points', 0)|float) }}점</div>
+            <div>③ 자산 영향(추정): {{ "{:,}".format(current_estimate.get('property_premium_krw', 0)|int) }}원</div>
+            <div>④ 건강보험료(추정): {{ "{:,}".format(current_estimate.get('health_est_krw', 0)|int) }}원</div>
+            <div>⑤ 장기요양(추정): {{ "{:,}".format(current_estimate.get('ltc_est_krw', 0)|int) }}원</div>
+            <div>⑥ 합계(추정): {{ "{:,}".format(feedback.current_nhis_est_krw|int) }}원</div>
+            <div>적용연도: 소득 {{ current_estimate.get('income_year_applied') or '-' }} / 재산 {{ current_estimate.get('property_year_applied') or '-' }}</div>
+            <div>기준 연도: {{ (current_estimate.get('basis', {}) or {}).get('source_year') or '-' }}년</div>
+            <div>마지막 확인일: {{ (current_estimate.get('basis', {}) or {}).get('reference_last_checked_date') or '-' }}</div>
+            <div>사용한 소득 출처: {{ nhis_income_source.source_label if nhis_income_source and nhis_income_source.source_label else '자동 추정(연동)' }}</div>
+            <div>사용한 소득 연도: {{ nhis_income_source.used_year if nhis_income_source and nhis_income_source.used_year else (nhis_income_source.target_year if nhis_income_source and nhis_income_source.target_year else '-') }} 기준(추정)</div>
+          </div>
+        </div>
+        <div>
+          <div class="basis-k">11월 반영({{ november_month_label }})</div>
+          <div class="basis-v">
+            <div>이 결과는 {{ source_badge_text }} 입력을 사용했고, {{ november_month_label }} 기준으로 계산했습니다(추정).</div>
+            <div>건강보험료(추정): {{ "{:,}".format(november_estimate.get('health_est_krw', 0)|int) }}원</div>
+            <div>장기요양(추정): {{ "{:,}".format(november_estimate.get('ltc_est_krw', 0)|int) }}원</div>
+            <div>합계(추정): {{ "{:,}".format(feedback.november_nhis_est_krw|int) }}원</div>
+            <div>적용연도: 소득 {{ november_estimate.get('income_year_applied') or '-' }} / 재산 {{ november_estimate.get('property_year_applied') or '-' }}</div>
+            <div>기준 연도: {{ (november_estimate.get('basis', {}) or {}).get('source_year') or '-' }}년</div>
+            <div>마지막 확인일: {{ (november_estimate.get('basis', {}) or {}).get('reference_last_checked_date') or '-' }}</div>
+            <div>세금 추정 소득 출처: {{ tax_income_source.source_label if tax_income_source and tax_income_source.source_label else '자동 추정(연동)' }}</div>
+            <div>세금 소득 연도: {{ tax_income_source.used_year if tax_income_source and tax_income_source.used_year else (tax_income_source.target_year if tax_income_source and tax_income_source.target_year else '-') }} 기준(추정)</div>
+          </div>
+        </div>
+      </div>
+    </details>
+    {% else %}
+    <div class="asset-note warn" style="margin-top:0;">
+      {% if nhis_blocked %}
+        입력이 부족해 핵심 숫자를 숨겼어요.
+      {% else %}
+        공식 기준 확인 중이라 잠시 숫자를 숨겼어요.
+      {% endif %}
+    </div>
+    <div class="asset-note" style="margin-top:10px;">
+      {% if nhis_blocked %}
+        가입유형/핵심 소득·재산 입력을 보완하면 다시 계산할 수 있어요.
+      {% else %}
+        입력을 저장해두면 준비되는 즉시 다시 계산해요.
+      {% endif %}
+    </div>
+    <div class="asset-actions" style="margin-top:10px;">
+      {% if nhis_recovery_cta_ctx and nhis_recovery_cta_ctx.show %}
+        <a class="btn primary" href="{{ nhis_recovery_cta_ctx.url }}">{{ nhis_recovery_cta_ctx.action_label }}</a>
+      {% else %}
+        <a class="btn primary" href="#asset-diagnosis">입력하러 가기</a>
+      {% endif %}
+      <a class="btn ghost js-nhis-refresh-link" href="{{ nhis_refresh_url }}">다시 확인</a>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="nhis-card" id="asset-diagnosis" style="margin-top:12px;">
+    {% if nhis_meta and nhis_meta.reason == 'missing_membership_type' %}
+      <div class="asset-note warn" style="margin-top:0; margin-bottom:10px;">
+        가입유형 1문항을 먼저 저장하면 blocked 상태를 빠르게 해소할 수 있어요.
+      </div>
+    {% endif %}
+    <form method="post" action="{{ url_for('web_profile.nhis_page', month=month_key, source='nhis') }}" autocomplete="off" id="nhis-integrated-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="month" value="{{ month_key }}">
+      <input type="hidden" name="source" value="nhis">
+
+      {% set assets_items = (assets_ctx['items'] if assets_ctx and ('items' in assets_ctx) else {}) %}
+      {% set current_rent_item = assets_items.get('rent') if assets_items else {} %}
+      {% set current_rent_input = current_rent_item.input if current_rent_item and current_rent_item.input else {} %}
+      {% set current_rent_deposit = (current_rent_input.rent_deposit_krw if current_rent_input else none) %}
+      {% set current_rent_monthly = (current_rent_input.rent_monthly_krw if current_rent_input else none) %}
+      {% set income_hybrid_ctx = assets_ctx.income_hybrid if assets_ctx and assets_ctx.income_hybrid else {} %}
+      {% set income_hybrid_fields = income_hybrid_ctx.fields if income_hybrid_ctx and income_hybrid_ctx.fields else {} %}
+      {% set fin_income_value = income_hybrid_fields.get('fin_income_amount_krw') if income_hybrid_fields else none %}
+      {% set business_income_value = income_hybrid_fields.get('business_income_amount_krw') if income_hybrid_fields else none %}
+      {% set salary_income_value = income_hybrid_fields.get('salary_income_amount_krw') if income_hybrid_fields else none %}
+      {% set pension_income_value = income_hybrid_fields.get('pension_income_amount_krw') if income_hybrid_fields else none %}
+      {% set other_hybrid_income_value = income_hybrid_fields.get('other_income_amount_krw') if income_hybrid_fields else none %}
+      {% if fin_income_value is not none %}
+        {% if fin_income_value|int > 0 %}
+          {% set quick_fin_presence = 'yes' %}
+        {% else %}
+          {% set quick_fin_presence = 'no' %}
+        {% endif %}
+      {% else %}
+        {% set quick_fin_presence = 'unknown' %}
+      {% endif %}
+      {% set quick_fin_has_other_fields = (
+        (business_income_value is not none)
+        or (salary_income_value is not none)
+        or (pension_income_value is not none)
+        or (other_hybrid_income_value is not none)
+      ) %}
+      {% set quick_fin_enabled = (income_hybrid_ctx.enabled if income_hybrid_ctx and ('enabled' in income_hybrid_ctx) else false) or quick_fin_has_other_fields or quick_fin_presence == 'yes' %}
+      {% set quick_income_year = (income_hybrid_ctx.active_year if income_hybrid_ctx and income_hybrid_ctx.active_year else income_hybrid_ctx.recommended_year) %}
+      {% set quick_income_scope = income_hybrid_ctx.active_scope if income_hybrid_ctx and income_hybrid_ctx.active_scope else 'both' %}
+      {% set quick_income_basis = income_hybrid_ctx.input_basis if income_hybrid_ctx and income_hybrid_ctx.input_basis else 'income_amount_pre_tax' %}
+      {% set current_housing_mode = assets_ctx.profile.housing_mode if assets_ctx and assets_ctx.profile and assets_ctx.profile.housing_mode else 'unknown' %}
+      {% set show_fin_band_tracker = (
+        refs_valid
+        and profile.member_type in ['regional', 'unknown']
+        and (
+          quick_fin_presence == 'yes'
+          or (fin_income_value is not none and fin_income_value|int > 0)
+        )
+      ) %}
+      {% if current_housing_mode not in ['own', 'jeonse', 'rent', 'none', 'unknown'] %}
+        {% set current_housing_mode = 'unknown' %}
+      {% endif %}
+      {% if current_housing_mode in ['unknown', 'none'] %}
+        {% if current_rent_monthly|int > 0 %}
+          {% set current_housing_mode = 'rent' %}
+        {% elif current_rent_deposit|int > 0 %}
+          {% set current_housing_mode = 'jeonse' %}
+        {% endif %}
+      {% endif %}
+      {% set home_count = (assets_ctx.home_list|length) if assets_ctx.home_list else 0 %}
+      {% set car_count = (assets_ctx.car_list|length) if assets_ctx.car_list else 0 %}
+      {% set history_count = (assets_ctx.bill_history|length) if assets_ctx.bill_history else 0 %}
+      {% set completion_ratio = (feedback.completion_ratio|int) if feedback else 0 %}
+      {% set form_refresh_url = url_for('web_profile.nhis_page', month=month_key, source='nhis') ~ '#asset-diagnosis' %}
+
+      <div class="nhis-input-head">
+        <div class="nhis-input-head-left">
+          <h2 class="nhis-title">빠른 입력(30초)</h2>
+          <div class="nhis-sub">자산/소득 입력은 핵심 3개 질문부터 시작하고, 필요할 때만 아래 접기 섹션을 열어 보완하세요.</div>
+          <div class="asset-note" style="margin-top:8px;">입력하신 정보는 건보료/세금 추정을 위해서만 사용돼요(추정).</div>
+          <div class="nhis-policy-list">
+            <div>언제든 삭제할 수 있어요.</div>
+            <div>세무사 전달 패키지는 사용자가 생성할 때만 만들어져요.</div>
+            <div>민감한 신분증/가족관계 서류는 기본적으로 요구하지 않아요.</div>
+          </div>
+          <div style="margin-top:6px;">
+            <a class="btn ghost small" href="{{ url_for('web_profile.mypage') }}#danger-zone">내 데이터 삭제/초기화</a>
+          </div>
+          <div class="nhis-input-meta">
+            <span class="asset-pill {{ 'good' if completion_ratio >= 80 else 'warn' }}">완료율 {{ completion_ratio }}%</span>
+            <span class="small-note muted2">정확도와 함께 올라가요.</span>
+            <span class="nhis-save-state idle" id="nhis-save-state-pill">입력 대기중</span>
+          </div>
+        </div>
+        <div class="nhis-save-top">
+          <button class="btn primary" type="submit" name="action" value="save_main">저장하고 다시 계산</button>
+          <a class="btn ghost js-nhis-refresh-link" href="{{ form_refresh_url }}">새로고침</a>
+        </div>
+      </div>
+
+      <div class="nhis-core-grid">
+        <div class="asset-block">
+          <div class="asset-sec-head"><h3>질문 1 · 가입유형</h3></div>
+          <div class="asset-fields">
+            <div class="asset-inline single">
+              <label class="asset-field">
+                <span class="asset-label">가입 유형 (필수)</span>
+                <select class="asset-select" name="member_type">
+                  <option value="regional" {% if profile.member_type == "regional" %}selected{% endif %}>지역가입자</option>
+                  <option value="employee" {% if profile.member_type == "employee" %}selected{% endif %}>직장가입자</option>
+                  <option value="dependent" {% if profile.member_type == "dependent" %}selected{% endif %}>피부양자</option>
+                  <option value="unknown" {% if profile.member_type == "unknown" %}selected{% endif %}>모름</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="asset-block">
+          <div class="asset-sec-head"><h3>질문 2 · 현재 거주 형태</h3></div>
+          <div class="asset-fields">
+            <label class="asset-field">
+              <span class="asset-label">현재 거주 형태</span>
+              <select class="asset-select" name="housing_mode" id="current-housing-mode">
+                <option value="unknown" {% if current_housing_mode == 'unknown' %}selected{% endif %}>모름</option>
+                <option value="own" {% if current_housing_mode == 'own' %}selected{% endif %}>자가</option>
+                <option value="jeonse" {% if current_housing_mode == 'jeonse' %}selected{% endif %}>전세</option>
+                <option value="rent" {% if current_housing_mode == 'rent' %}selected{% endif %}>월세</option>
+                <option value="none" {% if current_housing_mode == 'none' %}selected{% endif %}>해당 없음</option>
+              </select>
+            </label>
+            <div class="asset-inline asset-rent-fields{% if current_housing_mode in ['jeonse','rent'] %} show{% endif %}" id="current-rent-fields">
+              <label class="asset-field asset-mode-field{% if current_housing_mode == 'jeonse' %} show{% endif %}" data-current-mode-field="jeonse">
+                <span class="asset-label">현재 거주 전세금(원)</span>
+                <input class="asset-input" type="text" name="rent_deposit_krw" data-current-rent-input="jeonse" value="{{ current_rent_deposit if current_rent_deposit is not none else '' }}" placeholder="예: 30000000">
+              </label>
+              <label class="asset-field asset-mode-field{% if current_housing_mode == 'rent' %} show{% endif %}" data-current-mode-field="rent">
+                <span class="asset-label">현재 거주 월세(원)</span>
+                <input class="asset-input" type="text" name="rent_monthly_krw" data-current-rent-input="rent" value="{{ current_rent_monthly if current_rent_monthly is not none else '' }}" placeholder="예: 700000">
+              </label>
+            </div>
+            <div class="asset-note{% if current_housing_mode in ['jeonse','rent'] %} asset-hidden{% endif %}" id="current-rent-note">전세/월세를 선택하면 보증금·월세 입력란이 열려요.</div>
+          </div>
+        </div>
+
+        <div class="nhis-core-span">
+          <div class="asset-block">
+            <div class="asset-sec-head"><h3>질문 3 · 금융소득(이자+배당)</h3></div>
+            <div class="asset-fields">
+              <label class="asset-field">
+                <span class="asset-label">금융소득(연) 입력 여부</span>
+                <select class="asset-select" name="fin_income_presence" id="quick-fin-income-presence">
+                  <option value="unknown" {% if quick_fin_presence == 'unknown' %}selected{% endif %}>모름</option>
+                  <option value="yes" {% if quick_fin_presence == 'yes' %}selected{% endif %}>있음</option>
+                  <option value="no" {% if quick_fin_presence == 'no' %}selected{% endif %}>없음</option>
+                </select>
+              </label>
+              <label class="asset-field nhis-fin-amount-row{% if quick_fin_presence == 'yes' %} show{% endif %}" id="quick-fin-income-amount-row">
+                <span class="asset-label">금융소득(이자+배당, 연)</span>
+                <input class="asset-input" type="text" name="fin_income_amount_krw" id="quick-fin-income-amount" value="{{ fin_income_value if fin_income_value is not none else '' }}" placeholder="예: 12000000">
+              </label>
+              <div class="asset-note" style="margin-top:0;">금융소득은 건보료 경계(1,000만원 전후) 판단에 사용돼요(추정).</div>
+              <input type="hidden" name="income_hybrid_present" value="1">
+              <input type="hidden" name="income_hybrid_enabled" id="quick-income-hybrid-enabled" value="{{ '1' if quick_fin_enabled else '0' }}" data-has-other-fields="{{ '1' if quick_fin_has_other_fields else '0' }}">
+              <input type="hidden" name="income_hybrid_year" value="{{ quick_income_year if quick_income_year else '' }}">
+              <input type="hidden" name="income_hybrid_scope" value="{{ quick_income_scope }}">
+              <input type="hidden" name="income_hybrid_input_basis" value="{{ quick_income_basis }}">
+              <input type="hidden" name="income_hybrid_is_pre_tax" value="1">
+              <input type="hidden" name="income_hybrid_large_confirmed" value="0">
+              <input type="hidden" name="business_income_amount_krw" value="{{ business_income_value if business_income_value is not none else '' }}">
+              <input type="hidden" name="salary_income_amount_krw" value="{{ salary_income_value if salary_income_value is not none else '' }}">
+              <input type="hidden" name="pension_income_amount_krw" value="{{ pension_income_value if pension_income_value is not none else '' }}">
+              <input type="hidden" name="other_income_amount_krw" value="{{ other_hybrid_income_value if other_hybrid_income_value is not none else '' }}">
+              {% if show_fin_band_tracker %}
+                <details class="nhis-fin-band" id="fin-income-band-tracker">
+                  <summary>
+                    <span>금융소득(이자+배당) 누적(추정)</span>
+                    <span class="nhis-collapsed-hint">1,000만 근처인지 빠르게 확인</span>
+                  </summary>
+                  <div class="nhis-fin-band-body">
+                    <div class="nhis-fin-band-buttons">
+                      <button type="button" class="nhis-fin-band-btn" data-fin-band="unknown">없음/모름</button>
+                      <button type="button" class="nhis-fin-band-btn" data-fin-band="lt_700">~700만</button>
+                      <button type="button" class="nhis-fin-band-btn" data-fin-band="700_1000">700만~1,000만</button>
+                      <button type="button" class="nhis-fin-band-btn" data-fin-band="1000_1300">1,000만~1,300만</button>
+                    </div>
+                    <div class="nhis-fin-band-note asset-hidden" id="fin-income-band-note"></div>
+                  </div>
+                </details>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <details class="nhis-collapsed" id="asset-extra-inputs">
+        <summary>
+          <span>정확도 올리기(가입유형별 필수 포함)</span>
+          <span class="nhis-collapsed-hint">보유 주택 {{ home_count }}개 · 차량 {{ car_count }}대 · 고지 이력 {{ history_count }}건</span>
+        </summary>
+        <div class="nhis-collapsed-body">
+          <div class="asset-block" style="margin-top:0;">
+            <div class="asset-sec-head"><h3>추가 기준 입력(선택)</h3></div>
+            <div class="asset-inline">
+              <label class="asset-field">
+                <span class="asset-label">예측 대상 월</span>
+                <input class="asset-input" type="month" name="target_month" value="{{ month_key }}">
+              </label>
+              <label class="asset-field">
+                <span class="asset-label">경감/감면 여부</span>
+                <select class="asset-select" name="has_reduction_or_relief">
+                  <option value="" {% if profile.has_reduction_or_relief is none %}selected{% endif %}>모름</option>
+                  <option value="yes" {% if profile.has_reduction_or_relief is sameas true %}selected{% endif %}>있음</option>
+                  <option value="no" {% if profile.has_reduction_or_relief is sameas false %}selected{% endif %}>없음</option>
+                </select>
+              </label>
+            </div>
+            <div class="asset-inline" style="margin-top:8px;">
+              <label class="asset-field">
+                <span class="asset-label">직장가입자 월 보수(원, 99% 필수)</span>
+                <input class="asset-input" type="text" name="salary_monthly_krw" value="{{ profile.salary_monthly_krw if profile.salary_monthly_krw is not none else '' }}" placeholder="예: 3200000">
+              </label>
+              <label class="asset-field">
+                <span class="asset-label">보수 외 소득(연, 원, 99% 필수)</span>
+                <input class="asset-input" type="text" name="non_salary_annual_income_krw" value="{{ profile.non_salary_annual_income_krw if profile.non_salary_annual_income_krw is not none else '' }}" placeholder="예: 15000000">
+              </label>
+            </div>
+            <div class="asset-inline" style="margin-top:8px;">
+              <label class="asset-field">
+                <span class="asset-label">재산세 과세표준 합계(원, 지역가입자 99% 필수)</span>
+                <input class="asset-input" type="text" name="property_tax_base_total_krw" value="{{ profile.property_tax_base_total_krw if profile.property_tax_base_total_krw is not none else '' }}" placeholder="예: 220000000">
+              </label>
+              <label class="asset-field">
+                <span class="asset-label">연소득 총액(지역가입자 99% 필수, 원)</span>
+                <input class="asset-input" type="text" name="annual_income_krw" value="{{ profile.annual_income_krw if profile.annual_income_krw is not none else '' }}" placeholder="예: 48000000">
+              </label>
+            </div>
+            <div class="asset-note" style="margin-top:8px;">
+              직장가입자는 월 보수 입력, 지역가입자는 재산세 과세표준/보수 외 소득 입력이 정확도에 가장 크게 영향 줘요(추정).
+            </div>
+            <div class="asset-inline" style="margin-top:8px;">
+              <label class="asset-field">
+                <span class="asset-label">세대에 다른 소득/재산 포함 여부</span>
+                <select class="asset-select" name="household_has_others">
+                  <option value="" {% if assets_ctx.profile.household_has_others is none %}selected{% endif %}>모름</option>
+                  <option value="yes" {% if assets_ctx.profile.household_has_others is sameas true %}selected{% endif %}>있음</option>
+                  <option value="no" {% if assets_ctx.profile.household_has_others is sameas false %}selected{% endif %}>없음</option>
+                </select>
+              </label>
+              <div></div>
+            </div>
+          </div>
+
+          <div class="asset-block" style="margin-top:0;">
+            <div class="asset-sec-head"><h3>보유 주택 목록</h3></div>
+            <div class="asset-sub">현재 보유 중인 주택을 목록으로 관리할 수 있어요.</div>
+            {% if assets_ctx.home_list %}
+              {% for home in assets_ctx.home_list %}
+                {% set hm = (home.input.rental_mode if home.input else 'unknown') %}
+                {% set home_form_id = 'home-item-form-' ~ home.id %}
+                <div class="asset-block" style="margin-top:8px;">
+                  <div class="asset-inline">
+                    <label class="asset-field">
+                      <span class="asset-label">주소</span>
+                      <input class="asset-input" type="text" name="item_home_address" form="{{ home_form_id }}" value="{{ home.input.address_text if home.input else '' }}">
+                    </label>
+                    <label class="asset-field">
+                      <span class="asset-label">주택 유형</span>
+                      {% set ht = (home.input.home_type if home.input else '') %}
+                      <select class="asset-select" name="item_home_type" form="{{ home_form_id }}">
+                        <option value="">모름</option>
+                        <option value="apartment" {% if ht == 'apartment' %}selected{% endif %}>아파트</option>
+                        <option value="villa" {% if ht == 'villa' %}selected{% endif %}>빌라/연립</option>
+                        <option value="house" {% if ht == 'house' %}selected{% endif %}>단독주택</option>
+                        <option value="officetel" {% if ht == 'officetel' %}selected{% endif %}>오피스텔</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="asset-inline">
+                    <label class="asset-field">
+                      <span class="asset-label">전용면적(㎡)</span>
+                      <input class="asset-input" type="text" name="item_home_area_sqm" form="{{ home_form_id }}" value="{{ home.input.area_sqm if home.input and home.input.area_sqm is not none else '' }}">
+                    </label>
+                    <label class="asset-field">
+                      <span class="asset-label">임대 형태</span>
+                      <select class="asset-select" name="item_home_rental_mode" form="{{ home_form_id }}" data-home-rent-mode>
+                        <option value="unknown" {% if hm == 'unknown' %}selected{% endif %}>모름</option>
+                        <option value="own_use" {% if hm == 'own_use' %}selected{% endif %}>직접거주</option>
+                        <option value="jeonse" {% if hm == 'jeonse' %}selected{% endif %}>전세</option>
+                        <option value="rent" {% if hm == 'rent' %}selected{% endif %}>월세</option>
+                        <option value="vacant" {% if hm == 'vacant' %}selected{% endif %}>공실</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="asset-inline asset-rent-fields{% if hm in ['jeonse','rent'] %} show{% endif %}" data-home-rent-fields>
+                    <label class="asset-field asset-mode-field{% if hm == 'jeonse' %} show{% endif %}" data-home-mode-field="jeonse">
+                      <span class="asset-label">전세금(원)</span>
+                      <input class="asset-input" type="text" name="item_home_rent_deposit_krw" form="{{ home_form_id }}" data-home-rent-input="jeonse" value="{{ home.input.rent_deposit_krw if home.input and home.input.rent_deposit_krw is not none else '' }}">
+                    </label>
+                    <label class="asset-field asset-mode-field{% if hm == 'rent' %} show{% endif %}" data-home-mode-field="rent">
+                      <span class="asset-label">월세(원)</span>
+                      <input class="asset-input" type="text" name="item_home_rent_monthly_krw" form="{{ home_form_id }}" data-home-rent-input="rent" value="{{ home.input.rent_monthly_krw if home.input and home.input.rent_monthly_krw is not none else '' }}">
+                    </label>
+                  </div>
+                  <div class="asset-actions">
+                    <button class="btn ghost" type="submit" form="{{ home_form_id }}" name="action" value="update_item:{{ home.id }}">목록 저장</button>
+                    <button class="btn ghost danger" type="submit" form="{{ home_form_id }}" name="action" value="delete_item:{{ home.id }}">삭제</button>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="asset-note" style="margin-top:8px;">등록된 보유 주택이 아직 없어요.</div>
+            {% endif %}
+
+            <div class="asset-block" style="margin-top:10px;">
+              <div class="asset-note ok" style="margin-top:0;">새 주택 추가</div>
+              <div class="asset-inline" style="margin-top:8px;">
+                <input class="asset-input" type="text" name="add_home_address" form="home-add-form" placeholder="주소">
+                <select class="asset-select" name="add_home_type" form="home-add-form">
+                  <option value="">유형 선택</option>
+                  <option value="apartment">아파트</option>
+                  <option value="villa">빌라/연립</option>
+                  <option value="house">단독주택</option>
+                  <option value="officetel">오피스텔</option>
+                </select>
+              </div>
+              <div class="asset-inline" style="margin-top:8px;">
+                <input class="asset-input" type="text" name="add_home_area_sqm" form="home-add-form" placeholder="면적(㎡)">
+                <select class="asset-select" name="add_home_rental_mode" form="home-add-form" data-home-rent-mode>
+                  <option value="unknown">임대 형태(선택)</option>
+                  <option value="own_use">직접거주</option>
+                  <option value="jeonse">전세</option>
+                  <option value="rent">월세</option>
+                  <option value="vacant">공실</option>
+                </select>
+              </div>
+              <div class="asset-inline asset-rent-fields" data-home-rent-fields style="margin-top:8px;">
+                <label class="asset-field asset-mode-field" data-home-mode-field="jeonse">
+                  <span class="asset-label">전세금(원)</span>
+                  <input class="asset-input" type="text" name="add_home_rent_deposit_krw" form="home-add-form" data-home-rent-input="jeonse" placeholder="예: 30000000">
+                </label>
+                <label class="asset-field asset-mode-field" data-home-mode-field="rent">
+                  <span class="asset-label">월세(원)</span>
+                  <input class="asset-input" type="text" name="add_home_rent_monthly_krw" form="home-add-form" data-home-rent-input="rent" placeholder="예: 700000">
+                </label>
+              </div>
+              <div class="asset-actions">
+                <button class="btn ghost" type="submit" form="home-add-form" name="action" value="add_home_item">주택 추가 저장</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="asset-block">
+            <div class="asset-sec-head"><h3>차량 보유 목록</h3></div>
+            <div class="asset-fields">
+              <label class="asset-field">
+                <span class="asset-label">차량 보유 여부</span>
+                <select class="asset-select" name="has_car">
+                  <option value="" {% if assets_ctx.profile.has_car is none %}selected{% endif %}>모름</option>
+                  <option value="yes" {% if assets_ctx.profile.has_car is sameas true %}selected{% endif %}>있음</option>
+                  <option value="no" {% if assets_ctx.profile.has_car is sameas false %}selected{% endif %}>없음</option>
+                </select>
+              </label>
+            </div>
+
+            {% if assets_ctx.car_list %}
+              {% for car in assets_ctx.car_list %}
+                {% set car_form_id = 'car-item-form-' ~ car.id %}
+                <div class="asset-block" style="margin-top:8px;">
+                  <div class="asset-inline">
+                    <label class="asset-field">
+                      <span class="asset-label">브랜드</span>
+                      <input class="asset-input" type="text" name="item_car_brand" form="{{ car_form_id }}" value="{{ car.input.brand if car.input else '' }}">
+                    </label>
+                    <label class="asset-field">
+                      <span class="asset-label">차종</span>
+                      <input class="asset-input" type="text" name="item_car_model" form="{{ car_form_id }}" value="{{ car.input.model if car.input else '' }}">
+                    </label>
+                  </div>
+                  <label class="asset-field">
+                    <span class="asset-label">연식</span>
+                    <input class="asset-input" type="text" name="item_car_year" form="{{ car_form_id }}" value="{{ car.input.year if car.input and car.input.year is not none else '' }}">
+                  </label>
+                  <div class="asset-actions">
+                    <button class="btn ghost" type="submit" form="{{ car_form_id }}" name="action" value="update_item:{{ car.id }}">목록 저장</button>
+                    <button class="btn ghost danger" type="submit" form="{{ car_form_id }}" name="action" value="delete_item:{{ car.id }}">삭제</button>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="asset-note" style="margin-top:8px;">등록된 차량이 아직 없어요.</div>
+            {% endif %}
+
+            <div class="asset-block" style="margin-top:10px;">
+              <div class="asset-note ok" style="margin-top:0;">새 차량 추가</div>
+              <div class="asset-inline" style="margin-top:8px;">
+                <input class="asset-input" type="text" name="add_car_brand" form="car-add-form" placeholder="브랜드">
+                <input class="asset-input" type="text" name="add_car_model" form="car-add-form" placeholder="차종">
+              </div>
+              <div class="asset-inline" style="margin-top:8px;">
+                <input class="asset-input" type="text" name="add_car_year" form="car-add-form" placeholder="연식">
+                <div></div>
+              </div>
+              <div class="asset-actions">
+                <button class="btn ghost" type="submit" form="car-add-form" name="action" value="add_car_item">차량 추가 저장</button>
+              </div>
+            </div>
+          </div>
+
+          {% set assets_ui_show_guide = false %}
+          {% set assets_ui_show_household = false %}
+          {% set assets_ui_show_income_hybrid = false %}
+          {% set assets_ui_show_other_income = true %}
+          {% set assets_ui_show_history = false %}
+          {% set assets_ui_show_actions = false %}
+          {% include 'components/assets_user_input_sections.html' %}
+        </div>
+      </details>
+
+      <details class="nhis-collapsed" id="asset-history-inputs">
+        <summary>
+          <span>고급/예외</span>
+          <span class="nhis-collapsed-hint">고지 이력 {{ history_count }}건 · 예외 입력</span>
+        </summary>
+        <div class="nhis-collapsed-body">
+          <div class="asset-block" style="margin-top:0;">
+            <div class="asset-sec-head"><h3>최근 고지 요약(선택)</h3></div>
+            <div class="asset-fields">
+              <div class="asset-inline">
+                <label class="asset-field">
+                  <span class="asset-label">최근 고지서 합계(선택)</span>
+                  <input class="asset-input" type="text" name="last_bill_total_krw" value="{{ profile.last_bill_total_krw if profile.last_bill_total_krw is not none else '' }}">
+                </label>
+                <label class="asset-field">
+                  <span class="asset-label">최근 고지서 건보료만(선택)</span>
+                  <input class="asset-input" type="text" name="last_bill_health_only_krw" value="{{ profile.last_bill_health_only_krw if profile.last_bill_health_only_krw is not none else '' }}">
+                </label>
+              </div>
+              <label class="asset-field">
+                <span class="asset-label">최근 고지서 부과점수(선택)</span>
+                <input class="asset-input" type="text" name="last_bill_score_points" value="{{ profile.last_bill_score_points if profile.last_bill_score_points is not none else '' }}">
+              </label>
+            </div>
+          </div>
+          {% set assets_ui_show_guide = false %}
+          {% set assets_ui_show_household = false %}
+          {% set assets_ui_show_income_hybrid = false %}
+          {% set assets_ui_show_other_income = false %}
+          {% set assets_ui_show_history = true %}
+          {% set assets_ui_show_actions = false %}
+          {% set assets_ui_history_sync_default = 0 %}
+          {% include 'components/assets_user_input_sections.html' %}
+        </div>
+      </details>
+
+      <div class="asset-actions" style="margin-top:12px;">
+        <button class="btn" type="submit" name="action" value="save_main">저장하고 다시 계산</button>
+        <a class="btn ghost js-nhis-refresh-link" href="{{ form_refresh_url }}">새로고침</a>
+      </div>
+    </form>
+
+    {% if assets_ctx.home_list %}
+      {% for home in assets_ctx.home_list %}
+        <form id="home-item-form-{{ home.id }}" method="post" action="{{ url_for('web_profile.nhis_page', month=month_key, source='nhis') }}" data-nhis-mini-form="1">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="month" value="{{ month_key }}">
+          <input type="hidden" name="target_month" value="{{ month_key }}">
+          <input type="hidden" name="source" value="nhis">
+          <input type="hidden" name="item_id" value="{{ home.id }}">
+          <input type="hidden" name="home_item_id" value="{{ home.id }}">
+        </form>
+      {% endfor %}
+    {% endif %}
+
+    {% if assets_ctx.car_list %}
+      {% for car in assets_ctx.car_list %}
+        <form id="car-item-form-{{ car.id }}" method="post" action="{{ url_for('web_profile.nhis_page', month=month_key, source='nhis') }}" data-nhis-mini-form="1">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="month" value="{{ month_key }}">
+          <input type="hidden" name="target_month" value="{{ month_key }}">
+          <input type="hidden" name="source" value="nhis">
+          <input type="hidden" name="item_id" value="{{ car.id }}">
+          <input type="hidden" name="car_item_id" value="{{ car.id }}">
+        </form>
+      {% endfor %}
+    {% endif %}
+
+    <form id="home-add-form" method="post" action="{{ url_for('web_profile.nhis_page', month=month_key, source='nhis') }}" data-nhis-mini-form="1">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="month" value="{{ month_key }}">
+      <input type="hidden" name="target_month" value="{{ month_key }}">
+      <input type="hidden" name="source" value="nhis">
+    </form>
+    <form id="car-add-form" method="post" action="{{ url_for('web_profile.nhis_page', month=month_key, source='nhis') }}" data-nhis-mini-form="1">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="month" value="{{ month_key }}">
+      <input type="hidden" name="target_month" value="{{ month_key }}">
+      <input type="hidden" name="source" value="nhis">
+    </form>
+  </section>
+</div>
+{% endblock %}
+
+{% block script_extra %}
+<script>
+  (function () {
+    const toInt = (raw, fallback = 0) => {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return Math.trunc(Number(fallback) || 0);
+      return Math.trunc(n);
+    };
+
+    const toFloat = (raw, fallback = 0) => {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return Number(fallback) || 0;
+      return n;
+    };
+
+    const formatDeltaKrw = (raw) => {
+      const n = toInt(raw, 0);
+      const absText = `${Math.abs(n).toLocaleString("ko-KR")}원`;
+      if (n > 0) return `+${absText}`;
+      if (n < 0) return `-${absText}`;
+      return absText;
+    };
+
+    const toastStack = document.getElementById("nhis-toast-stack");
+    const notifyBridge = (window.SafeToSpendNotify && typeof window.SafeToSpendNotify.notify === "function")
+      ? window.SafeToSpendNotify.notify
+      : null;
+    const showToast = (message, type = "success", timeoutMs = 2600, options = {}) => {
+      if (!toastStack) return;
+      const msg = String(message || "").trim();
+      if (!msg) return;
+      const tone = (type === "error" || type === "warn") ? type : "success";
+      const el = document.createElement("div");
+      el.className = `nhis-toast ${tone}`;
+      el.textContent = msg;
+      toastStack.appendChild(el);
+      requestAnimationFrame(() => el.classList.add("show"));
+      window.setTimeout(() => {
+        el.classList.remove("show");
+        window.setTimeout(() => el.remove(), 220);
+      }, Math.max(1200, toInt(timeoutMs, 2600)));
+      const opts = (options && typeof options === "object") ? options : {};
+      const delivery = String(opts.delivery || (opts.persist_to_center ? "toast_and_center" : "")).trim();
+      const shouldBridge = notifyBridge && (opts.persist_to_center === true || delivery === "toast_and_center" || delivery === "center_only");
+      if (shouldBridge) {
+        notifyBridge(msg, tone, {
+          delivery: delivery || "toast_and_center",
+          suppress_toast: true,
+          dedupe_key: String(opts.dedupe_key || "").trim(),
+          title: String(opts.title || "").trim(),
+          detail: String(opts.detail || "").trim(),
+          source: String(opts.source || "nhis").trim(),
+        });
+      }
+    };
+
+    const initNhisFormFeedback = () => {
+      const form = document.getElementById("nhis-integrated-form");
+      const saveStatePill = document.getElementById("nhis-save-state-pill");
+      const feedbackEl = document.getElementById("nhis-page-feedback");
+      if (!(form instanceof HTMLFormElement) || !feedbackEl) return;
+
+      const monthKey = String(feedbackEl.getAttribute("data-month-key") || "");
+      const savedFromServer = String(feedbackEl.getAttribute("data-saved") || "") === "1";
+      const saveToken = String(feedbackEl.getAttribute("data-save-token") || "");
+      const storageKey = `nhis-input-snapshot:${monthKey || "default"}`;
+
+      const setSaveState = (state, label) => {
+        if (!saveStatePill) return;
+        saveStatePill.classList.remove("idle", "dirty", "saving", "saved");
+        saveStatePill.classList.add(state);
+        saveStatePill.textContent = String(label || "");
+      };
+
+      const collectSnapshot = () => {
+        const out = {};
+        const fields = Array.from(form.querySelectorAll("input, select, textarea"));
+        for (const field of fields) {
+          if (
+            !(field instanceof HTMLInputElement) &&
+            !(field instanceof HTMLSelectElement) &&
+            !(field instanceof HTMLTextAreaElement)
+          ) continue;
+          if (field.form && field.form !== form) continue;
+          const name = String(field.name || "").trim();
+          if (!name || field.disabled) continue;
+          if (name === "csrf_token") continue;
+          if (field instanceof HTMLInputElement) {
+            const t = String(field.type || "").toLowerCase();
+            if (t === "hidden" || t === "submit" || t === "button" || t === "file") continue;
+            if (t === "radio") {
+              if (!field.checked) continue;
+            } else if (t === "checkbox") {
+              if (!field.checked) continue;
+            }
+          }
+          if (!Object.prototype.hasOwnProperty.call(out, name)) {
+            out[name] = [];
+          }
+          out[name].push(String(field.value || "").trim());
+        }
+        return out;
+      };
+
+      const snapshotMatches = (savedSnapshot) => {
+        if (!savedSnapshot || typeof savedSnapshot !== "object") return false;
+        const current = collectSnapshot();
+        const savedKeys = Object.keys(savedSnapshot).sort();
+        const currentKeys = Object.keys(current).sort();
+        if (savedKeys.length !== currentKeys.length) return false;
+        for (let i = 0; i < savedKeys.length; i += 1) {
+          const k = savedKeys[i];
+          if (k !== currentKeys[i]) return false;
+          const a = Array.isArray(savedSnapshot[k]) ? savedSnapshot[k].map((v) => String(v || "").trim()) : [];
+          const b = Array.isArray(current[k]) ? current[k].map((v) => String(v || "").trim()) : [];
+          if (a.length !== b.length) return false;
+          for (let j = 0; j < a.length; j += 1) {
+            if (a[j] !== b[j]) return false;
+          }
+        }
+        return true;
+      };
+
+      const parseStoredSnapshot = () => {
+        try {
+          const raw = window.localStorage.getItem(storageKey);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return parsed && typeof parsed === "object" ? parsed : null;
+        } catch (_) {
+          return null;
+        }
+      };
+
+      const clearStoredSnapshot = () => {
+        try {
+          window.localStorage.removeItem(storageKey);
+        } catch (_) {}
+      };
+
+      const saveSnapshot = () => {
+        try {
+          window.localStorage.setItem(storageKey, JSON.stringify({
+            token: `${Date.now()}`,
+            values: collectSnapshot(),
+          }));
+        } catch (_) {}
+      };
+
+      let isDirty = false;
+      const markDirty = () => {
+        if (isDirty) return;
+        isDirty = true;
+        setSaveState("dirty", "입력 변경됨 · 저장 필요");
+      };
+
+      const fields = Array.from(form.querySelectorAll("input, select, textarea"));
+      for (const field of fields) {
+        if (field.form && field.form !== form) continue;
+        field.addEventListener("input", markDirty, { passive: true });
+        field.addEventListener("change", markDirty, { passive: true });
+      }
+      document.querySelectorAll(
+        "[form^='home-item-form-'], [form^='car-item-form-'], [form='home-add-form'], [form='car-add-form'], form[data-nhis-mini-form='1'] input, form[data-nhis-mini-form='1'] select, form[data-nhis-mini-form='1'] textarea"
+      ).forEach((field) => {
+        if (!(field instanceof HTMLInputElement) && !(field instanceof HTMLSelectElement) && !(field instanceof HTMLTextAreaElement)) return;
+        field.addEventListener("input", markDirty, { passive: true });
+        field.addEventListener("change", markDirty, { passive: true });
+      });
+
+      form.addEventListener("submit", () => {
+        saveSnapshot();
+        isDirty = false;
+        setSaveState("saving", "저장 중...");
+        showToast("입력을 저장하고 다시 계산하고 있어요.", "success", 1900);
+      });
+      document.querySelectorAll("form[data-nhis-mini-form='1']").forEach((miniForm) => {
+        if (!(miniForm instanceof HTMLFormElement)) return;
+        miniForm.addEventListener("submit", () => {
+          isDirty = false;
+          setSaveState("saving", "목록 저장 중...");
+          showToast("선택한 항목만 저장하고 있어요.", "success", 1700);
+        });
+      });
+
+      document.querySelectorAll(".js-nhis-refresh-link").forEach((link) => {
+        link.addEventListener("click", (evt) => {
+          if (!isDirty) return;
+          const keepGoing = window.confirm("저장하지 않은 입력이 있어요. 새로고침하면 변경 내용이 사라질 수 있어요. 계속할까요?");
+          if (!keepGoing) {
+            evt.preventDefault();
+            showToast("현재 입력을 유지했어요. 저장 후 다시 시도해 주세요.", "warn", 2400);
+          }
+        });
+      });
+
+      const flashWrap = document.querySelector(".flash-wrap");
+      if (flashWrap) {
+        const flashNodes = Array.from(flashWrap.querySelectorAll(".flash"));
+        for (const node of flashNodes) {
+          const txt = String(node.textContent || "").trim();
+          if (!txt) continue;
+          const cls = String(node.className || "");
+          const tone = (cls.includes("error") || cls.includes("danger")) ? "error" : (cls.includes("warn") ? "warn" : "success");
+          showToast(txt, tone, 3300, {
+            persist_to_center: true,
+            title: "건보 입력 알림",
+            dedupe_key: `nhis:flash:${tone}:${txt}`,
+            source: "nhis_flash",
+          });
+        }
+        flashWrap.style.display = "none";
+      }
+
+      if (savedFromServer) {
+        const stored = parseStoredSnapshot();
+        const savedAt = /^\d+$/.test(saveToken) ? new Date(Number(saveToken)) : null;
+        const savedAtText = (savedAt && !Number.isNaN(savedAt.getTime()))
+          ? savedAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
+          : "방금";
+        const saveNoticeKey = saveToken ? `nhis:save:${monthKey}:${saveToken}` : "";
+        if (stored && snapshotMatches(stored.values || {})) {
+          showToast(`저장이 완료됐고 입력이 반영됐어요. (${savedAtText})`, "success", 3400, {
+            persist_to_center: true,
+            title: "건보 입력 저장 완료",
+            detail: "저장한 입력이 건보 추정치에 반영됐어요.",
+            dedupe_key: saveNoticeKey ? `${saveNoticeKey}:applied` : "",
+            source: "nhis_form_save",
+          });
+        } else if (!stored) {
+          showToast(`저장이 완료됐어요. (${savedAtText})`, "success", 2800, {
+            persist_to_center: true,
+            title: "건보 입력 저장 완료",
+            detail: "저장한 입력이 다음 계산부터 사용돼요.",
+            dedupe_key: saveNoticeKey ? `${saveNoticeKey}:saved` : "",
+            source: "nhis_form_save",
+          });
+        } else {
+          showToast("저장은 완료됐어요. 일부 항목은 화면 값으로 다시 확인해 주세요.", "warn", 3600, {
+            persist_to_center: true,
+            title: "건보 입력 확인 필요",
+            detail: "저장된 값과 현재 화면 입력이 일부 다를 수 있어요.",
+            dedupe_key: saveNoticeKey ? `${saveNoticeKey}:confirm` : "",
+            source: "nhis_form_save",
+          });
+        }
+        clearStoredSnapshot();
+        setSaveState("saved", `저장 반영 완료 · ${savedAtText}`);
+      } else {
+        setSaveState("idle", "입력 대기중");
+      }
+    };
+
+    const initNhisFinanceBoundaryCard = () => {
+      const root = document.getElementById("nhis-fin-boundary-card");
+      const payloadEl = document.getElementById("nhis-fin-payload");
+      if (!root || !payloadEl) return;
+
+      const runBtn = document.getElementById("btn-fin-threshold-check");
+      const resultEl = document.getElementById("nhis-fin-check-result");
+      const errorEl = document.getElementById("nhis-fin-check-error");
+      const debugMode = String(root.getAttribute("data-debug-nhis") || "") === "1";
+
+      const clampNonNegative = (raw, max = 20000000) => {
+        const n = toInt(raw, 0);
+        if (n <= 0) return 0;
+        if (n > max) return max;
+        return n;
+      };
+
+      const roundKrw = (raw) => clampNonNegative(Math.round(toFloat(raw, 0)));
+
+      const propertyPointsFromAmount = (amountRaw, tableRaw) => {
+        const amount = clampNonNegative(amountRaw, 2000000000000);
+        if (amount <= 0) return 0;
+        if (!Array.isArray(tableRaw) || !tableRaw.length) return null;
+        const rows = tableRaw
+          .map((row) => {
+            if (!Array.isArray(row) || row.length < 2) return null;
+            return [toInt(row[0], 0), toFloat(row[1], 0)];
+          })
+          .filter((row) => row && row[0] > 0 && row[1] >= 0)
+          .sort((a, b) => a[0] - b[0]);
+        if (!rows.length) return null;
+        for (const row of rows) {
+          if (amount <= row[0]) return row[1];
+        }
+        const last = rows[rows.length - 1];
+        const extra = Math.max(0, amount - last[0]);
+        return toFloat(last[1], 0) + (extra / 4500000) * 22.0;
+      };
+
+      const parsePayload = () => {
+        try {
+          const raw = JSON.parse(String(payloadEl.textContent || "{}"));
+          return (raw && typeof raw === "object") ? raw : {};
+        } catch (_) {
+          return {};
+        }
+      };
+
+      const computeEstimate = (profile, rules) => {
+        const base = { ...(profile || {}) };
+        const memberType = String(base.member_type || "unknown");
+        const healthRate = Math.max(0, toFloat(rules.health_insurance_rate, 0));
+        const pointValue = Math.max(0, toFloat(rules.regional_point_value, 0));
+        const ltcRatio = Math.max(0, toFloat(rules.long_term_care_ratio_of_health, 0));
+        const floor = clampNonNegative(rules.health_premium_floor_krw, 50000000);
+        const cap = clampNonNegative(rules.health_premium_cap_krw, 50000000);
+        const deduction = clampNonNegative(rules.property_basic_deduction_krw, 5000000000);
+        const rentEvalMultiplier = Math.max(0, toFloat(rules.rent_eval_multiplier, 0.3));
+        const rentToDeposit = clampNonNegative(rules.rent_month_to_deposit_multiplier, 1000);
+        const propertyTable = Array.isArray(rules.property_points_table) ? rules.property_points_table : [];
+
+        if (healthRate <= 0 || ltcRatio < 0) return null;
+
+        if (memberType === "regional") {
+          if (pointValue <= 0 || !propertyTable.length) return null;
+          const incomeMonthly = Math.floor(clampNonNegative(base.annual_fin_income_krw, 2000000000) / 12);
+          const incomePremium = roundKrw(incomeMonthly * healthRate);
+          const rentEval = roundKrw((clampNonNegative(base.rent_deposit_krw, 5000000000) + (clampNonNegative(base.rent_monthly_krw, 500000000) * rentToDeposit)) * rentEvalMultiplier);
+          const grossProperty = clampNonNegative(clampNonNegative(base.property_tax_base_total_krw, 5000000000) + rentEval + clampNonNegative(base.owned_home_rent_eval_krw, 5000000000), 5000000000);
+          const netProperty = Math.max(0, grossProperty - deduction);
+          const propertyPoints = propertyPointsFromAmount(netProperty, propertyTable);
+          if (propertyPoints === null) return null;
+          const propertyPremium = roundKrw(propertyPoints * pointValue);
+          let health = clampNonNegative(incomePremium + propertyPremium);
+          if (cap > 0 && health > cap) health = cap;
+          if (floor > 0 && health > 0 && health < floor) health = floor;
+          const ltc = roundKrw(health * ltcRatio);
+          return {
+            ...base,
+            total_est_krw: clampNonNegative(health + ltc),
+          };
+        }
+
+        if (memberType === "employee") {
+          const salaryMonthly = clampNonNegative(base.salary_monthly_krw, 100000000);
+          const baseHealth = roundKrw(salaryMonthly * healthRate);
+          let extraHealth = 0;
+          if (clampNonNegative(base.annual_fin_income_krw, 2000000000) > 20000000) {
+            extraHealth = roundKrw(((clampNonNegative(base.annual_fin_income_krw, 2000000000) - 20000000) / 12) * healthRate);
+          }
+          let health = clampNonNegative(baseHealth + extraHealth);
+          if (cap > 0 && health > cap) health = cap;
+          const ltc = roundKrw(health * ltcRatio);
+          return {
+            ...base,
+            total_est_krw: clampNonNegative(health + ltc),
+          };
+        }
+
+        if (memberType === "dependent") {
+          return {
+            ...base,
+            total_est_krw: 0,
+          };
+        }
+
+        return null;
+      };
+
+      const showError = (msg, debugMissing) => {
+        if (!errorEl) return;
+        let out = String(msg || "지금은 확인할 수 없어요. 입력을 저장하면 더 정확해져요.");
+        if (debugMode && Array.isArray(debugMissing) && debugMissing.length) {
+          out += ` (debug: ${debugMissing.join(", ")})`;
+        }
+        errorEl.textContent = out;
+        errorEl.classList.remove("asset-hidden");
+        showToast(out, "warn", 3000);
+      };
+
+      const hideError = () => {
+        if (!errorEl) return;
+        errorEl.textContent = "";
+        errorEl.classList.add("asset-hidden");
+      };
+
+      const hideResult = () => {
+        if (!resultEl) return;
+        resultEl.textContent = "";
+        resultEl.classList.add("asset-hidden");
+      };
+
+      const payload = parsePayload();
+      const baseline = { ...(payload.base || {}) };
+      const rules = { ...(payload.rules || {}) };
+
+      if (!(runBtn instanceof HTMLButtonElement)) return;
+      const hasBaseline = Object.keys(baseline).length > 0;
+      if (!hasBaseline) {
+        runBtn.disabled = true;
+        showError("지금은 확인할 수 없어요. 입력을 저장하면 더 정확해져요.", payload.debug_missing);
+        return;
+      }
+      runBtn.addEventListener("click", () => {
+        hideError();
+        hideResult();
+        let estimated = null;
+        try {
+          const scenario = { ...baseline, annual_fin_income_krw: 10000000 };
+          estimated = computeEstimate(scenario, rules);
+        } catch (_) {
+          estimated = null;
+        }
+        if (!estimated) {
+          showError(payload.error_message || "지금은 확인할 수 없어요. 입력을 저장하면 더 정확해져요.", payload.debug_missing);
+          return;
+        }
+        const delta = toInt(estimated.total_est_krw, 0) - toInt(baseline.total_est_krw, 0);
+        if (resultEl) {
+          resultEl.textContent = `가정 결과: 월 ${formatDeltaKrw(delta)} (추정)`;
+          resultEl.classList.remove("asset-hidden");
+        }
+        showToast(`금융소득 1,000만 기준 결과: ${formatDeltaKrw(delta)} 변화`, "success", 3000);
+      });
+
+      if (!payload.ready) {
+        runBtn.disabled = true;
+        showError(payload.error_message || "지금은 확인할 수 없어요. 입력을 저장하면 더 정확해져요.", payload.debug_missing);
+      }
+    };
+
+    const syncRentModeFields = (opts) => {
+      const wrap = opts && opts.wrap ? opts.wrap : null;
+      const mode = String((opts && opts.mode) || "").toLowerCase();
+      const fieldAttr = String((opts && opts.fieldAttr) || "");
+      const inputAttr = String((opts && opts.inputAttr) || "");
+      if (!wrap || !fieldAttr || !inputAttr) return;
+
+      const showWrap = mode === "jeonse" || mode === "rent";
+      wrap.classList.toggle("show", showWrap);
+
+      wrap.querySelectorAll(`[${fieldAttr}]`).forEach((field) => {
+        const targetMode = String(field.getAttribute(fieldAttr) || "").toLowerCase();
+        field.classList.toggle("show", showWrap && targetMode === mode);
+      });
+
+      const clearInputsByMode = (targetMode) => {
+        wrap.querySelectorAll(`[${inputAttr}='${targetMode}']`).forEach((input) => {
+          if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLTextAreaElement)) return;
+          if (showWrap && targetMode === mode) return;
+          input.value = "";
+        });
+      };
+      if (mode === "jeonse") {
+        clearInputsByMode("rent");
+      } else if (mode === "rent") {
+        clearInputsByMode("jeonse");
+      } else {
+        clearInputsByMode("jeonse");
+        clearInputsByMode("rent");
+      }
+    };
+
+    const bindHomeRentToggle = (container = document) => {
+      const blocks = container.querySelectorAll(".asset-block");
+      blocks.forEach((block) => {
+        const modeSelect = block.querySelector("[data-home-rent-mode]");
+        const rentWrap = block.querySelector("[data-home-rent-fields]");
+        if (!modeSelect || !rentWrap || modeSelect.dataset.bound === "1") return;
+        const sync = () => {
+          syncRentModeFields({
+            wrap: rentWrap,
+            mode: modeSelect.value,
+            fieldAttr: "data-home-mode-field",
+            inputAttr: "data-home-rent-input",
+          });
+        };
+        modeSelect.addEventListener("change", sync);
+        sync();
+        modeSelect.dataset.bound = "1";
+      });
+    };
+
+    const bindCurrentRentToggle = () => {
+      const currentHousingMode = document.getElementById("current-housing-mode");
+      const currentRentFields = document.getElementById("current-rent-fields");
+      const currentRentNote = document.getElementById("current-rent-note");
+      if (!currentHousingMode || !currentRentFields || !currentRentNote) return;
+      const syncCurrentRent = () => {
+        const mode = String(currentHousingMode.value || "").toLowerCase();
+        const show = mode === "jeonse" || mode === "rent";
+        syncRentModeFields({
+          wrap: currentRentFields,
+          mode,
+          fieldAttr: "data-current-mode-field",
+          inputAttr: "data-current-rent-input",
+        });
+        currentRentNote.classList.toggle("asset-hidden", show);
+      };
+      currentHousingMode.addEventListener("change", syncCurrentRent);
+      syncCurrentRent();
+    };
+
+    const bindQuickFinIncome = () => {
+      const form = document.getElementById("nhis-integrated-form");
+      const presenceEl = document.getElementById("quick-fin-income-presence");
+      const amountRow = document.getElementById("quick-fin-income-amount-row");
+      const amountInput = document.getElementById("quick-fin-income-amount");
+      const hybridEnabled = document.getElementById("quick-income-hybrid-enabled");
+      if (!(form instanceof HTMLFormElement) || !(presenceEl instanceof HTMLSelectElement)) return;
+      if (!(amountRow instanceof HTMLElement) || !(amountInput instanceof HTMLInputElement)) return;
+      if (!(hybridEnabled instanceof HTMLInputElement)) return;
+
+      const sync = () => {
+        const presence = String(presenceEl.value || "unknown").toLowerCase();
+        const hasOtherFields = String(hybridEnabled.getAttribute("data-has-other-fields") || "") === "1";
+        const showAmount = presence === "yes";
+        amountRow.classList.toggle("show", showAmount);
+        if (presence === "no") {
+          amountInput.value = "0";
+          hybridEnabled.value = "1";
+        } else if (presence === "unknown") {
+          amountInput.value = "";
+          hybridEnabled.value = hasOtherFields ? "1" : "0";
+        } else {
+          hybridEnabled.value = "1";
+        }
+      };
+
+      presenceEl.addEventListener("change", sync);
+      sync();
+
+      form.addEventListener("submit", (evt) => {
+        const presence = String(presenceEl.value || "unknown").toLowerCase();
+        const amountRaw = String(amountInput.value || "").replace(/,/g, "").trim();
+        if (presence !== "yes") return;
+        if (!amountRaw) {
+          evt.preventDefault();
+          window.alert("금융소득을 입력하려면 연간 금액을 입력해 주세요.");
+          amountInput.focus();
+          return;
+        }
+        if (!/^\d+$/.test(amountRaw)) {
+          evt.preventDefault();
+          window.alert("금융소득 금액은 숫자만 입력해 주세요.");
+          amountInput.focus();
+          return;
+        }
+        const amount = Number(amountRaw);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          evt.preventDefault();
+          window.alert("금융소득이 있으면 연간 금액을 1원 이상 입력해 주세요.");
+          amountInput.focus();
+          return;
+        }
+        amountInput.value = String(Math.trunc(amount));
+      });
+    };
+
+    const bindFinIncomeBandTracker = () => {
+      const root = document.getElementById("fin-income-band-tracker");
+      const noteEl = document.getElementById("fin-income-band-note");
+      if (!(root instanceof HTMLElement) || !(noteEl instanceof HTMLElement)) return;
+
+      const buttons = Array.from(root.querySelectorAll("[data-fin-band]"));
+      if (!buttons.length) return;
+
+      const boundaryBands = new Set(["700_1000", "1000_1300"]);
+      const labels = {
+        unknown: "없음/모름",
+        lt_700: "~700만",
+        "700_1000": "700만~1,000만",
+        "1000_1300": "1,000만~1,300만",
+      };
+
+      let selectedBand = "";
+
+      const render = () => {
+        buttons.forEach((btn) => {
+          if (!(btn instanceof HTMLButtonElement)) return;
+          const band = String(btn.getAttribute("data-fin-band") || "");
+          const active = band === selectedBand;
+          btn.classList.toggle("active", active);
+          btn.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        if (!selectedBand) {
+          noteEl.classList.add("asset-hidden");
+          noteEl.textContent = "";
+          return;
+        }
+        if (boundaryBands.has(selectedBand)) {
+          noteEl.textContent = "1,000만 근처라면 반영 방식이 달라질 수 있어요(추정).";
+        } else {
+          noteEl.textContent = `${labels[selectedBand] || "선택한 구간"} 기준으로 확인 중이에요(추정).`;
+        }
+        noteEl.classList.remove("asset-hidden");
+      };
+
+      buttons.forEach((btn) => {
+        if (!(btn instanceof HTMLButtonElement)) return;
+        btn.addEventListener("click", () => {
+          const band = String(btn.getAttribute("data-fin-band") || "");
+          selectedBand = (selectedBand === band) ? "" : band;
+          render();
+        });
+      });
+      render();
+    };
+
+    const bindIncomeHybrid = () => {
+      const form = document.getElementById("nhis-integrated-form");
+      const incomeHybridEnabled = document.getElementById("income-hybrid-enabled");
+      const incomeHybridBody = document.getElementById("income-hybrid-body");
+      const incomeHybridLargeConfirmed = document.getElementById("income-hybrid-large-confirmed");
+      const numericOnly = /^\d+$/;
+      let autoEnabledByTyping = false;
+      const syncIncomeHybridBody = () => {
+        if (!incomeHybridEnabled || !incomeHybridBody) return;
+        incomeHybridBody.classList.toggle("collapsed", !incomeHybridEnabled.checked);
+      };
+      if (incomeHybridEnabled && incomeHybridBody) {
+        incomeHybridEnabled.addEventListener("change", syncIncomeHybridBody);
+        syncIncomeHybridBody();
+      }
+      if (!form) return;
+      form.addEventListener("input", (evt) => {
+        const target = evt.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        if (String(target.getAttribute("data-income-hybrid-input") || "") !== "1") return;
+        if (!incomeHybridEnabled || incomeHybridEnabled.checked) return;
+        const normalized = String(target.value || "").replace(/,/g, "").trim();
+        if (!normalized) return;
+        incomeHybridEnabled.checked = true;
+        syncIncomeHybridBody();
+        if (!autoEnabledByTyping) {
+          showToast("소득 입력이 있어 자동으로 확정 입력 모드를 켰어요.", "success", 2200);
+          autoEnabledByTyping = true;
+        }
+      });
+      form.addEventListener("submit", (evt) => {
+        if (!incomeHybridEnabled || !incomeHybridEnabled.checked) {
+          if (incomeHybridLargeConfirmed) incomeHybridLargeConfirmed.value = "0";
+          return;
+        }
+        const fields = form.querySelectorAll("[data-income-hybrid-input='1']");
+        let hasLargeValue = false;
+        for (const field of fields) {
+          const raw = String(field.value || "").trim();
+          if (!raw) continue;
+          const normalized = raw.replace(/,/g, "");
+          if (!numericOnly.test(normalized)) {
+            const labelEl = field.closest(".asset-field")?.querySelector(".asset-label");
+            const label = labelEl ? String(labelEl.textContent || "").trim() : "소득 값";
+            window.alert(`${label}은 숫자만 입력해 주세요.`);
+            field.focus();
+            evt.preventDefault();
+            return;
+          }
+          const amount = Number(normalized);
+          if (Number.isFinite(amount) && amount > 10000000000) {
+            hasLargeValue = true;
+          }
+        }
+        if (hasLargeValue) {
+          const confirmed = window.confirm("입력값에 100억 원을 넘는 항목이 있어요. 값이 맞으면 저장을 계속하세요.");
+          if (incomeHybridLargeConfirmed) incomeHybridLargeConfirmed.value = confirmed ? "1" : "0";
+          if (!confirmed) evt.preventDefault();
+          return;
+        }
+        if (incomeHybridLargeConfirmed) incomeHybridLargeConfirmed.value = "0";
+      });
+    };
+
+    const bindHistoryRows = () => {
+      const wrap = document.getElementById("history-rows-wrap");
+      const countInput = document.getElementById("history-rows-count");
+      const addBtn = document.getElementById("btn-add-history-row");
+      const historySyncInput = document.getElementById("history-sync-enabled");
+      if (!wrap || !countInput || !addBtn) return;
+      const markHistoryDirty = () => {
+        if (!(historySyncInput instanceof HTMLInputElement)) return;
+        historySyncInput.value = "1";
+      };
+
+      const renumberRows = () => {
+        const rows = Array.from(wrap.querySelectorAll("[data-history-row]"));
+        rows.forEach((row, idx0) => {
+          const idx = idx0 + 1;
+          row.setAttribute("data-history-row", String(idx));
+          row.querySelectorAll("input").forEach((input) => {
+            const name = String(input.getAttribute("name") || "");
+            if (!name.startsWith("history_")) return;
+            const parts = name.split("_");
+            const suffix = parts[parts.length - 1];
+            parts[parts.length - 1] = String(idx);
+            input.setAttribute("name", parts.join("_"));
+            if (suffix === "1" && input.id) {
+              input.id = input.id.replace(/_\d+$/, `_${idx}`);
+            }
+          });
+        });
+        countInput.value = String(rows.length || 0);
+      };
+
+      const createRow = (idx) => {
+        const box = document.createElement("div");
+        box.className = "asset-history-row";
+        box.setAttribute("data-history-row", String(idx));
+        box.innerHTML = `
+          <div class="asset-history-grid">
+            <label class="asset-field">
+              <span class="asset-label">연도</span>
+              <input class="asset-input" type="text" name="history_year_${idx}" value="" placeholder="예: 2025">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">월(선택)</span>
+              <input class="asset-input" type="text" name="history_month_${idx}" value="" placeholder="비우면 연간">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">합계(원)</span>
+              <input class="asset-input" type="text" name="history_total_krw_${idx}" value="">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">건보료만(원)</span>
+              <input class="asset-input" type="text" name="history_health_only_krw_${idx}" value="">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">부과점수(선택)</span>
+              <input class="asset-input" type="text" name="history_score_points_${idx}" value="">
+            </label>
+            <button type="button" class="btn ghost danger asset-history-remove" data-remove-history="1">삭제</button>
+          </div>
+        `;
+        return box;
+      };
+
+      wrap.addEventListener("click", (evt) => {
+        const target = evt.target;
+        if (!(target instanceof HTMLElement)) return;
+        const removeBtn = target.closest("[data-remove-history='1']");
+        if (!removeBtn) return;
+        const row = removeBtn.closest("[data-history-row]");
+        if (!row) return;
+        row.remove();
+        if (!wrap.querySelector("[data-history-row]")) {
+          wrap.appendChild(createRow(1));
+        }
+        markHistoryDirty();
+        renumberRows();
+      });
+
+      addBtn.addEventListener("click", () => {
+        const next = (parseInt(countInput.value || "0", 10) || 0) + 1;
+        wrap.appendChild(createRow(next));
+        markHistoryDirty();
+        renumberRows();
+      });
+
+      wrap.addEventListener("input", (evt) => {
+        const target = evt.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        if (!String(target.name || "").startsWith("history_")) return;
+        markHistoryDirty();
+      });
+
+      renumberRows();
+    };
+
+    initNhisFormFeedback();
+    initNhisFinanceBoundaryCard();
+    bindCurrentRentToggle();
+    bindQuickFinIncome();
+    bindFinIncomeBandTracker();
+    bindHomeRentToggle();
+    bindHistoryRows();
+  })();
+</script>
+{% endblock %}
