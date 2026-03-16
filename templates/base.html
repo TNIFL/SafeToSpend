@@ -6,7 +6,271 @@
   <title>{% block title %}쓸수있어{% endblock %}</title>
 
   <!-- 캐시 때문에 스타일이 안 바뀌는 경우가 많아서 v 값 꼭 올려 -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260208-4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260302-1">
+  <style>
+    .nav-notice-wrap{
+      display:inline-flex;
+      align-items:center;
+      position:relative;
+    }
+    .nav-notice-toggle{
+      display:inline-flex;
+      align-items:center;
+      position:relative;
+      gap:0;
+    }
+    .nav-notice-count{
+      position:absolute;
+      top:-6px;
+      right:-8px;
+      min-width:18px;
+      height:18px;
+      border-radius:999px;
+      padding:0 5px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:.7rem;
+      font-weight:900;
+      background:#0f172a;
+      color:#fff;
+      opacity:0;
+      visibility:hidden;
+      transform:scale(.82);
+      pointer-events:none;
+      transition:opacity .12s ease, transform .12s ease;
+    }
+    .nav-notice-count.is-visible{
+      opacity:1;
+      visibility:visible;
+      transform:scale(1);
+    }
+    .notice-rail{
+      position:fixed;
+      top:76px;
+      right:14px;
+      width:min(336px, calc(100vw - 24px));
+      z-index:9999;
+    }
+    .notice-controls{
+      display:grid;
+      gap:8px;
+      padding:10px 12px;
+      margin-bottom:8px;
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:14px;
+      background:rgba(255,255,255,.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 10px 26px rgba(0,0,0,.12);
+    }
+    .notice-controls-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+    }
+    .notice-controls-actions{
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .notice-action-btn{
+      border:1px solid rgba(15,23,42,.14);
+      background:rgba(255,255,255,.88);
+      color:#334155;
+      border-radius:10px;
+      height:30px;
+      padding:0 10px;
+      font-size:.78rem;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .notice-action-btn:hover{
+      background:#fff;
+      border-color:rgba(37,99,235,.30);
+      color:#1d4ed8;
+    }
+    .notice-action-btn.icon{
+      width:30px;
+      padding:0;
+      font-size:1rem;
+      line-height:1;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .notice-controls-title{
+      font-size:.86rem;
+      font-weight:900;
+      color:var(--text);
+    }
+    .notice-rail.is-hidden{
+      display:none;
+    }
+    .notice-filters{
+      display:flex;
+      gap:6px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .nav-notice-filter{
+      border:1px solid rgba(148,163,184,.35);
+      background:rgba(255,255,255,.72);
+      border-radius:999px;
+      padding:4px 9px;
+      font-size:.74rem;
+      font-weight:800;
+      color:var(--muted-2);
+      cursor:pointer;
+      display:inline-flex;align-items:center;gap:4px;
+    }
+    .nav-notice-filter.is-active{
+      border-color:rgba(37,99,235,.35);background:rgba(37,99,235,.08);color:#1d4ed8;
+    }
+    .nav-notice-filter-count{
+      min-width:16px;height:16px;border-radius:999px;padding:0 5px;
+      display:inline-flex;align-items:center;justify-content:center;
+      font-size:.68rem;font-weight:900;color:#334155;background:rgba(100,116,139,.16);
+    }
+    .nav-notice-filter.is-active .nav-notice-filter-count{
+      color:#1d4ed8;background:rgba(37,99,235,.14);
+    }
+    .notice-toast-list{
+      list-style:none;
+      margin:0;
+      padding:0;
+      display:grid;
+      gap:8px;
+      max-height:calc(100vh - 220px);
+      overflow-y:auto;
+      overflow-x:hidden;
+      padding-right:2px;
+    }
+    .notice-toast-list > li{
+      min-width:0;
+    }
+    .notice-toast-list .toast{
+      margin:0;
+      width:100%;
+      min-width:0;
+      padding:10px 12px;
+      border-radius:14px;
+      align-items:flex-start;
+    }
+    .notice-toast-list .toast.success{
+      background: rgba(16, 185, 129, .20);
+      border-color: rgba(16, 185, 129, .34);
+    }
+    .notice-toast-list .toast.failure{
+      background: rgba(239, 68, 68, .14);
+      border-color: rgba(239, 68, 68, .34);
+    }
+    .notice-toast-list .toast.failure .title{
+      color: #991b1b;
+    }
+    .notice-item-main{
+      min-width:0;
+      flex:1 1 auto;
+    }
+    .notice-item-main .title{
+      margin:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .notice-item-main .desc{
+      display:block;
+      max-width:100%;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .notice-item-main .detail{
+      margin-top:2px;
+      display:block;
+      max-width:100%;
+      font-size:.76rem;
+      color:var(--muted-2);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .notice-item-main .meta{
+      margin-top:3px;
+    }
+    .notice-toast-list .xbtn{
+      flex:0 0 auto;
+      width:26px;
+      height:26px;
+      border-radius:10px;
+      border:1px solid rgba(15,23,42,.12);
+      background:rgba(255,255,255,.82);
+      font-size:15px;
+      line-height:1;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+    }
+    .notice-empty{
+      padding:10px 12px;
+      color:var(--muted-2);
+      font-size:.84rem;
+      border-radius:14px;
+      border:1px solid rgba(15,23,42,.08);
+      background:rgba(255,255,255,.90);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 10px 26px rgba(0,0,0,.12);
+    }
+    @media (max-width: 920px){
+      .notice-rail{
+        left:10px;
+        right:10px;
+        width:auto;
+        top:auto;
+        bottom:10px;
+      }
+      .notice-toast-list{
+        max-height:36vh;
+      }
+    }
+    .global-inline-toast-wrap{
+      position:fixed;
+      top:16px;
+      right:16px;
+      z-index:10050;
+      width:min(420px, calc(100vw - 32px));
+      display:grid;
+      gap:8px;
+      pointer-events:none;
+    }
+    .global-inline-toast-wrap .toast{
+      pointer-events:auto;
+      margin:0;
+    }
+    .global-inline-toast-wrap .toast.failure{
+      background: rgba(239, 68, 68, .14);
+      border-color: rgba(239, 68, 68, .34);
+    }
+    .global-inline-toast-wrap .toast.failure .title{
+      color:#991b1b;
+    }
+    .global-inline-toast-wrap .toast.info{
+      background: rgba(59, 130, 246, .12);
+      border-color: rgba(59, 130, 246, .30);
+    }
+    .global-inline-toast-wrap .toast.info .title{
+      color:#1d4ed8;
+    }
+    @media (max-width: 920px){
+      .global-inline-toast-wrap{
+        left:10px;
+        right:10px;
+        width:auto;
+      }
+    }
+  </style>
   {% block head_extra %}{% endblock %}
 </head>
 <body>
@@ -19,32 +283,223 @@
     </a>
 
     <nav class="nav">
-      <a href="{{ url_for('web_main.landing') }}">소개</a>
-      <a href="{{ url_for('web_overview.overview') }}">요약</a>
-      <a href="{{ url_for('web_bank.index') }}">계좌연동</a>
       {% if session.get("user_id") %}
-      <a class="nav-link {{ 'active' if (request.endpoint or '').startswith('web_calendar.') else '' }}"
-        href="{{ url_for('web_calendar.month_calendar') }}">
-        캘린더
-      </a>
-      {% endif %}
-      <a href="{{ url_for('web_inbox.index') }}">처리함</a>
-      {% if session.get("user_id") %}
-          <a class="nav-link {{ 'active' if (request.endpoint or '').startswith('web_vault.') else '' }}"
-             href="{{ url_for('web_vault.index') }}">
-            증빙 자료 보관함
+        {% set ep = request.endpoint or '' %}
+        {% set nav_month = request.args.get('month') or None %}
+        {% set nav_account = request.args.get('account') or None %}
+        {% set nav_receipt_effect_event = request.args.get('receipt_effect_event') or None %}
+        {% set nav_receipt_effect_level = request.args.get('receipt_effect_level') or None %}
+        {% set nav_current_tax_due_est_krw = request.args.get('current_tax_due_est_krw') or None %}
+        {% set nav_current_buffer_target_krw = request.args.get('current_buffer_target_krw') or None %}
+        {% set nav_tax_delta_from_receipts_krw = request.args.get('tax_delta_from_receipts_krw') or None %}
+        {% set nav_buffer_delta_from_receipts_krw = request.args.get('buffer_delta_from_receipts_krw') or None %}
+        {% set nav_receipt_reflected_expense_krw = request.args.get('receipt_reflected_expense_krw') or None %}
+        {% set nav_receipt_pending_expense_krw = request.args.get('receipt_pending_expense_krw') or None %}
+        {% set nav_tax_before = request.args.get('tax_before') or None %}
+        {% set nav_tax_after = request.args.get('tax_after') or None %}
+        {% set nav_buffer_before = request.args.get('buffer_before') or None %}
+        {% set nav_buffer_after = request.args.get('buffer_after') or None %}
+        {% set nav_expense_before = request.args.get('expense_before') or None %}
+        {% set nav_expense_after = request.args.get('expense_after') or None %}
+        {% set nav_profit_before = request.args.get('profit_before') or None %}
+        {% set nav_profit_after = request.args.get('profit_after') or None %}
+        {% set nav_review_url = url_for(
+          'web_calendar.review',
+          month=nav_month,
+          account=nav_account,
+          receipt_effect_event=nav_receipt_effect_event,
+          receipt_effect_level=nav_receipt_effect_level,
+          current_tax_due_est_krw=nav_current_tax_due_est_krw,
+          current_buffer_target_krw=nav_current_buffer_target_krw,
+          tax_delta_from_receipts_krw=nav_tax_delta_from_receipts_krw,
+          buffer_delta_from_receipts_krw=nav_buffer_delta_from_receipts_krw,
+          receipt_reflected_expense_krw=nav_receipt_reflected_expense_krw,
+          receipt_pending_expense_krw=nav_receipt_pending_expense_krw,
+          tax_before=nav_tax_before,
+          tax_after=nav_tax_after,
+          buffer_before=nav_buffer_before,
+          buffer_after=nav_buffer_after,
+          expense_before=nav_expense_before,
+          expense_after=nav_expense_after,
+          profit_before=nav_profit_before,
+          profit_after=nav_profit_after,
+        ) %}
+        {% set nav_tax_buffer_url = url_for(
+          'web_calendar.tax_buffer',
+          month=nav_month,
+          account=nav_account,
+          receipt_effect_event=nav_receipt_effect_event,
+          receipt_effect_level=nav_receipt_effect_level,
+          current_tax_due_est_krw=nav_current_tax_due_est_krw,
+          current_buffer_target_krw=nav_current_buffer_target_krw,
+          tax_delta_from_receipts_krw=nav_tax_delta_from_receipts_krw,
+          buffer_delta_from_receipts_krw=nav_buffer_delta_from_receipts_krw,
+          receipt_reflected_expense_krw=nav_receipt_reflected_expense_krw,
+          receipt_pending_expense_krw=nav_receipt_pending_expense_krw,
+          tax_before=nav_tax_before,
+          tax_after=nav_tax_after,
+          buffer_before=nav_buffer_before,
+          buffer_after=nav_buffer_after,
+          expense_before=nav_expense_before,
+          expense_after=nav_expense_after,
+          profit_before=nav_profit_before,
+          profit_after=nav_profit_after,
+        ) %}
+        {% set nav_calendar_url = url_for(
+          'web_calendar.month_calendar',
+          month=nav_month,
+          account=nav_account,
+          receipt_effect_event=nav_receipt_effect_event,
+          receipt_effect_level=nav_receipt_effect_level,
+          current_tax_due_est_krw=nav_current_tax_due_est_krw,
+          current_buffer_target_krw=nav_current_buffer_target_krw,
+          tax_delta_from_receipts_krw=nav_tax_delta_from_receipts_krw,
+          buffer_delta_from_receipts_krw=nav_buffer_delta_from_receipts_krw,
+          receipt_reflected_expense_krw=nav_receipt_reflected_expense_krw,
+          receipt_pending_expense_krw=nav_receipt_pending_expense_krw,
+          tax_before=nav_tax_before,
+          tax_after=nav_tax_after,
+          buffer_before=nav_buffer_before,
+          buffer_after=nav_buffer_after,
+          expense_before=nav_expense_before,
+          expense_after=nav_expense_after,
+          profit_before=nav_profit_before,
+          profit_after=nav_profit_after,
+        ) %}
+        <a class="nav-link {{ 'active' if ep.startswith('web_overview.') else '' }}"
+           href="{{ url_for('web_overview.overview') }}">
+          요약
+        </a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_inbox.import') else '' }}"
+           href="{{ url_for('web_inbox.import_page') }}">
+          내역가져오기
+        </a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_bank.') else '' }}"
+           href="{{ url_for('web_bank.index') }}">
+          계좌연동
+        </a>
+        <a class="nav-link {{ 'active' if ep == 'web_main.pricing' else '' }}"
+           href="{{ url_for('web_main.pricing') }}">
+          구독
+        </a>
+        <a class="nav-link {{ 'active' if ep == 'web_calendar.review' else '' }}"
+           id="nav-review-link"
+           href="{{ nav_review_url }}">
+          정리하기
+        </a>
+        {% if nav_receipt_queue %}
+          <a id="nav-receipt-queue"
+             class="nav-link nav-receipt-queue {{ 'active' if ep.startswith('web_calendar.receipt_') else '' }}"
+             href="{{ nav_receipt_queue.url }}"
+             data-status-url="{{ nav_receipt_queue.status_url }}">
+            영수증 처리
+            <span id="nav-receipt-queue-count" class="pill">{{ nav_receipt_queue.count }}</span>
           </a>
-          {% endif %}
+        {% endif %}
+        <a class="nav-link {{ 'active' if ep == 'web_calendar.tax_buffer' else '' }}"
+           id="nav-tax-buffer-link"
+           href="{{ nav_tax_buffer_url }}">
+          세금보관함
+        </a>
+        <a class="nav-link {{ 'active' if ep in ['web_calendar.month_calendar', 'web_calendar.day_detail', 'web_calendar.month_search', 'web_calendar.year_view'] else '' }}"
+           id="nav-calendar-link"
+           href="{{ nav_calendar_url }}">
+          캘린더
+        </a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_package.') else '' }}"
+           href="{{ url_for('web_package.page') }}">
+          패키지
+        </a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_vault.') else '' }}"
+           href="{{ url_for('web_vault.index') }}">
+          증빙 자료 보관함
+        </a>
+        <a class="nav-link {{ 'active' if ep == 'web_profile.tax_profile' else '' }}"
+           href="{{ url_for('web_profile.tax_profile') }}">
+          세금 설정
+        </a>
+        <a class="nav-link {{ 'active' if ep in ['web_profile.nhis_page', 'web_profile.assets_page', 'web_profile.assets_quiz'] else '' }}"
+           href="{{ url_for('web_profile.nhis_page') }}">
+          건보료
+        </a>
+        <a class="nav-link {{ 'active' if ep == 'web_calendar.reconcile' else '' }}"
+           href="{{ url_for('web_calendar.reconcile') }}">
+          대사 리포트
+        </a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_support.support_') else '' }}"
+           href="{{ url_for('web_support.support_home') }}">
+          문의
+        </a>
+        {% if nav_is_admin %}
+          <a class="nav-link {{ 'active' if ep.startswith('web_admin.') else '' }}"
+             href="{{ url_for('web_admin.admin_index') }}">
+            관리자홈
+          </a>
+          <a class="nav-link {{ 'active' if ep == 'web_admin.admin_ops' else '' }}"
+             href="{{ url_for('web_admin.admin_ops') }}">
+            운영지표
+          </a>
+          <a class="nav-link {{ 'active' if ep.startswith('web_support.admin_') else '' }}"
+             href="{{ url_for('web_admin.admin_support') }}">
+            문의관리
+          </a>
+          <a class="nav-link {{ 'active' if ep == 'web_profile.admin_assets_data' else '' }}"
+             href="{{ url_for('web_profile.admin_assets_data') }}">
+            데이터진단
+          </a>
+          <a class="nav-link {{ 'active' if ep == 'web_profile.admin_nhis_rates' else '' }}"
+             href="{{ url_for('web_profile.admin_nhis_rates') }}">
+            건보 기준진단
+          </a>
+        {% endif %}
+        <div class="nav-notice-wrap">
+          <button id="nav-notice-toggle" type="button" class="btn ghost small nav-notice-toggle" aria-expanded="false" aria-controls="notice-rail">
+            알림
+            <span id="nav-notice-count" class="nav-notice-count">0</span>
+          </button>
+        </div>
+        <a class="nav-link {{ 'active' if ep.startswith('web_profile.') and ep != 'web_profile.tax_profile' else '' }}"
+           href="{{ url_for('web_profile.mypage') }}">
+          {{ nav_user_nickname or '내 계정' }}
+        </a>
+      {% else %}
+        <a href="{{ url_for('web_main.landing') }}#how-it-works">소개</a>
+        <a href="{{ url_for('web_main.pricing') }}">요금</a>
+        <a href="{{ url_for('web_auth.login') }}">로그인</a>
+        <a class="btn primary" href="{{ url_for('web_main.preview') }}#upload">30초 진단</a>
+      {% endif %}
 
       {% if session.get('user_id') %}
-        <a class="btn ghost" href="{{ url_for('web_auth.logout') }}">로그아웃</a>
-      {% else %}
-        <a class="btn ghost" href="{{ url_for('web_auth.login') }}">로그인</a>
-        <a class="btn primary" href="{{ url_for('web_auth.register') }}">시작하기</a>
+        <form action="{{ url_for('web_auth.logout') }}" method="post" style="display:inline; margin:0;">
+          <button class="btn ghost" type="submit">로그아웃</button>
+        </form>
       {% endif %}
     </nav>
   </div>
 </header>
+
+<script>
+(() => {
+  const existing = window.SafeToSpendNotify;
+  if (existing && existing.__isReady === true) return;
+  const pending = (existing && Array.isArray(existing.__pending)) ? existing.__pending : [];
+  window.SafeToSpendNotify = {
+    __pending: pending,
+    __isReady: false,
+    notify(message, level = "success", options = {}) {
+      pending.push({ fn: "notify", args: [message, level, options] });
+      return { queued: true };
+    },
+    pushNotice(payload = {}) {
+      pending.push({ fn: "pushNotice", args: [payload] });
+      return null;
+    },
+    renderNoticeRail() {
+      pending.push({ fn: "renderNoticeRail", args: [] });
+    },
+  };
+})();
+</script>
 
 {% with messages = get_flashed_messages(with_categories=True) %}
   {% if messages %}
@@ -66,10 +521,998 @@
       <b>면책</b>: 세무대리/법률자문이 아닌 참고용 자동 점검 도구입니다.
     </div>
     <div class="small-note">
-      <b>초기 가격</b>: 9,900원/월 · CSV 업로드 기반(반자동) · 공식 연동은 병렬 준비
+      <b>구독 요금</b>: 플랜별 상이(요금 페이지 참고) · 결제 실패 시 유예기간 정책이 적용될 수 있습니다.
+    </div>
+    <div class="small-note">
+      <a href="/privacy">개인정보처리방침</a>
+      ·
+      <a href="/terms">이용약관</a>
+      ·
+      <a href="/disclaimer">면책고지</a>
+      ·
+      <a href="/guide/expense">비용처리 안내</a>
     </div>
   </div>
 </footer>
+
+<script>
+(() => {
+  const csrfToken = "{{ csrf_token }}";
+  if (!csrfToken) return;
+
+  function isStateChanging(method) {
+    const m = String(method || "GET").toUpperCase();
+    return m === "POST" || m === "PUT" || m === "PATCH" || m === "DELETE";
+  }
+
+  function ensureFormToken(form) {
+    if (!(form instanceof HTMLFormElement)) return;
+    if (!isStateChanging(form.method || "GET")) return;
+    const action = String(form.getAttribute("action") || "").trim();
+    if (action.startsWith("http://") || action.startsWith("https://")) {
+      try {
+        const url = new URL(action, window.location.origin);
+        if (url.origin !== window.location.origin) return;
+      } catch (_) {
+        return;
+      }
+    }
+    if (form.querySelector('input[name="csrf_token"]')) return;
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "csrf_token";
+    input.value = csrfToken;
+    form.appendChild(input);
+  }
+
+  document.querySelectorAll("form").forEach(ensureFormToken);
+  document.addEventListener("submit", (e) => {
+    const target = e.target;
+    if (!(target instanceof HTMLFormElement)) return;
+    ensureFormToken(target);
+  }, true);
+
+  if (typeof window.fetch === "function") {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input, init = {}) => {
+      try {
+        const reqUrl = (typeof input === "string")
+          ? new URL(input, window.location.origin)
+          : new URL((input && input.url) || "", window.location.origin);
+        const method = String((init && init.method) || (input && input.method) || "GET").toUpperCase();
+        if (reqUrl.origin === window.location.origin && isStateChanging(method)) {
+          const headers = new Headers((init && init.headers) || (input && input.headers) || {});
+          if (!headers.has("X-CSRF-Token")) {
+            headers.set("X-CSRF-Token", csrfToken);
+          }
+          init = { ...init, headers };
+        }
+      } catch (_) {
+        // URL 파싱 실패 시 원래 요청 그대로 전달
+      }
+      return originalFetch(input, init);
+    };
+  }
+})();
+</script>
+
+<script>
+(() => {
+  const MONEY_FIELD_RE = /(amount(?:_krw)?|_krw|total_krw|vat_krw|nhi_monthly|monthly_nhis|^(rev|exp)$)/i;
+
+  function normalizeMoneyRaw(value) {
+    const str = String(value ?? "");
+    const hasMinus = str.trim().startsWith("-");
+    let digits = str.replace(/[^\d]/g, "");
+    digits = digits.replace(/^0+(?=\d)/, "");
+    if (!digits) return "";
+    return hasMinus ? `-${digits}` : digits;
+  }
+
+  function formatMoneyRaw(raw) {
+    const text = String(raw || "");
+    if (!text) return "";
+    const neg = text.startsWith("-");
+    const digits = text.replace(/-/g, "");
+    const body = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return neg ? `-${body}` : body;
+  }
+
+  function mapRawIndexToFormatted(formatted, rawIndex) {
+    if (!formatted) return 0;
+    if (rawIndex <= 0) return 0;
+    let consumed = 0;
+    for (let i = 0; i < formatted.length; i += 1) {
+      const ch = formatted[i];
+      const isMoneyChar = (ch >= "0" && ch <= "9") || (ch === "-" && i === 0);
+      if (!isMoneyChar) continue;
+      consumed += 1;
+      if (consumed >= rawIndex) return i + 1;
+    }
+    return formatted.length;
+  }
+
+  function shouldEnhanceInput(el) {
+    if (!(el instanceof HTMLInputElement)) return false;
+    if (el.type === "hidden") return false;
+    if (el.dataset.moneyOff === "1") return false;
+    if (el.disabled || el.readOnly) return false;
+    const explicitKrw = el.dataset.format === "krw" || el.classList.contains("js-krw");
+    if (explicitKrw) return true;
+    const type = String(el.type || "").toLowerCase();
+    if (!["number", "text", "tel", "search"].includes(type)) return false;
+    const key = `${el.name || ""} ${el.id || ""}`.trim();
+    if (!MONEY_FIELD_RE.test(key)) return false;
+    return true;
+  }
+
+  function formatInputValue(el, keepCaret) {
+    const beforeValue = String(el.value || "");
+    const caret = keepCaret ? (el.selectionStart ?? beforeValue.length) : beforeValue.length;
+    const leftRaw = normalizeMoneyRaw(beforeValue.slice(0, caret));
+    const fullRaw = normalizeMoneyRaw(beforeValue);
+    const formatted = formatMoneyRaw(fullRaw);
+    el.value = formatted;
+    if (keepCaret) {
+      const pos = mapRawIndexToFormatted(formatted, leftRaw.length);
+      try {
+        el.setSelectionRange(pos, pos);
+      } catch (_) {
+        // 일부 브라우저/상태에서는 selection 설정이 실패할 수 있음
+      }
+    }
+  }
+
+  function enhanceMoneyInput(el) {
+    if (!shouldEnhanceInput(el)) return;
+    if (el.dataset.moneyFormatApplied === "1") return;
+
+    if (String(el.type || "").toLowerCase() === "number") {
+      el.dataset.moneyOriginalType = "number";
+      el.type = "text";
+    }
+    if (!el.getAttribute("inputmode")) {
+      el.setAttribute("inputmode", "numeric");
+    }
+    el.dataset.moneyFormatApplied = "1";
+
+    formatInputValue(el, false);
+    el.addEventListener("input", () => formatInputValue(el, true));
+    el.addEventListener("blur", () => formatInputValue(el, false));
+  }
+
+  function sanitizeFormMoneyInputs(form) {
+    if (!(form instanceof HTMLFormElement)) return;
+    const fields = form.querySelectorAll('input[data-money-format-applied="1"]');
+    fields.forEach((el) => {
+      const raw = normalizeMoneyRaw(el.value);
+      el.value = raw;
+    });
+  }
+
+  function scanAndEnhance(root) {
+    if (!(root instanceof Element || root instanceof Document)) return;
+    const inputs = root.querySelectorAll("input");
+    inputs.forEach(enhanceMoneyInput);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => scanAndEnhance(document), { once: true });
+  } else {
+    scanAndEnhance(document);
+  }
+
+  const mo = new MutationObserver((mutations) => {
+    mutations.forEach((m) => {
+      m.addedNodes.forEach((node) => {
+        if (!(node instanceof Element)) return;
+        if (node.matches("input")) enhanceMoneyInput(node);
+        scanAndEnhance(node);
+      });
+    });
+  });
+  mo.observe(document.documentElement, { childList: true, subtree: true });
+
+  document.addEventListener("submit", (e) => {
+    const target = e.target;
+    if (!(target instanceof HTMLFormElement)) return;
+    sanitizeFormMoneyInputs(target);
+  }, true);
+})();
+</script>
+
+{% if session.get('user_id') %}
+<aside id="notice-rail" class="notice-rail" role="region" aria-label="알림 목록">
+  <div class="notice-controls">
+    <div class="notice-controls-head">
+      <strong class="notice-controls-title">알림</strong>
+      <div class="notice-controls-actions">
+        <button id="nav-notice-clear-all" type="button" class="notice-action-btn">전체 지우기</button>
+        <button id="nav-notice-close" type="button" class="notice-action-btn icon" aria-label="알림 닫기">×</button>
+      </div>
+    </div>
+    <div class="notice-filters">
+      <button type="button" class="nav-notice-filter is-active" data-notice-filter="all">전체 <span id="nav-notice-filter-count-all" class="nav-notice-filter-count">0</span></button>
+      <button type="button" class="nav-notice-filter" data-notice-filter="success">성공 <span id="nav-notice-filter-count-success" class="nav-notice-filter-count">0</span></button>
+      <button type="button" class="nav-notice-filter" data-notice-filter="failure">실패 <span id="nav-notice-filter-count-failure" class="nav-notice-filter-count">0</span></button>
+    </div>
+  </div>
+  <ul id="global-toast-stack" class="notice-toast-list" aria-live="polite" aria-atomic="false"></ul>
+  <div id="nav-notice-empty" class="notice-empty">아직 알림이 없어요.</div>
+</aside>
+<script>
+(() => {
+  const STORAGE_NOTICE_KEY = "sts_notice_items_v1";
+  const STORAGE_SEEN_DONE_KEY = "sts_receipt_seen_done_v1";
+  const STORAGE_SEEN_FAIL_KEY = "sts_receipt_seen_fail_v1";
+  const STORAGE_NOTICE_HIDDEN_KEY = "sts_notice_hidden_v1";
+  const NOTICE_MAX = 80;
+  const NOTICE_RECENT_DEDUPE_WINDOW_MS = 15000;
+  const TOAST_RECENT_DEDUPE_WINDOW_MS = 2500;
+  const VALID_DELIVERY = new Set(["toast_only", "toast_and_center", "center_only"]);
+
+  const link = document.getElementById("nav-receipt-queue");
+  const countEl = document.getElementById("nav-receipt-queue-count");
+  const statusUrl = (link && link.dataset) ? (link.dataset.statusUrl || "") : "";
+  const noticeRail = document.getElementById("notice-rail");
+  const noticeToggle = document.getElementById("nav-notice-toggle");
+  const noticeList = document.getElementById("global-toast-stack");
+  const noticeEmpty = document.getElementById("nav-notice-empty");
+  const noticeCount = document.getElementById("nav-notice-count");
+  const noticeFilterAllCount = document.getElementById("nav-notice-filter-count-all");
+  const noticeFilterSuccessCount = document.getElementById("nav-notice-filter-count-success");
+  const noticeFilterFailureCount = document.getElementById("nav-notice-filter-count-failure");
+  const clearAllBtn = document.getElementById("nav-notice-clear-all");
+  const noticeCloseBtn = document.getElementById("nav-notice-close");
+  const noticeFilterButtons = Array.from(document.querySelectorAll("[data-notice-filter]"));
+  const navMore = document.querySelector(".nav-more");
+  const navMoreSummary = navMore ? navMore.querySelector("summary") : null;
+  let timer = null;
+  let hydratedDone = false;
+  let hydratedFail = false;
+  let noticeFilter = "all";
+  let navResumeInFlight = false;
+  let navResumeLastTs = 0;
+  const NAV_RESUME_COOLDOWN_MS = 2000;
+  const toastDedupeMap = new Map();
+  let inlineToastWrap = null;
+
+  function readJson(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      const parsed = JSON.parse(raw);
+      return parsed ?? fallback;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function writeJson(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (_) {
+      // 저장 실패는 조용히 무시
+    }
+  }
+
+  function loadNotices() {
+    const items = readJson(STORAGE_NOTICE_KEY, []);
+    return Array.isArray(items) ? items : [];
+  }
+
+  function saveNotices(items) {
+    writeJson(STORAGE_NOTICE_KEY, items.slice(0, NOTICE_MAX));
+  }
+
+  function loadNoticeHidden() {
+    return readJson(STORAGE_NOTICE_HIDDEN_KEY, false) === true;
+  }
+
+  function saveNoticeHidden(hidden) {
+    writeJson(STORAGE_NOTICE_HIDDEN_KEY, !!hidden);
+  }
+
+  function loadSeenDone() {
+    const obj = readJson(STORAGE_SEEN_DONE_KEY, {});
+    return (obj && typeof obj === "object") ? obj : {};
+  }
+
+  function saveSeenDone(obj) {
+    writeJson(STORAGE_SEEN_DONE_KEY, obj || {});
+  }
+
+  function loadSeenFail() {
+    const obj = readJson(STORAGE_SEEN_FAIL_KEY, {});
+    return (obj && typeof obj === "object") ? obj : {};
+  }
+
+  function saveSeenFail(obj) {
+    writeJson(STORAGE_SEEN_FAIL_KEY, obj || {});
+  }
+
+  function formatTime(iso) {
+    const dt = iso ? new Date(iso) : new Date();
+    if (Number.isNaN(dt.getTime())) return "";
+    return dt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (ch) => (
+      ch === "&" ? "&amp;" :
+      ch === "<" ? "&lt;" :
+      ch === ">" ? "&gt;" :
+      ch === '"' ? "&quot;" : "&#39;"
+    ));
+  }
+
+  function normalizeLevel(level) {
+    const raw = String(level || "").trim().toLowerCase();
+    if (raw === "error" || raw === "failure" || raw === "danger") return "error";
+    if (raw === "warn" || raw === "warning") return "warning";
+    if (raw === "info") return "info";
+    return "success";
+  }
+
+  function resolveKind(level, kindHint = "") {
+    const hint = String(kindHint || "").trim().toLowerCase();
+    if (hint === "failure" || hint === "success") return hint;
+    const normalized = normalizeLevel(level);
+    return (normalized === "error" || normalized === "warning") ? "failure" : "success";
+  }
+
+  function normalizeDelivery(raw, persistToCenter) {
+    const value = String(raw || "").trim().toLowerCase();
+    if (VALID_DELIVERY.has(value)) return value;
+    return persistToCenter ? "toast_and_center" : "toast_only";
+  }
+
+  function ensureInlineToastWrap() {
+    if (inlineToastWrap && document.body.contains(inlineToastWrap)) return inlineToastWrap;
+    const wrap = document.createElement("div");
+    wrap.id = "global-inline-toast-wrap";
+    wrap.className = "global-inline-toast-wrap";
+    wrap.setAttribute("aria-live", "polite");
+    wrap.setAttribute("aria-atomic", "false");
+    document.body.appendChild(wrap);
+    inlineToastWrap = wrap;
+    return wrap;
+  }
+
+  function pushInlineToast({ message, level = "success", title = "", timeoutMs = 2800, dedupeKey = "" }) {
+    const msg = String(message || "").trim();
+    if (!msg) return;
+    const normalizedLevel = normalizeLevel(level);
+    const safeTitle = String(title || "").trim() || (
+      normalizedLevel === "error" ? "오류 알림" :
+      normalizedLevel === "warning" ? "주의 안내" :
+      normalizedLevel === "info" ? "안내" : "처리 완료"
+    );
+    const key = String(dedupeKey || "").trim() || `${normalizedLevel}|${safeTitle}|${msg}`;
+    const now = Date.now();
+    const lastTs = Number(toastDedupeMap.get(key) || 0);
+    if (lastTs && (now - lastTs) < TOAST_RECENT_DEDUPE_WINDOW_MS) {
+      return;
+    }
+    toastDedupeMap.set(key, now);
+    const wrap = ensureInlineToastWrap();
+    const node = document.createElement("div");
+    const toneClass = normalizedLevel === "success" ? "success" : (normalizedLevel === "info" ? "info" : "failure");
+    node.className = `toast ${toneClass}`;
+    node.innerHTML = `
+      <div>
+        <div class="title">${escapeHtml(safeTitle)}</div>
+        <div class="desc">${escapeHtml(msg)}</div>
+      </div>
+      <button type="button" class="xbtn" aria-label="알림 닫기">×</button>
+    `;
+    const closeBtn = node.querySelector(".xbtn");
+    const remove = () => {
+      if (node.parentNode) node.parentNode.removeChild(node);
+    };
+    closeBtn?.addEventListener("click", remove);
+    wrap.prepend(node);
+    const lifespan = Math.max(1200, Number(timeoutMs) || 2800);
+    window.setTimeout(remove, lifespan);
+  }
+
+  function applyFilterUI() {
+    for (const btn of noticeFilterButtons) {
+      const filterKey = String(btn.getAttribute("data-notice-filter") || "");
+      btn.classList.toggle("is-active", filterKey === noticeFilter);
+    }
+  }
+
+  function renderNoticeRail() {
+    if (!noticeList || !noticeEmpty || !noticeCount) return;
+    const allItems = loadNotices();
+    const successCount = allItems.filter((x) => String(x.kind || "success") === "success").length;
+    const failureCount = allItems.filter((x) => String(x.kind || "success") === "failure").length;
+    if (noticeFilterAllCount) noticeFilterAllCount.textContent = String(allItems.length);
+    if (noticeFilterSuccessCount) noticeFilterSuccessCount.textContent = String(successCount);
+    if (noticeFilterFailureCount) noticeFilterFailureCount.textContent = String(failureCount);
+
+    const items = allItems.filter((x) => {
+      const kind = String(x.kind || "success");
+      if (noticeFilter === "all") return true;
+      return kind === noticeFilter;
+    });
+    noticeList.innerHTML = "";
+
+    if (!items.length) {
+      noticeEmpty.style.display = "";
+      noticeEmpty.textContent = (noticeFilter === "all") ? "아직 알림이 없어요." : `${noticeFilter === "success" ? "성공" : "실패"} 알림이 없어요.`;
+    } else {
+      noticeEmpty.style.display = "none";
+      for (const item of items) {
+        const li = document.createElement("li");
+        const kind = String(item.kind || "success");
+        const level = normalizeLevel(item.level || kind);
+        const defaultTitle = (
+          level === "error" ? "처리 실패" :
+          level === "warning" ? "주의 안내" :
+          level === "info" ? "안내" :
+          (kind === "failure" ? "처리 실패" : "처리 완료")
+        );
+        const title = escapeHtml(String(item.title || "").trim() || defaultTitle);
+        li.className = `toast ${kind === "failure" ? "failure" : "success"}`.trim();
+        const msg = escapeHtml(String(item.message || "").trim());
+        const detail = escapeHtml(String(item.detail || "").trim());
+        const time = formatTime(item.created_at);
+        li.innerHTML = `
+          <div class="notice-item-main">
+            <p class="title">${title}</p>
+            <p class="desc" title="${msg}">${msg}</p>
+            ${detail ? `<p class="detail" title="${detail}">${detail}</p>` : ""}
+            <div class="meta">${escapeHtml(time)}</div>
+          </div>
+          <button type="button" class="xbtn" data-remove-id="${escapeHtml(item.id)}" aria-label="알림 삭제">×</button>
+        `;
+        noticeList.appendChild(li);
+      }
+    }
+
+    const cnt = allItems.length;
+    noticeCount.textContent = String(cnt);
+    noticeCount.classList.toggle("is-visible", cnt > 0);
+    applyFilterUI();
+  }
+
+  function setNoticeRailHidden(hidden) {
+    if (!noticeRail || !noticeToggle) return;
+    noticeRail.classList.toggle("is-hidden", !!hidden);
+    noticeToggle.setAttribute("aria-expanded", hidden ? "false" : "true");
+    saveNoticeHidden(!!hidden);
+  }
+
+  function markAllRead() {
+    const items = loadNotices();
+    if (!items.length) return;
+    const updated = items.map((x) => ({ ...x, read: true }));
+    saveNotices(updated);
+    renderNoticeRail();
+  }
+
+  function removeNotice(id) {
+    const sid = String(id || "");
+    if (!sid) return;
+    const items = loadNotices();
+    saveNotices(items.filter((x) => String(x.id) !== sid));
+    renderNoticeRail();
+  }
+
+  function pushNotice({
+    message,
+    detail = "",
+    href = "",
+    dedupe_key = "",
+    kind = "success",
+    level = "",
+    title = "",
+    source = "",
+  }) {
+    const msg = String(message || "").trim();
+    if (!msg) return;
+    const det = String(detail || "").trim();
+    const lvl = normalizeLevel(level || kind);
+    const key = String(dedupe_key || "").trim();
+    const safeKind = resolveKind(lvl, kind);
+    const safeTitle = String(title || "").trim();
+    const safeSource = String(source || "").trim();
+    const items = loadNotices();
+    if (key && items.some((x) => String(x.dedupe_key || "") === key)) {
+      return null;
+    }
+    if (!key) {
+      const now = Date.now();
+      const hasRecentDuplicate = items.some((x) => {
+        if (String(x.kind || "") !== safeKind) return false;
+        if (String(x.message || "") !== msg) return false;
+        if (String(x.detail || "") !== det) return false;
+        const createdAt = Date.parse(String(x.created_at || ""));
+        if (!Number.isFinite(createdAt)) return false;
+        return (now - createdAt) < NOTICE_RECENT_DEDUPE_WINDOW_MS;
+      });
+      if (hasRecentDuplicate) {
+        return null;
+      }
+    }
+    const notice = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      message: msg,
+      detail: det,
+      href: String(href || ""),
+      created_at: new Date().toISOString(),
+      read: false,
+      dedupe_key: key,
+      kind: safeKind,
+      level: lvl,
+      title: safeTitle,
+      source: safeSource,
+    };
+    items.unshift(notice);
+    saveNotices(items);
+    renderNoticeRail();
+    return notice;
+  }
+
+  function bridgeFlashMessagesToCenter() {
+    const flashNodes = Array.from(document.querySelectorAll(".flash-wrap .flash"));
+    if (!flashNodes.length) return;
+    flashNodes.forEach((node, index) => {
+      const classes = Array.from(node.classList);
+      const category = classes.find((name) => name !== "flash") || "info";
+      const message = String(node.textContent || "").trim();
+      if (!message) return;
+      notify(message, category, {
+        delivery: "center_only",
+        dedupe_key: `flash:${window.location.pathname}:${category}:${index}:${message}`,
+        source: "flash_message",
+      });
+    });
+  }
+
+  function notify(message, level = "success", options = {}) {
+    const msg = String(message || "").trim();
+    if (!msg) return null;
+    const opts = (options && typeof options === "object") ? options : {};
+    const normalizedLevel = normalizeLevel(level);
+    const persistToCenter = opts.persist_to_center === true;
+    const delivery = normalizeDelivery(opts.delivery, persistToCenter);
+    const safeTitle = String(opts.title || "").trim();
+    const safeDetail = String(opts.detail || "").trim();
+    const safeHref = String(opts.href || "").trim();
+    const safeKey = String(opts.dedupe_key || "").trim();
+    const safeSource = String(opts.source || "").trim();
+    const timeoutMs = Math.max(1200, Number(opts.timeout_ms) || 2800);
+    const suppressToast = opts.suppress_toast === true;
+    const shouldShowToast = !suppressToast && delivery !== "center_only";
+    const shouldPersist = delivery === "toast_and_center" || delivery === "center_only";
+
+    if (shouldShowToast) {
+      pushInlineToast({
+        message: msg,
+        level: normalizedLevel,
+        title: safeTitle,
+        timeoutMs,
+        dedupeKey: safeKey,
+      });
+    }
+    if (shouldPersist) {
+      pushNotice({
+        message: msg,
+        detail: safeDetail,
+        href: safeHref,
+        dedupe_key: safeKey,
+        kind: resolveKind(normalizedLevel),
+        level: normalizedLevel,
+        title: safeTitle,
+        source: safeSource,
+      });
+    }
+    return {
+      message: msg,
+      level: normalizedLevel,
+      delivery,
+      persisted: shouldPersist,
+    };
+  }
+
+  noticeToggle?.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (!noticeRail) return;
+    const willOpen = noticeRail.classList.contains("is-hidden");
+    setNoticeRailHidden(!willOpen);
+    if (willOpen) markAllRead();
+  });
+
+  noticeCloseBtn?.addEventListener("click", () => {
+    setNoticeRailHidden(true);
+  });
+
+  if (navMoreSummary instanceof HTMLElement) {
+    navMoreSummary.addEventListener("click", () => {
+      setNoticeRailHidden(true);
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!noticeRail || noticeRail.classList.contains("is-hidden")) return;
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    if (noticeRail.contains(target) || (noticeToggle && noticeToggle.contains(target))) return;
+    setNoticeRailHidden(true);
+
+    if (navMore instanceof HTMLElement && navMore.open && !navMore.contains(target)) {
+      navMore.open = false;
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    setNoticeRailHidden(true);
+    if (navMore instanceof HTMLElement && navMore.open) {
+      navMore.open = false;
+    }
+  });
+
+  noticeList?.addEventListener("click", (e) => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const btn = target.closest("[data-remove-id]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-remove-id") || "";
+    removeNotice(id);
+  });
+
+  clearAllBtn?.addEventListener("click", () => {
+    saveNotices([]);
+    renderNoticeRail();
+  });
+
+  for (const btn of noticeFilterButtons) {
+    btn.addEventListener("click", () => {
+      const filterKey = String(btn.getAttribute("data-notice-filter") || "all");
+      if (!["all", "success", "failure"].includes(filterKey)) return;
+      noticeFilter = filterKey;
+      renderNoticeRail();
+    });
+  }
+
+  function resolveFailStageLabel(errorCode, errorMessage) {
+    const code = String(errorCode || "").trim().toLowerCase();
+    if (code === "format") return "실패 단계: 파일 형식 확인";
+    if (code === "missing_file") return "실패 단계: 파일 준비";
+    if (code === "temporary") return "실패 단계: 서버 처리";
+    if (code === "parse") return "실패 단계: 영수증 분석";
+    if (code === "paused") return "실패 단계: 사용자 중단";
+    if (code === "duplicate") return "실패 단계: 중복 확인";
+    const low = String(errorMessage || "").toLowerCase();
+    if (low.includes("형식")) return "실패 단계: 파일 형식 확인";
+    if (low.includes("파일")) return "실패 단계: 파일 준비";
+    if (low.includes("timeout") || low.includes("rate limit")) return "실패 단계: 서버 처리";
+    return "실패 단계: 처리 확인";
+  }
+
+  function compactFailureReason(errorMessage) {
+    const text = String(errorMessage || "").trim();
+    if (!text) return "";
+    return text.length > 54 ? `${text.slice(0, 54)}…` : text;
+  }
+
+  async function triggerProcessOnce(urlValue) {
+    const raw = String(urlValue || "").trim();
+    if (!raw || navResumeInFlight) return;
+    navResumeInFlight = true;
+    try {
+      const target = raw.includes("?") ? `${raw}&format=json` : `${raw}?format=json`;
+      await fetch(target, {
+        method: "POST",
+        headers: { "Accept": "application/json" },
+      });
+    } catch (_) {
+      // 전역 자동 재개는 조용히 실패 허용
+    } finally {
+      navResumeInFlight = false;
+    }
+  }
+
+  async function pollNavQueue() {
+    try {
+      const res = await fetch(statusUrl, { headers: { "Accept": "application/json" } });
+      const payload = await res.json().catch(() => ({ ok: false }));
+      if (!res.ok || !payload.ok) {
+        if ((res.status === 404 || res.status === 503) && timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        return;
+      }
+
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      const batchId = String(payload.batch_id || "");
+      const doneItems = items.filter((x) => String(x.status || "") === "done");
+      const failItems = items.filter((x) => String(x.status || "") === "failed");
+
+      if (batchId) {
+        const seenDoneMap = loadSeenDone();
+        const seenFailMap = loadSeenFail();
+        const seenDone = new Set(Array.isArray(seenDoneMap[batchId]) ? seenDoneMap[batchId].map((v) => Number(v)) : []);
+        const seenFail = new Set(Array.isArray(seenFailMap[batchId]) ? seenFailMap[batchId].map((v) => Number(v)) : []);
+        if (!hydratedDone) {
+          doneItems.forEach((x) => seenDone.add(Number(x.id || 0)));
+          hydratedDone = true;
+        } else {
+          for (const item of doneItems) {
+            const iid = Number(item.id || 0);
+            if (!iid || seenDone.has(iid)) continue;
+            seenDone.add(iid);
+            const itemName = String(item.name || `항목 ${iid}`);
+            const itemLink = String(item.confirm_url || link?.href || "");
+            pushNotice({
+              message: `${itemName} 처리가 완료됐어요.`,
+              href: itemLink,
+              dedupe_key: `done:${batchId}:${iid}`,
+              kind: "success",
+            });
+          }
+        }
+        if (!hydratedFail) {
+          failItems.forEach((x) => seenFail.add(Number(x.id || 0)));
+          hydratedFail = true;
+        } else {
+          for (const item of failItems) {
+            const iid = Number(item.id || 0);
+            if (!iid || seenFail.has(iid)) continue;
+            seenFail.add(iid);
+            const itemName = String(item.name || `항목 ${iid}`);
+            const error = String(item.error_message || "").trim();
+            const itemLink = String(item.retry_url || item.confirm_url || link?.href || "");
+            const msg = `${itemName} 처리가 실패했어요.`;
+            const stageLabel = resolveFailStageLabel(item.error_code || "", error);
+            const shortReason = compactFailureReason(error);
+            const detail = shortReason ? `${stageLabel} · ${shortReason}` : stageLabel;
+            pushNotice({
+              message: msg,
+              detail,
+              href: itemLink,
+              dedupe_key: `fail:${batchId}:${iid}`,
+              kind: "failure",
+            });
+          }
+        }
+        seenDoneMap[batchId] = Array.from(seenDone).slice(-120);
+        seenFailMap[batchId] = Array.from(seenFail).slice(-120);
+        saveSeenDone(seenDoneMap);
+        saveSeenFail(seenFailMap);
+      }
+
+      if (link && countEl) {
+        const count = Number(payload.queued_count || 0) + Number(payload.processing_count || 0);
+        const queuedCount = Number(payload.queued_count || 0);
+        const processingCount = Number(payload.processing_count || 0);
+        const processOnceUrl = String(payload.process_once_url || "");
+        const nowTs = Date.now();
+        if (queuedCount > 0 && processingCount === 0 && processOnceUrl) {
+          if ((nowTs - navResumeLastTs) >= NAV_RESUME_COOLDOWN_MS) {
+            navResumeLastTs = nowTs;
+            triggerProcessOnce(processOnceUrl);
+          }
+        }
+        if (count > 0) {
+          countEl.textContent = payload.needs_worker_check ? "지연" : String(count);
+          if (payload.needs_worker_check || payload.is_delayed) {
+            link.title = payload.delay_message || "영수증 처리가 지연되고 있어요. 눌러서 상태를 확인하세요.";
+          } else {
+            link.title = "영수증 처리가 진행 중이에요.";
+          }
+        } else if (payload.is_finished) {
+          countEl.textContent = "완료";
+          link.title = "영수증 처리가 완료됐어요.";
+          if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
+        }
+      }
+    } catch (_) {
+      // 네비 배지는 조용히 실패 허용
+    }
+  }
+
+  const queuedBridgeCalls = (
+    window.SafeToSpendNotify && Array.isArray(window.SafeToSpendNotify.__pending)
+  ) ? window.SafeToSpendNotify.__pending.slice() : [];
+
+  window.SafeToSpendNotify = Object.freeze({
+    notify,
+    pushNotice,
+    renderNoticeRail,
+    __isReady: true,
+  });
+
+  for (const queued of queuedBridgeCalls) {
+    if (!queued || typeof queued !== "object") continue;
+    const fn = String(queued.fn || "");
+    const args = Array.isArray(queued.args) ? queued.args : [];
+    try {
+      if (fn === "notify") {
+        notify(...args);
+      } else if (fn === "pushNotice") {
+        pushNotice(...args);
+      } else if (fn === "renderNoticeRail") {
+        renderNoticeRail();
+      }
+    } catch (_) {
+      // 브리지 flush 실패는 조용히 무시
+    }
+  }
+
+  bridgeFlashMessagesToCenter();
+  renderNoticeRail();
+  setNoticeRailHidden(loadNoticeHidden());
+
+  if (statusUrl) {
+    pollNavQueue();
+    timer = setInterval(pollNavQueue, 3500);
+  }
+})();
+</script>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/tax-number-animate.js') }}?v=20260315-1"></script>
+<script>
+(() => {
+  const navEffectEntries = [
+    ["month", {{ (request.args.get("month") or "")|tojson }}],
+    ["account", {{ (request.args.get("account") or "")|tojson }}],
+    ["receipt_effect_event", {{ (request.args.get("receipt_effect_event") or "")|tojson }}],
+    ["receipt_effect_level", {{ (request.args.get("receipt_effect_level") or "")|tojson }}],
+    ["current_tax_due_est_krw", {{ (request.args.get("current_tax_due_est_krw") or "")|tojson }}],
+    ["current_buffer_target_krw", {{ (request.args.get("current_buffer_target_krw") or "")|tojson }}],
+    ["tax_delta_from_receipts_krw", {{ (request.args.get("tax_delta_from_receipts_krw") or "")|tojson }}],
+    ["buffer_delta_from_receipts_krw", {{ (request.args.get("buffer_delta_from_receipts_krw") or "")|tojson }}],
+    ["receipt_reflected_expense_krw", {{ (request.args.get("receipt_reflected_expense_krw") or "")|tojson }}],
+    ["receipt_pending_expense_krw", {{ (request.args.get("receipt_pending_expense_krw") or "")|tojson }}],
+    ["tax_before", {{ (request.args.get("tax_before") or "")|tojson }}],
+    ["tax_after", {{ (request.args.get("tax_after") or "")|tojson }}],
+    ["buffer_before", {{ (request.args.get("buffer_before") or "")|tojson }}],
+    ["buffer_after", {{ (request.args.get("buffer_after") or "")|tojson }}],
+    ["expense_before", {{ (request.args.get("expense_before") or "")|tojson }}],
+    ["expense_after", {{ (request.args.get("expense_after") or "")|tojson }}],
+    ["profit_before", {{ (request.args.get("profit_before") or "")|tojson }}],
+    ["profit_after", {{ (request.args.get("profit_after") or "")|tojson }}],
+    ["tax_delta", {{ (request.args.get("tax_delta") or "")|tojson }}],
+  ];
+  const effectKeys = [
+    "receipt_effect_event",
+    "receipt_effect_toast",
+    "receipt_effect_level",
+    "current_tax_due_est_krw",
+    "current_buffer_target_krw",
+    "tax_delta_from_receipts_krw",
+    "buffer_delta_from_receipts_krw",
+    "receipt_reflected_expense_krw",
+    "receipt_pending_expense_krw",
+    "tax_before",
+    "tax_after",
+    "buffer_before",
+    "buffer_after",
+    "expense_before",
+    "expense_after",
+    "profit_before",
+    "profit_after",
+    "tax_delta",
+  ];
+  const applyReceiptEffectNavParams = () => {
+    const targets = [
+      document.getElementById("nav-review-link"),
+      document.getElementById("nav-tax-buffer-link"),
+      document.getElementById("nav-calendar-link"),
+    ].filter((node) => node instanceof HTMLAnchorElement);
+    if (!targets.length) return;
+    targets.forEach((node) => {
+      try {
+        const url = new URL(node.href, window.location.origin);
+        navEffectEntries.forEach(([key, value]) => {
+          const text = String(value || "").trim();
+          if (!text) return;
+          url.searchParams.set(key, text);
+        });
+        url.searchParams.delete("receipt_effect_toast");
+        node.href = `${url.pathname}${url.search}${url.hash || ""}`;
+      } catch (_) {}
+    });
+  };
+  const clearReceiptEffectParams = () => {
+    try {
+      const url = new URL(window.location.href);
+      let changed = false;
+      effectKeys.forEach((key) => {
+        if (!url.searchParams.has(key)) return;
+        url.searchParams.delete(key);
+        changed = true;
+      });
+      if (!changed) return;
+      const query = url.searchParams.toString();
+      const nextUrl = `${url.pathname}${query ? `?${query}` : ""}${url.hash || ""}`;
+      window.history.replaceState(null, document.title, nextUrl);
+    } catch (_) {}
+  };
+  applyReceiptEffectNavParams();
+  clearReceiptEffectParams();
+  window.setTimeout(clearReceiptEffectParams, 0);
+
+  const shouldToast = {{ 1 if request.args.get("receipt_effect_event") == "1" and request.args.get("receipt_effect_toast") == "1" else 0 }};
+  if (!shouldToast) {
+    clearReceiptEffectParams();
+    return;
+  }
+  const notify = (window.SafeToSpendNotify && typeof window.SafeToSpendNotify.notify === "function")
+    ? window.SafeToSpendNotify.notify
+    : null;
+  if (!notify) {
+    clearReceiptEffectParams();
+    return;
+  }
+  const effectLevel = {{ (request.args.get("receipt_effect_level") or "")|tojson }};
+  const taxDelta = Number({{ ((request.args.get("tax_delta_from_receipts_krw") or 0)|int) }});
+  const reflectedExpense = Number({{ ((request.args.get("receipt_reflected_expense_krw") or 0)|int) }});
+  const pendingExpense = Number({{ ((request.args.get("receipt_pending_expense_krw") or 0)|int) }});
+  const currentTax = Number({{ ((request.args.get("current_tax_due_est_krw") or 0)|int) }});
+  const dedupeKey = `receipt-effect:{{ request.path }}:${effectLevel}:${taxDelta}:${reflectedExpense}:${pendingExpense}:${currentTax}`;
+  let alreadyHandled = false;
+  try {
+    alreadyHandled = !!(window.sessionStorage && window.sessionStorage.getItem(dedupeKey) === "1");
+  } catch (_) {}
+  if (alreadyHandled) {
+    clearReceiptEffectParams();
+    return;
+  }
+
+  let level = "success";
+  let message = "영수증 반영 결과가 갱신됐어요.";
+  let detail = "관련 숫자는 서버 계산 결과를 기준으로 다시 반영됐어요.";
+  if (effectLevel === "needs_review") {
+    level = "info";
+    message = `추가 확인이 필요해 ${pendingExpense.toLocaleString("ko-KR")}원은 아직 예상세금에 반영되지 않았어요.`;
+    detail = "보강 답변이나 추가 증빙을 넣으면 다시 평가돼요.";
+  } else if (effectLevel === "consult_tax_review") {
+    level = "info";
+    message = "보강 정보가 반영됐지만 세무 검토가 필요한 항목이라 자동 반영하지 않았어요.";
+    detail = "검토 필요 금액으로만 집계되고 자동 비용 반영은 보류돼요.";
+  } else if (effectLevel === "do_not_auto_allow") {
+    level = "info";
+    message = "자동 인정하지 않는 항목이라 예상세금에는 반영하지 않았어요.";
+    detail = "개인 지출 또는 자동 제외 항목으로 유지돼요.";
+  } else if (taxDelta < 0) {
+    message = `영수증 ${reflectedExpense.toLocaleString("ko-KR")}원이 비용 반영 대상으로 인정되어 예상세금이 ${Math.abs(taxDelta).toLocaleString("ko-KR")}원 줄었어요.`;
+    detail = "정리하기·캘린더·세금보관함 숫자가 같은 서버 계산 결과로 갱신됐어요.";
+  } else if (taxDelta > 0) {
+    level = "info";
+    message = `영수증 반영 결과 예상세금이 ${taxDelta.toLocaleString("ko-KR")}원 늘었어요.`;
+    detail = "기존 비용 반영 조건이 바뀌어 숫자가 다시 계산됐어요.";
+  } else {
+    message = "영수증이 반영됐어요. 예상 납부세액 변화는 없어요.";
+    detail = "판정 결과는 저장됐고, 관련 화면 숫자는 최신 서버 계산값으로 유지돼요.";
+  }
+
+  notify(message, level, {
+    delivery: "toast_and_center",
+    title: "영수증 반영 결과",
+    detail,
+    dedupe_key: dedupeKey,
+    source: "receipt_tax_effect",
+  });
+
+  try {
+    if (window.sessionStorage) window.sessionStorage.setItem(dedupeKey, "1");
+  } catch (_) {}
+  clearReceiptEffectParams();
+})();
+</script>
+
+{% block script_extra %}{% endblock %}
 
 </body>
 </html>

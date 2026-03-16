@@ -1,72 +1,400 @@
 {% extends "base.html" %}
 {% block title %}캘린더{% endblock %}
+{% block head_extra %}
+<style>
+  .kpi-money-tip{
+    position: relative;
+    overflow: visible;
+  }
+  .kpi-link.kpi-warning{
+    position: relative;
+    border-color: rgba(245,158,11,.55);
+    box-shadow: 0 0 0 1px rgba(245,158,11,.18) inset;
+    background: linear-gradient(180deg, rgba(245,158,11,.08) 0%, #fff 100%);
+    overflow: visible;
+  }
+  .kpi-link.kpi-warning .warn-badge{
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(245,158,11,.45);
+    background: rgba(245,158,11,.16);
+    color: #b45309;
+    font-size: 11px;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin-left: 6px;
+  }
+  .kpi-link.kpi-warning .warn-bubble{
+    position: absolute;
+    left: 10px;
+    bottom: calc(100% + 10px);
+    width: min(320px, calc(100vw - 40px));
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(194,65,12,.84);
+    background: rgba(255,247,237,.98);
+    color: #9a3412;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.45;
+    box-shadow: 0 22px 38px rgba(2,6,23,.42);
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    z-index: 121;
+    transition: opacity .16s ease, transform .16s ease;
+  }
+  .kpi-link.kpi-warning .warn-bubble::before{
+    content: "";
+    position: absolute;
+    inset: -10px;
+    border-radius: 14px;
+    background: rgba(255,247,237,.20);
+    backdrop-filter: blur(18px) saturate(90%);
+    -webkit-backdrop-filter: blur(18px) saturate(90%);
+    z-index: -1;
+    pointer-events: none;
+  }
+  .kpi-link.kpi-warning .warn-bubble::after{
+    content: "";
+    position: absolute;
+    left: 14px;
+    top: 100%;
+    width: 8px;
+    height: 8px;
+    background: rgba(255,247,237,.97);
+    border-right: 1px solid rgba(194,65,12,.84);
+    border-bottom: 1px solid rgba(194,65,12,.84);
+    transform: rotate(45deg);
+  }
+  .kpi-link.kpi-warning:hover .warn-bubble,
+  .kpi-link.kpi-warning:focus-within .warn-bubble{
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .kpi-money-tip .money-label{
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: help;
+  }
+  .kpi-money-tip .tip-dot{
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(37,99,235,.28);
+    background: rgba(37,99,235,.08);
+    color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .kpi-money-tip .tip-bubble{
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 10px);
+    width: min(360px, calc(100vw - 40px));
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(15,23,42,.92);
+    background: #0f172a;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    color: #f8fafc;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.45;
+    box-shadow: 0 20px 36px rgba(2,6,23,.42);
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    z-index: 120;
+    transition: opacity .16s ease, transform .16s ease;
+    transition-delay: 0s;
+  }
+  .kpi-money-tip .tip-bubble::after{
+    content: "";
+    position: absolute;
+    left: 14px;
+    top: 100%;
+    width: 8px;
+    height: 8px;
+    background: #0f172a;
+    border-right: 1px solid rgba(15,23,42,.92);
+    border-bottom: 1px solid rgba(15,23,42,.92);
+    transform: rotate(45deg);
+  }
+  .kpi-money-tip:hover .tip-bubble,
+  .kpi-money-tip:focus-within .tip-bubble{
+    opacity: 1;
+    transform: translateY(0);
+    transition-delay: .2s;
+  }
+  @media (max-width: 980px){
+    .kpi-money-tip .tip-bubble{
+      left: auto;
+      right: 0;
+    }
+    .kpi-money-tip .tip-bubble::after{
+      left: auto;
+      right: 14px;
+    }
+    .kpi-link.kpi-warning .warn-bubble{
+      left: auto;
+      right: 0;
+    }
+    .kpi-link.kpi-warning .warn-bubble::after{
+      left: auto;
+      right: 14px;
+    }
+  }
+  .account-scope-filtered .account-filter-summary b{
+    color: var(--account-accent);
+  }
+  .account-filter-bar{
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .account-filter-bar .field{
+    margin: 0;
+    min-width: 240px;
+  }
+  .account-filter-summary{
+    font-size: .85rem;
+    color: var(--muted-2);
+    font-weight: 700;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="wrap cal-wrap">
+{% set month_tax_current = tax_estimate|int %}
+{% set month_tax_previous = (buffer_before if receipt_effect_event and buffer_before is not none else month_tax_current)|int %}
+{% set month_safe_current = safe_to_spend|int %}
+{% set month_safe_previous = (month_safe_current + (month_tax_current - month_tax_previous))|int %}
+{% set month_public_due_current = public_due|int %}
+{% set month_public_due_previous = (month_tax_previous + (nhi_due|int))|int %}
+<div class="wrap cal-wrap has-side-guide-layout {% if account_scope.mode != 'all' %}account-scope-filtered{% endif %}" {% if account_scope.mode != 'all' %}style="--account-accent: {{ account_scope.color_hex }};"{% endif %}>
+  {% set account_color_options = [
+    ('#DC2626', '빨강'),
+    ('#EA580C', '주황'),
+    ('#CA8A04', '노랑'),
+    ('#16A34A', '초록'),
+    ('#2563EB', '파랑'),
+    ('#1E3A8A', '남색'),
+    ('#7C3AED', '보라')
+  ] %}
 
   <!-- =========================
        Header: Month + Nav
   ========================= -->
-  <div class="cal-top">
-    <div class="cal-heading">
+  <div class="cal-top page-head">
+    <div class="cal-heading page-head-main">
       <div class="title">{{ month_first.strftime("%Y년 %m월") }} 캘린더</div>
-      <div class="sub">일별 수입·지출</div>
+      <div class="sub">일별 수입·지출 · 세금까지 한눈에</div>
     </div>
 
     <div class="cal-nav">
-      <a class="btn sm ghost" href="{{ url_for('web_calendar.month_calendar', month=prev_month.strftime('%Y-%m')) }}">←</a>
-      <a class="btn sm" href="{{ url_for('web_calendar.month_calendar') }}">이번달</a>
-      <a class="btn sm ghost" href="{{ url_for('web_calendar.month_calendar', month=next_month.strftime('%Y-%m')) }}">→</a>
+      <a class="btn sm ghost" href="{{ url_for('web_calendar.month_calendar', month=prev_month.strftime('%Y-%m'), account=account_scope_value) }}">←</a>
+      <a class="btn sm" href="{{ url_for('web_calendar.month_calendar', account=account_scope_value) }}">이번달</a>
+      <a class="btn sm ghost" href="{{ url_for('web_calendar.month_calendar', month=next_month.strftime('%Y-%m'), account=account_scope_value) }}">→</a>
       <a class="btn sm ghost" href="{{ url_for('web_calendar.year_view', year=month_first.year) }}">연간</a>
     </div>
   </div>
 
+  <form class="card pad account-filter-bar" method="get" action="{{ url_for('web_calendar.month_calendar') }}">
+    <input type="hidden" name="month" value="{{ month_key }}">
+    <label class="field">
+      <span class="label">계좌 선택</span>
+      <select name="account" onchange="this.form.submit()">
+        <option value="all" {% if account_scope_value == 'all' %}selected{% endif %}>전체</option>
+        <option value="unassigned" {% if account_scope_value == 'unassigned' %}selected{% endif %}>미지정</option>
+        {% for acc in account_options %}
+          <option value="{{ acc.id }}" {% if account_scope_value == (acc.id|string) %}selected{% endif %}>{{ acc.display_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="account-filter-summary">
+      선택 기준: <b>{{ account_scope.name }}</b> · 수입 {{ month_income|krw }} · 지출 {{ month_expense|krw }} · 순 {{ month_net|krw }}
+    </div>
+    {% if account_scope.mode == 'account' and selected_account %}
+      <button class="btn small ghost" type="button" id="btn-open-selected-account-edit-month">선택 계좌 수정</button>
+    {% endif %}
+    <button class="btn small ghost" type="button" id="btn-open-account-create-month">계좌 추가</button>
+  </form>
+
+  {% set guide_title = "캘린더 화면 사용법" %}
+  {% set guide_lines = [
+    "월 선택 후 핵심 카드에서 상태를 먼저 확인하세요.",
+    "카드를 누르면 관련 화면으로 바로 이동할 수 있어요.",
+    "경고가 보이면 정리하기 또는 건보료에서 보완하세요."
+  ] %}
+  {% set guide_hint = "미확정 표시가 있어도 우선 흐름대로 진행하면 됩니다." %}
+  {% set guide_cta_text = "캘린더 가이드" %}
+  {% set guide_cta_href = url_for('web_dashboard.guide', month=month_key, from='calendar') ~ '#calendar' %}
+  {% set guide_more_href = url_for('web_dashboard.guide', month=month_key, from='calendar') ~ '#messages' %}
+  {% include "components/usage_side_guide.html" %}
+
   <!-- =========================
        Actionbar: Search + Actions
   ========================= -->
-  {% set todo_total = (evidence_required_missing + income_need + expense_need) %}
+  {% set todo_total = (receipt_required_missing + receipt_attach_missing + income_need + expense_confirm_need) %}
+  {% set todo_focus = todo_recommended_focus or "receipt_required" %}
+  {% if todo_focus == "receipt_required" %}
+    {% set todo_title = "필수 영수증 먼저 정리" %}
+    {% set todo_desc = "세금/패키지에 바로 영향이 있는 항목부터 줄입니다." %}
+    {% set todo_count = receipt_required_missing %}
+  {% elif todo_focus == "receipt_attach" %}
+    {% set todo_title = "영수증 붙이면 끝" %}
+    {% set todo_desc = "애매한 거래는 영수증 첨부만 해도 정리가 빨라집니다." %}
+    {% set todo_count = receipt_attach_missing %}
+  {% elif todo_focus == "expense_confirm" %}
+    {% set todo_title = "업무/개인 확정" %}
+    {% set todo_desc = "첨부된 지출의 분류를 확정하면 누락/세금 계산이 안정됩니다." %}
+    {% set todo_count = expense_confirm_need %}
+  {% elif todo_focus == "income_confirm" %}
+    {% set todo_title = "수입 확인" %}
+    {% set todo_desc = "입금 거래를 수입/비수입으로 확정해 계산 정확도를 높입니다." %}
+    {% set todo_count = income_need %}
+  {% else %}
+    {% set todo_focus = "receipt_required" %}
+    {% set todo_title = "이번 달 정리 완료" %}
+    {% set todo_desc = "지금은 급한 정리 항목이 없습니다. 필요하면 전체 보기로 확인하세요." %}
+    {% set todo_count = 0 %}
+  {% endif %}
+
+  <div class="task-primary card">
+    <div class="task-primary-head">
+      <div>
+        <div class="task-label">오늘 할 일 1개</div>
+        <div class="task-title">{{ todo_title }}</div>
+        <div class="task-desc">{{ todo_desc }}</div>
+      </div>
+      <div class="task-actions">
+        {% if todo_count > 0 %}
+          <a class="btn primary" href="{{ url_for('web_calendar.review', month=month_key, focus=todo_focus, account=account_scope_value) }}">
+            지금 정리하기 <span class="pill btn-count">{{ todo_count }}</span>
+          </a>
+        {% else %}
+          <a class="btn ghost" href="{{ url_for('web_calendar.review', month=month_key, focus=todo_focus, account=account_scope_value) }}">
+            전체 정리 보기
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 
   <div class="cal-toolbar cal-actionbar">
     <form class="search cal-search" method="GET" action="{{ url_for('web_calendar.month_search') }}">
       <input type="hidden" name="month" value="{{ month_key }}">
+      <input type="hidden" name="account" value="{{ account_scope_value }}">
       <input name="q" placeholder="거래처·메모 검색" value="{{ request.args.get('q','') }}">
       <button class="btn sm ghost" type="submit">검색</button>
     </form>
 
     <div class="tool-actions cal-actions">
-      <a class="btn sm tinted" href="{{ url_for('web_calendar.tx_new', month=month_key) }}">+ 거래 추가</a>
-
-      <a class="btn sm {% if todo_total > 0 %}warn-tinted{% else %}ghost{% endif %}"
-         href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_required') }}">
-        정리하기
-        {% if todo_total > 0 %}
-          <span class="pill btn-count">{{ todo_total }}</span>
-        {% endif %}
+      <a class="btn sm tinted" href="{{ url_for('web_calendar.tx_new', month=month_key, account=account_scope_value) }}">+ 거래 추가</a>
+      <a class="btn sm ghost" href="{{ url_for('web_calendar.receipt_new_upload_page', month=month_key, focus='receipt_required', q='', limit=30, account=account_scope_value) }}">
+        영수증으로 거래 추가
       </a>
-
-      <a class="btn sm ghost" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금 보관함</a>
       <a class="btn sm ghost" href="{{ url_for('web_calendar.recurring_list') }}">고정비(정기)</a>
     </div>
   </div>
 
   <!-- =========================
-       KPIs
+       KPIs (현금흐름 + 세금)
   ========================= -->
-  <div class="kpi-grid">
+  <div class="kpi-grid kpi-5">
     <div class="kpi card">
       <div class="k-label">이번 달 수입</div>
       <div class="k-value">+ {{ month_income|krw }}</div>
     </div>
+
     <div class="kpi card">
       <div class="k-label">이번 달 지출</div>
       <div class="k-value">- {{ month_expense|krw }}</div>
     </div>
+
+    <div class="kpi card kpi-money-tip">
+      <div class="k-label money-label" aria-label="이번 달 남은 돈 계산식 안내">
+        <span>이번 달 남은 돈</span>
+        <span class="tip-dot" aria-hidden="true">?</span>
+        <span class="tip-bubble" role="tooltip">
+          이번 달 남은 돈 = 이번 달 수입 - 이번 달 지출 - 세금 추정치 - 건보료 보관
+        </span>
+      </div>
+      <div
+        class="k-value {% if safe_to_spend >= 0 %}pos{% else %}neg{% endif %}"
+        data-tax-animate="currency"
+        data-tax-current-value="{{ month_safe_current }}"
+        data-tax-previous-value="{{ month_safe_previous }}"
+        data-tax-changed="{{ 1 if receipt_effect_event and month_safe_current != month_safe_previous else 0 }}"
+      >
+        {{ safe_to_spend|krw }}
+      </div>
+      <div class="k-sub muted2">세금·건보료 보관 반영</div>
+    </div>
+
     <div class="kpi card">
-      <div class="k-label">이번 달 남은 돈</div>
-      <div class="k-value {% if month_net >= 0 %}pos{% else %}neg{% endif %}">
-        {{ month_net|krw }}
+      <div class="k-label">세금 추정치(이번 달)</div>
+      <div
+        class="k-value"
+        data-tax-animate="currency"
+        data-tax-prefix="- "
+        data-tax-current-value="{{ month_tax_current }}"
+        data-tax-previous-value="{{ month_tax_previous }}"
+        data-tax-changed="{{ 1 if receipt_effect_event and month_tax_current != month_tax_previous else 0 }}"
+      >- {{ tax_estimate|krw }}</div>
+      <div class="k-sub muted2">
+        금고 {{ tax_balance|krw }}
+        {% if tax_shortage>0 %} · 부족 {{ tax_shortage|krw }}{% endif %}
+      </div>
+      <div class="k-sub muted2">
+        영수증 비용 반영 {{ receipt_reflected_expense_krw|krw }}
+        {% if receipt_pending_expense_krw|int > 0 %}
+          · 반영 대기 {{ receipt_pending_expense_krw|krw }}
+        {% endif %}
       </div>
     </div>
+
+    {% set nhi_unconfirmed = (nhi_source == 'unknown' and (nhi_monthly|int) <= 0 and (nhi_due|int) <= 0 and not nhi_paid_this_month) %}
+    {% set nhi_display_krw = (nhi_due if (nhi_due|int) > 0 else nhi_monthly)|int %}
+    <a class="kpi card kpi-link{% if nhi_unconfirmed %} kpi-warning{% endif %}"
+       href="{{ url_for('web_profile.nhis_page', month=month_key, source='nhis') }}">
+      <div class="k-label">
+        건보료 보관(이번 달)
+        {% if nhi_unconfirmed %}
+          <span class="warn-badge" aria-hidden="true">!</span>
+          <span class="warn-bubble" role="tooltip">입력 데이터가 부족해 임시 계산 금액으로 보여줘요. 입력을 보완하면 더 정확해져요.</span>
+        {% endif %}
+      </div>
+      <div class="k-value">
+        {% if nhi_display_krw > 0 %}- {{ nhi_display_krw|krw }}{% else %}{{ 0|krw }}{% endif %}
+      </div>
+      <div class="k-sub muted2">
+        {% if nhi_unconfirmed %}
+          임시 계산 · 입력 데이터 부족
+        {% elif nhi_paid_this_month %}
+          이번 달 납부 완료
+        {% elif nhi_monthly > 0 %}
+          월 기준 {{ nhi_monthly|krw }}
+        {% else %}
+          입력하면 더 정확해져요
+        {% endif %}
+      </div>
+    </a>
+
   </div>
 
   <!-- =========================
@@ -98,7 +426,7 @@
             {% set is_sun = (d.weekday() == 6) %}
 
             <a class="cal-cell heat-{{ h }} {% if is_out %}muted{% endif %} {% if is_today %}today{% endif %} {% if is_sat %}sat{% endif %} {% if is_sun %}sun{% endif %}"
-               href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d')) }}">
+               href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), account=account_scope_value) }}">
 
               <div class="cal-cell-top">
                 <div class="cal-date">{{ d.day }}</div>
@@ -132,13 +460,58 @@
 
     <!-- ===== Sidebar ===== -->
     <aside class="card cal-side">
+      <div class="side-block">
+        <details>
+          <summary class="side-label" style="cursor:pointer;">계좌 색상 설정</summary>
+          <div class="small-note muted2" style="margin-top:8px;">계좌별 보기에서 강조 색으로 사용돼요.</div>
+          <button class="btn small ghost" type="button" data-open-month-account-create style="margin-top:8px;">계좌 추가</button>
+          {% for acc in account_options %}
+            <form method="post" action="{{ url_for('web_calendar.calendar_account_color') }}" style="margin-top:8px;">
+              <input type="hidden" name="month" value="{{ month_key }}">
+              <input type="hidden" name="account" value="{{ account_scope_value }}">
+              <input type="hidden" name="next" value="{{ request.full_path }}">
+              <input type="hidden" name="account_id" value="{{ acc.id }}">
+              <label class="small-note" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <span>{{ acc.display_name }}</span>
+                <input type="color" name="color_hex" value="{{ acc.color_hex or '#2563EB' }}" style="width:44px; height:30px; border:0; background:none; padding:0;">
+              </label>
+              <button class="btn small ghost" type="submit" style="margin-top:6px;">저장</button>
+            </form>
+          {% endfor %}
+        </details>
+      </div>
+
+      <div class="side-block linked-balance-side">
+        <div class="side-label">연동 계좌 잔액</div>
+        {% if linked_accounts %}
+          <ul class="side-list">
+            {% for acc in linked_accounts %}
+              <li>
+                <span class="name">{{ acc.bank_name }} · {{ acc.account_number }}</span>
+                <span class="amt {% if acc.balance_krw is not none %}in{% endif %}">
+                  {% if acc.balance_krw is not none %}
+                    {{ acc.balance_krw|krw }}
+                  {% else %}
+                    조회 불가
+                  {% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+          {% if linked_accounts_has_unavailable %}
+            <div class="side-empty">일부 계좌 잔액은 지금 조회되지 않을 수 있어요.</div>
+          {% endif %}
+        {% else %}
+          <div class="side-empty">연동된 계좌가 없어요.</div>
+        {% endif %}
+      </div>
 
       <!-- 1) Month status -->
       <div class="side-block">
-        <div class="side-label">이번 달 정리 상태</div>
+        <div class="side-label">이번 달 마감 상태</div>
 
         {% if snapshot %}
-          <div class="side-text">정리 완료 · {{ snapshot.payload.closed_at[:10] }}</div>
+          <div class="side-text">마감 완료 · {{ snapshot.payload.closed_at[:10] }}</div>
 
           <div class="side-kv">
             <span class="k">순이익</span>
@@ -153,7 +526,7 @@
           </div>
 
           <div class="side-kv">
-            <span class="k">필수 영수증</span>
+            <span class="k">영수증 꼭 필요</span>
             <span class="v {% if snapshot.payload.evidence_required_missing %}neg{% endif %}">
               {{ snapshot.payload.evidence_required_missing }}건
             </span>
@@ -161,45 +534,47 @@
 
           <form method="POST" action="{{ url_for('web_calendar.month_close') }}" style="margin-top:10px;">
             <input type="hidden" name="month" value="{{ month_key }}">
+            <input type="hidden" name="account" value="{{ account_scope_value }}">
             <button class="btn sm ghost" type="submit">요약 다시 계산</button>
           </form>
         {% else %}
-          <div class="side-text">아직 정리 전이에요. <b>정리하기</b>부터 처리하면 제일 빨라요.</div>
+          <div class="side-text">아직 처리 전이에요. <b>영수증 처리</b>부터 하면 제일 빨라요.</div>
 
           <form method="POST" action="{{ url_for('web_calendar.month_close') }}" style="margin-top:10px;">
             <input type="hidden" name="month" value="{{ month_key }}">
-            <button class="btn sm" type="submit">정리 완료로 표시</button>
+            <input type="hidden" name="account" value="{{ account_scope_value }}">
+            <button class="btn sm" type="submit">이번 달 마감 표시</button>
           </form>
         {% endif %}
       </div>
 
       <!-- 2) Tasks -->
       <div class="side-block todo">
-        <div class="side-label">정리할 일</div>
+        <div class="side-label">영수증 처리 할 일</div>
 
         <div class="todo-list">
-          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_required') }}">
-            <span class="k">필수 영수증</span>
-            <span class="v {% if evidence_required_missing %}warn{% endif %}">{{ evidence_required_missing }}건</span>
+          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='receipt_required', account=account_scope_value) }}">
+            <span class="k">영수증 꼭 필요</span>
+            <span class="v {% if receipt_required_missing %}warn{% endif %}">{{ receipt_required_missing }}건</span>
           </a>
 
-          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='expense_unknown') }}">
-            <span class="k">지출 분류</span>
-            <span class="v {% if expense_need %}warn{% endif %}">{{ expense_need }}건</span>
+          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='expense_confirm', account=account_scope_value) }}">
+            <span class="k">업무/개인 확정</span>
+            <span class="v {% if expense_confirm_need %}warn{% endif %}">{{ expense_confirm_need }}건</span>
           </a>
 
-          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='income_unknown') }}">
-            <span class="k">수입 분류</span>
+          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='income_confirm', account=account_scope_value) }}">
+            <span class="k">수입 확인</span>
             <span class="v {% if income_need %}warn{% endif %}">{{ income_need }}건</span>
           </a>
 
-          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_maybe') }}">
-            <span class="k">검토 영수증</span>
-            <span class="v">{{ evidence_maybe_missing }}건</span>
+          <a class="todo-item link" href="{{ url_for('web_calendar.review', month=month_key, focus='receipt_attach', account=account_scope_value) }}">
+            <span class="k">영수증 붙이면 끝</span>
+            <span class="v">{{ receipt_attach_missing }}건</span>
           </a>
         </div>
 
-        <div class="todo-hint">남은 건수만 줄여도 다음 달이 훨씬 편해져요.</div>
+        <div class="todo-hint">“영수증 꼭 필요”부터 줄이면 다음 달이 훨씬 편해져요.</div>
       </div>
 
       <!-- 3) Tax buffer -->
@@ -207,7 +582,7 @@
         <div class="side-label">세금 보관함</div>
         <div class="side-text">세금으로 따로 떼어둘 금액을 관리해요.</div>
         <div class="side-actions">
-          <a class="btn sm" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">열기</a>
+          <a class="btn sm" href="{{ tax_buffer_url }}">열기</a>
         </div>
       </div>
 
@@ -265,5 +640,150 @@
 
     </aside>
   </div>
+
+  <div class="mobile-todo-bar">
+    {% if todo_count > 0 %}
+      <a class="btn primary full" href="{{ url_for('web_calendar.review', month=month_key, focus=todo_focus, account=account_scope_value) }}">
+        오늘 할 일 {{ todo_count }}건 정리
+      </a>
+    {% else %}
+      <a class="btn ghost full" href="{{ url_for('web_calendar.review', month=month_key, focus=todo_focus, account=account_scope_value) }}">
+        정리 상태 확인
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="modal" id="monthAccountCreateModal" aria-hidden="true">
+    <div class="modal-backdrop" data-month-account-create-close></div>
+    <div class="modal-dialog card" style="max-width:540px;">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">계좌 추가</div>
+          <div class="modal-sub">계좌 별명과 색상만 저장해요.</div>
+        </div>
+        <button type="button" class="modal-x" data-month-account-create-close>✕</button>
+      </div>
+      <form method="POST" action="{{ url_for('web_bank.account_create') }}" class="account-create-form">
+        <input type="hidden" name="next" value="{{ request.full_path }}">
+        <label class="field">
+          <span class="label">계좌 별명</span>
+          <input type="text" name="alias" maxlength="64" placeholder="예: 생활비, 사업용, 카드정산" required>
+        </label>
+        <label class="field">
+          <span class="label">계좌번호(선택)</span>
+          <input type="text" name="account_number" maxlength="40" placeholder="숫자만 입력 · 8~20자리" inputmode="numeric">
+        </label>
+        <div class="field">
+          <span class="label">색상 선택</span>
+          <select name="color_hex" class="account-color-select">
+            {% for color_hex, color_label in account_color_options %}
+              {% set color_icon = '⚪' %}
+              {% if color_label == '빨강' %}{% set color_icon = '🔴' %}{% endif %}
+              {% if color_label == '주황' %}{% set color_icon = '🟠' %}{% endif %}
+              {% if color_label == '노랑' %}{% set color_icon = '🟡' %}{% endif %}
+              {% if color_label == '초록' %}{% set color_icon = '🟢' %}{% endif %}
+              {% if color_label == '파랑' %}{% set color_icon = '🔵' %}{% endif %}
+              {% if color_label == '남색' %}{% set color_icon = '🔷' %}{% endif %}
+              {% if color_label == '보라' %}{% set color_icon = '🟣' %}{% endif %}
+              <option value="{{ color_hex }}" {% if loop.first %}selected{% endif %}>{{ color_icon }} {{ color_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <p class="account-create-help">계좌번호를 입력해도 원문은 저장하지 않고 마지막 4자리와 안전 식별값만 저장해요.</p>
+        <div class="row" style="gap:8px; justify-content:flex-end;">
+          <button class="btn ghost" type="button" data-month-account-create-close>취소</button>
+          <button class="btn primary" type="submit">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if account_scope.mode == 'account' and selected_account %}
+    <div class="modal" id="monthAccountEditModal" aria-hidden="true">
+      <div class="modal-backdrop" data-month-account-edit-close></div>
+      <div class="modal-dialog card" style="max-width:540px;">
+        <div class="modal-head">
+          <div>
+            <div class="modal-title">선택 계좌 수정</div>
+            <div class="modal-sub">{{ selected_account.display_name }}</div>
+          </div>
+          <button type="button" class="modal-x" data-month-account-edit-close>✕</button>
+        </div>
+        <form method="post" action="{{ url_for('web_calendar.calendar_account_color') }}" class="account-create-form">
+          <input type="hidden" name="month" value="{{ month_key }}">
+          <input type="hidden" name="account" value="{{ account_scope_value }}">
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          <input type="hidden" name="account_id" value="{{ selected_account.id }}">
+          <label class="field">
+            <span class="label">계좌 이름</span>
+            <input type="text" name="alias" maxlength="64" value="{{ selected_account.alias or '' }}" placeholder="예: 생활비, 사업용, 카드정산">
+          </label>
+          <div class="field">
+            <span class="label">색상 선택</span>
+            <select name="color_hex" class="account-color-select">
+              {% for color_hex, color_label in account_color_options %}
+                {% set color_icon = '⚪' %}
+                {% if color_label == '빨강' %}{% set color_icon = '🔴' %}{% endif %}
+                {% if color_label == '주황' %}{% set color_icon = '🟠' %}{% endif %}
+                {% if color_label == '노랑' %}{% set color_icon = '🟡' %}{% endif %}
+                {% if color_label == '초록' %}{% set color_icon = '🟢' %}{% endif %}
+                {% if color_label == '파랑' %}{% set color_icon = '🔵' %}{% endif %}
+                {% if color_label == '남색' %}{% set color_icon = '🔷' %}{% endif %}
+                {% if color_label == '보라' %}{% set color_icon = '🟣' %}{% endif %}
+                <option value="{{ color_hex }}" {% if (selected_account.color_hex or '').upper() == color_hex %}selected{% endif %}>{{ color_icon }} {{ color_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row" style="gap:8px; justify-content:flex-end;">
+            <button class="btn ghost" type="button" data-month-account-edit-close>취소</button>
+            <button class="btn primary" type="submit">저장</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endif %}
 </div>
+
+<script>
+(function(){
+  const bindModal = ({ modalId, openSelectors, closeAttr }) => {
+    const modal = document.getElementById(modalId);
+    const openButtons = Array.from(document.querySelectorAll(openSelectors));
+    if(!modal || !openButtons.length) return;
+
+    const closeTargets = modal.querySelectorAll(`[${closeAttr}]`);
+    const closeModal = () => {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    };
+    const openModal = () => {
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    };
+
+    openButtons.forEach((btn) => btn.addEventListener('click', openModal));
+    closeTargets.forEach((el) => el.addEventListener('click', closeModal));
+    modal.addEventListener('click', (e) => {
+      if(e.target === modal){ closeModal(); }
+    });
+    window.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape' && modal.classList.contains('open')){
+        closeModal();
+      }
+    });
+  };
+
+  bindModal({
+    modalId: 'monthAccountCreateModal',
+    openSelectors: '#btn-open-account-create-month, [data-open-month-account-create]',
+    closeAttr: 'data-month-account-create-close',
+  });
+
+  bindModal({
+    modalId: 'monthAccountEditModal',
+    openSelectors: '#btn-open-selected-account-edit-month',
+    closeAttr: 'data-month-account-edit-close',
+  });
+})();
+</script>
 {% endblock %}

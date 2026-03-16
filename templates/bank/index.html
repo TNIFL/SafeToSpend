@@ -12,28 +12,11 @@
   .bank-page{
     width: min(1100px, calc(100% - 32px));
     margin: 0 auto;
+    padding-top: var(--sp-5);
   }
 
-  .bank-top{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:14px;
-    margin-bottom:14px;
-  }
   .bank-title{
     min-width:0;
-  }
-  .bank-title .h1{
-    font-size:22px;
-    font-weight:950;
-    letter-spacing:-0.02em;
-    line-height:1.2;
-  }
-  .bank-title .p{
-    margin-top:6px;
-    color:var(--muted);
-    line-height:1.4;
   }
 
   .bank-actions{
@@ -212,6 +195,89 @@
     font-size:13px;
     line-height:1.45;
   }
+  .bank-guide-inline{
+    margin-top:12px;
+    border:1px solid rgba(217,119,6,.28);
+    background:rgba(255,247,237,.82);
+    border-radius:12px;
+    padding:12px;
+  }
+  .bank-guide-inline[hidden]{
+    display:none !important;
+  }
+  .bank-guide-title{
+    font-weight:900;
+    color:#9a3412;
+  }
+  .bank-guide-message{
+    margin-top:6px;
+    font-size:13px;
+    color:#7c2d12;
+    line-height:1.45;
+  }
+  .bank-guide-mode{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .bank-guide-mode label{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border:1px solid rgba(217,119,6,.28);
+    background:#fff;
+    border-radius:999px;
+    padding:4px 10px;
+    font-size:12px;
+    font-weight:700;
+    color:#7c2d12;
+    cursor:pointer;
+  }
+  .bank-guide-actions{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .bank-guide-bank{
+    margin-top:8px;
+    font-size:13px;
+    font-weight:800;
+    color:#9a3412;
+  }
+  .bank-guide-details{
+    margin-top:10px;
+    font-size:13px;
+    color:var(--muted-2);
+  }
+  .bank-guide-details summary{
+    cursor:pointer;
+    font-weight:800;
+  }
+  .bank-guide-steps{
+    margin:8px 0 0;
+    padding-left:18px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .bank-guide-required{
+    margin-top:8px;
+    color:#92400e;
+    font-size:12px;
+    font-weight:700;
+  }
+  .bank-guide-meta{
+    margin-top:8px;
+    color:var(--muted);
+    font-size:12px;
+  }
+  .bank-fallback{
+    margin-bottom:12px;
+    border-color:rgba(217,119,6,.34);
+    background:rgba(255,247,237,.88);
+  }
 
   /* 최근 로그 */
   .joblist{
@@ -247,30 +313,117 @@
     .acc-right{ align-items:flex-start; }
     .acc-controls{ justify-content:flex-start; }
     .alias{ width: 100%; max-width: 100%; }
+    .bank-guide-actions{ flex-direction:column; align-items:stretch; }
   }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="bank-page">
+  {% set account_color_options = [
+    ('#DC2626', '빨강'),
+    ('#EA580C', '주황'),
+    ('#CA8A04', '노랑'),
+    ('#16A34A', '초록'),
+    ('#2563EB', '파랑'),
+    ('#1E3A8A', '남색'),
+    ('#7C3AED', '보라')
+  ] %}
+  {% if not can_bank_link %}
+    <div class="card pad" style="margin-bottom:12px; border-color:rgba(37,99,235,.24); background:rgba(37,99,235,.05);">
+      <div class="cardTitle">
+        <span>자동화 플랜 안내</span>
+        <span class="badge warn">{{ plan_label }}</span>
+      </div>
+      <div class="bank-note" style="margin-top:8px;">
+        계좌 자동 연동은 베이직 이상 플랜에서 사용할 수 있어요. CSV 업로드와 정리하기는 지금 그대로 사용할 수 있습니다.
+        <br>이미 연결된 계좌가 있다면 OFF로 해제는 계속 할 수 있어요.
+      </div>
+      <div class="row" style="margin-top:8px; gap:8px; flex-wrap:wrap;">
+        <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="operation_type" value="initial_subscription">
+          <input type="hidden" name="target_plan" value="basic">
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="btn small primary" type="submit">베이직 시작하기</button>
+        </form>
+        <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="operation_type" value="initial_subscription">
+          <input type="hidden" name="target_plan" value="pro">
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="btn small ghost" type="submit">프로 시작하기</button>
+        </form>
+        <a class="btn small ghost" href="{{ url_for('web_inbox.import_page') }}">CSV로 계속하기</a>
+      </div>
+    </div>
+  {% endif %}
 
   <!-- Top -->
-  <div class="bank-top">
-    <div class="bank-title">
+  <div class="bank-top page-head">
+    <div class="bank-title page-head-main">
       <div class="h1">계좌 연동</div>
       <div class="p">
         팝빌(계좌조회)로 거래내역을 자동으로 가져옵니다.<br>
-        <span class="muted">팝빌 팝업에서 계좌 등록 → 여기서 동기화 ON → “지금 동기화”</span>
+        <span class="muted">팝빌 팝업에서 계좌 등록 → 여기서 동기화 ON → “동기화 새로고침”</span><br>
+        <span class="muted">연동 전 확인: 사업자등록이 완료되어 있어야 계좌 연동이 가능합니다.</span>
       </div>
     </div>
 
     <div class="bank-actions">
-      <button class="btn" type="button" id="btn-popbill-open">팝빌에서 계좌 등록/관리</button>
+      <button class="btn" type="button" id="btn-popbill-open" {% if not can_bank_link %}disabled{% endif %}>팝빌에서 계좌 등록/관리</button>
+      {% if can_bank_link %}
+        <a class="btn ghost" href="{{ url_for('web_bank.index', refresh_accounts=1) }}">계좌 목록 새로고침</a>
+      {% endif %}
       <form method="POST" action="{{ url_for('web_bank.sync_now') }}">
-        <button class="btn primary" type="submit" {% if active_count == 0 %}disabled{% endif %}>지금 동기화</button>
+        <input type="hidden" name="mode" value="backfill_3m">
+        <button class="btn primary" type="submit" {% if (active_count == 0) or (not can_bank_link) %}disabled{% endif %}>동기화 새로고침</button>
       </form>
+      <button class="btn ghost" type="button" id="btn-open-account-create">계좌 추가</button>
     </div>
   </div>
+  <div class="bank-note" style="margin-top:-4px; margin-bottom:12px;">
+    현재 플랜: <b>{{ plan_label }}</b>
+    {% if sync_interval_minutes %}
+      · 자동 동기화 주기: <b>{{ sync_interval_minutes }}분</b>
+    {% else %}
+      · 자동 동기화: <b>미지원</b>
+    {% endif %}
+    · 연결 가능 계좌: <b>{{ active_count }} / {{ max_linked_accounts }}</b>
+    <br>
+    계좌 목록 조회와 동기화는 버튼을 눌렀을 때만 실행돼요.
+    <br>
+    팝빌에서 다시 조회할 수 있는 범위는 최근 3개월이에요. 더 이전 내역은 서비스에 저장된 데이터로만 볼 수 있어요.
+  </div>
+  {% if plan_code == 'basic' and plan_status == 'active' %}
+    <div class="bank-note" style="margin-top:-4px; margin-bottom:12px; border-color:rgba(37,99,235,.24); background:rgba(37,99,235,.08);">
+      프로 업그레이드는 전체 금액 즉시 결제 후 바로 반영돼요(기존 결제분 환불 없음).
+      <form method="post" action="{{ url_for('web_billing.checkout_start') }}" style="display:inline-flex; gap:8px; margin-left:8px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="operation_type" value="upgrade">
+        <input type="hidden" name="target_plan" value="pro">
+        <input type="hidden" name="next" value="{{ request.full_path }}">
+        <button class="btn small ghost" type="submit">프로 업그레이드</button>
+      </form>
+    </div>
+  {% endif %}
+  {% if plan_code in ['basic', 'pro'] and plan_status == 'active' %}
+    <div class="bank-note" style="margin-top:-4px; margin-bottom:12px; border-color:rgba(14,116,144,.24); background:rgba(14,116,144,.08);">
+      추가 계좌는 남은 기간만 먼저 결제되고, 다음 결제일부터 월 정상금액으로 합산돼요.
+      <form method="post" action="{{ url_for('web_billing.checkout_start') }}" style="display:inline-flex; gap:8px; margin-left:8px; align-items:center;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="operation_type" value="addon_proration">
+        <input type="hidden" name="next" value="{{ request.full_path }}">
+        <input class="input" type="number" name="addon_quantity" min="1" step="1" value="1" style="width:74px; height:32px;">
+        <button class="btn small ghost" type="submit">추가 계좌 구매</button>
+      </form>
+    </div>
+  {% endif %}
+  {% if active_count > max_linked_accounts %}
+    <div class="bank-note" style="margin-top:-4px; margin-bottom:12px; border-color:rgba(234,88,12,.25); background:rgba(234,88,12,.09);">
+      현재 연결된 계좌 수가 현재 플랜 허용 수를 초과합니다. 기존 계좌는 계속 볼 수 있고, 새 계좌 연결/재활성화는 제한돼요.
+    </div>
+  {% endif %}
 
   <!-- Steps -->
   <div class="bank-steps">
@@ -287,7 +440,7 @@
     <div class="bank-step">
       <div class="k">STEP 3</div>
       <div class="t">동기화</div>
-      <div class="d">“지금 동기화”를 누르면 처리함/정리하기/세무사 패키지가 갱신됩니다.</div>
+      <div class="d">“동기화 새로고침”을 누르면 처리함/정리하기/세무사 패키지가 갱신됩니다.</div>
     </div>
   </div>
 
@@ -310,9 +463,9 @@
           <div class="hint">동기화 ON 기준</div>
         </div>
         <div class="bank-kpi">
-          <div class="label">등록된 계좌(앱)</div>
-          <div class="value">{{ total_count }}개</div>
-          <div class="hint">이 앱에서 기억 중</div>
+          <div class="label">허용 계좌 수</div>
+          <div class="value">{{ max_linked_accounts }}개</div>
+          <div class="hint">현재 플랜 기준</div>
         </div>
         <div class="bank-kpi">
           <div class="label">최근 동기화</div>
@@ -357,8 +510,81 @@
           <span class="muted">팝업이 차단되면 브라우저에서 팝업 허용 후 다시 시도하세요.</span>
         </div>
       {% endif %}
+
+      <div class="bank-guide-inline">
+        <label class="field" style="margin:0;">
+          <span class="label">은행별 빠른조회 가이드</span>
+          <select id="bank-guide-select">
+            <option value="">은행을 선택해 주세요</option>
+            {% for item in bank_guide_options %}
+              <option value="{{ item.bank_code }}" {% if selected_guide_bank == item.bank_code %}selected{% endif %}>{{ item.bank_name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <div class="bank-guide-meta" id="bank-guide-empty">
+          은행을 선택하면 신청 방법을 보여드릴게요.
+        </div>
+
+        <div id="bank-guide-content" hidden>
+          <div class="bank-guide-title">이 은행은 먼저 빠른조회 등록이 필요해요.</div>
+          <div class="bank-guide-bank" id="bank-guide-bank-name"></div>
+          <div class="bank-guide-message" id="bank-guide-message"></div>
+          <ol class="bank-guide-steps" id="bank-guide-preview"></ol>
+          <div class="bank-guide-mode" id="bank-guide-mode">
+            <label><input type="radio" name="bank-guide-scope" value="personal" {% if selected_guide_mode != 'corporate' %}checked{% endif %}>개인</label>
+            <label><input type="radio" name="bank-guide-scope" value="corporate" {% if selected_guide_mode == 'corporate' %}checked{% endif %}>기업</label>
+          </div>
+          <div class="bank-guide-actions">
+            <a class="btn small primary" id="bank-guide-official-link" href="{{ guide_doc_url }}" target="_blank" rel="noopener">은행에서 먼저 설정하기</a>
+            <a class="btn small ghost" href="{{ url_for('web_inbox.import_page') }}">지금은 CSV·엑셀로 먼저 시작하기</a>
+          </div>
+          <details class="bank-guide-details" id="bank-guide-details">
+            <summary>신청 경로 자세히</summary>
+            <ol class="bank-guide-steps" id="bank-guide-steps"></ol>
+            <div class="bank-guide-required" id="bank-guide-extra-note" hidden></div>
+            <div class="bank-guide-meta">
+              <a id="bank-guide-doc-link" href="{{ guide_doc_url }}" target="_blank" rel="noopener">공식 원문 보기(선택)</a>
+            </div>
+          </details>
+        </div>
+
+        <div class="bank-guide-meta">
+          가이드 갱신: {{ guide_updated_at or '-' }}
+        </div>
+        <noscript>
+          <div class="bank-note" style="margin-top:8px;">
+            브라우저 설정상 자동 안내가 보이지 않을 수 있어요.
+            <a href="{{ guide_doc_url }}" target="_blank" rel="noopener">공식 안내 보기</a> 또는
+            <a href="{{ url_for('web_inbox.import_page') }}">CSV·엑셀로 먼저 시작하기</a>를 이용해 주세요.
+          </div>
+        </noscript>
+      </div>
     </div>
   </div>
+
+  {% if show_link_fallback %}
+    <div class="card pad bank-fallback">
+      <div class="cardTitle">
+        <span>계좌 연결 안내</span>
+        <span class="badge warn">연결 전 준비 필요</span>
+      </div>
+      <div class="bank-note" style="margin-top:8px;">
+        {% if link_fail_kind == 'quick_service' %}
+          <b>이 계좌는 아직 바로 연결할 수 없어요.</b><br>
+          은행 사이트에서 빠른조회 등록을 먼저 완료한 뒤 다시 시도해 주세요.
+        {% else %}
+          <b>계좌 연동이 잠시 실패했어요.</b><br>
+          은행 설정을 확인하거나 CSV·엑셀 업로드로 먼저 시작해 주세요.
+        {% endif %}
+      </div>
+      <div class="row" style="margin-top:8px; gap:8px; flex-wrap:wrap;">
+        <a class="btn small primary" href="{{ fallback_official_url or guide_doc_url }}" target="_blank" rel="noopener">은행에서 먼저 설정하기</a>
+        <a class="btn small ghost" href="{{ url_for('web_inbox.import_page') }}">지금은 CSV·엑셀로 먼저 시작하기</a>
+        <a class="btn small ghost" href="{{ url_for('web_bank.index', guide_bank=selected_guide_bank or None, guide_mode=selected_guide_mode or None) }}">다시 시도</a>
+      </div>
+    </div>
+  {% endif %}
 
   <!-- Accounts -->
   <div class="card pad" style="margin-bottom:12px;">
@@ -393,6 +619,14 @@
                       <span class="badge ghost">동기화 기록 없음</span>
                     {% endif %}
 
+                    {% if link and link.last_balance_krw is not none %}
+                      <span class="badge">잔액 {{ link.last_balance_krw|krw }}</span>
+                    {% elif link and link.last_balance_checked_at %}
+                      <span class="badge ghost">잔액 미확인</span>
+                    {% elif link and link.is_active %}
+                      <span class="badge ghost">잔액 조회 전</span>
+                    {% endif %}
+
                     {% if link and link.is_active %}
                       <span class="badge good">ON</span>
                     {% else %}
@@ -407,26 +641,36 @@
                   <div class="acc-controls">
                     <!-- Toggle -->
                     <form method="POST" action="{{ url_for('web_bank.toggle') }}">
-                      <input type="hidden" name="bank_code" value="{{ acc.bankCode }}">
-                      <input type="hidden" name="account_number" value="{{ acc.accountNumber }}">
+                      {% set form_key = acc.bankCode ~ ':' ~ acc.accountNumber %}
+                      <input type="hidden" name="account_token" value="{{ account_form_tokens.get(form_key, '') }}">
                       <label class="switch" title="동기화 ON/OFF">
-                        <input type="checkbox" name="is_active" {% if link and link.is_active %}checked{% endif %} onchange="this.form.submit()">
+                        <input type="checkbox" name="is_active" {% if link and link.is_active %}checked{% endif %} {% if (not can_bank_link) and (not (link and link.is_active)) %}disabled{% endif %} onchange="this.form.submit()">
                         <span class="slider"></span>
                       </label>
                     </form>
 
                     <!-- Alias -->
                     <form method="POST" action="{{ url_for('web_bank.alias') }}" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                      <input type="hidden" name="bank_code" value="{{ acc.bankCode }}">
-                      <input type="hidden" name="account_number" value="{{ acc.accountNumber }}">
-                      <input class="alias" name="alias" placeholder="별칭(예: 사업용, 생활비)" value="{{ link.alias if link else '' }}">
-                      <button class="btn small ghost" type="submit" {% if not link %}disabled{% endif %}>저장</button>
+                      {% set form_key = acc.bankCode ~ ':' ~ acc.accountNumber %}
+                      <input type="hidden" name="account_token" value="{{ account_form_tokens.get(form_key, '') }}">
+                      <input class="alias" name="alias" placeholder="별칭(예: 사업용, 생활비)" value="{{ link.alias if link else '' }}" {% if not can_bank_link %}disabled{% endif %}>
+                      <button class="btn small ghost" type="submit" {% if (not link) or (not can_bank_link) %}disabled{% endif %}>저장</button>
+                    </form>
+
+                    <form method="POST" action="{{ url_for('web_bank.sync_now') }}">
+                      <input type="hidden" name="mode" value="backfill_3m">
+                      <input type="hidden" name="link_id" value="{{ link.id if link else '' }}">
+                      <button class="btn small" type="submit" {% if (not link) or (not link.is_active) or (not can_bank_link) %}disabled{% endif %}>최근 3개월 다시 가져오기</button>
                     </form>
                   </div>
 
                   {% if not link %}
                     <div class="bank-note" style="margin-top:0;">
                       먼저 토글을 켜서(ON) <b>동기화 대상</b>으로 선택해 주세요.
+                    </div>
+                  {% elif link and link.is_active and (link.last_balance_krw is none) %}
+                    <div class="bank-note" style="margin-top:0;">
+                      이 계좌는 현재 잔액 정보를 받지 못했어요. 은행 응답에 따라 잔액이 비어 있을 수 있어요.
                     </div>
                   {% endif %}
                 </div>
@@ -477,50 +721,231 @@
 
     <div class="row" style="gap:8px; margin-top:12px;">
       <form method="POST" action="{{ url_for('web_bank.sync_now') }}">
-        <button class="btn primary" type="submit" {% if active_count == 0 %}disabled{% endif %}>지금 동기화</button>
+        <input type="hidden" name="mode" value="backfill_3m">
+        <button class="btn primary" type="submit" {% if (active_count == 0) or (not can_bank_link) %}disabled{% endif %}>동기화 새로고침</button>
       </form>
       <a class="btn ghost" href="{{ url_for('web_bank.index') }}">새로고침</a>
     </div>
 
-    {% if active_count == 0 %}
+    {% if not can_bank_link %}
       <div class="bank-note">
-        “지금 동기화”는 <b>동기화 ON</b>인 계좌가 있어야 동작합니다. (계좌 목록에서 토글을 켜주세요)
+        자동화 플랜을 켜면 계좌 자동 수집과 동기화 버튼을 바로 사용할 수 있어요.
+      </div>
+    {% elif active_count == 0 %}
+      <div class="bank-note">
+        “동기화 새로고침”은 <b>동기화 ON</b>인 계좌가 있어야 동작합니다. (계좌 목록에서 토글을 켜주세요)
       </div>
     {% endif %}
   </div>
 
+  <div class="modal" id="accountCreateModal" aria-hidden="true">
+    <div class="modal-backdrop" data-account-create-close></div>
+    <div class="modal-dialog card" style="max-width:540px;">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">계좌 추가</div>
+          <div class="modal-sub">계좌번호 없이 별명과 색상만 저장해요.</div>
+        </div>
+        <button type="button" class="modal-x" data-account-create-close>✕</button>
+      </div>
+      <form method="POST" action="{{ url_for('web_bank.account_create') }}" class="account-create-form">
+        <input type="hidden" name="next" value="{{ request.full_path }}">
+        <label class="field">
+          <span class="label">계좌 별명</span>
+          <input type="text" name="alias" maxlength="64" placeholder="예: 사업용, 생활비" required>
+        </label>
+        <label class="field">
+          <span class="label">계좌번호(선택)</span>
+          <input type="text" name="account_number" maxlength="40" placeholder="숫자만 입력 · 8~20자리" inputmode="numeric">
+        </label>
+        <div class="field">
+          <span class="label">색상 선택</span>
+          <select name="color_hex" class="account-color-select">
+            {% for color_hex, color_label in account_color_options %}
+              {% set color_icon = '⚪' %}
+              {% if color_label == '빨강' %}{% set color_icon = '🔴' %}{% endif %}
+              {% if color_label == '주황' %}{% set color_icon = '🟠' %}{% endif %}
+              {% if color_label == '노랑' %}{% set color_icon = '🟡' %}{% endif %}
+              {% if color_label == '초록' %}{% set color_icon = '🟢' %}{% endif %}
+              {% if color_label == '파랑' %}{% set color_icon = '🔵' %}{% endif %}
+              {% if color_label == '남색' %}{% set color_icon = '🔷' %}{% endif %}
+              {% if color_label == '보라' %}{% set color_icon = '🟣' %}{% endif %}
+              <option value="{{ color_hex }}" {% if loop.first %}selected{% endif %}>{{ color_icon }} {{ color_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <p class="account-create-help">계좌번호를 입력해도 원문은 저장하지 않고 마지막 4자리와 안전 식별값만 저장해요.</p>
+        <div class="row" style="gap:8px; justify-content:flex-end;">
+          <button class="btn ghost" type="button" data-account-create-close>취소</button>
+          <button class="btn primary" type="submit">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </div>
 
+<script id="bank-guide-map-data" type="application/json">{{ bank_guide_map|tojson }}</script>
 <script>
 (function(){
   const btn = document.getElementById('btn-popbill-open');
-  if(!btn) return;
+  if(btn){
+    btn.addEventListener('click', async () => {
+      // 팝업 차단 회피: 클릭 이벤트 안에서 먼저 창을 열어둔다
+      const w = window.open('about:blank', 'popbill_bank', `width={{ popup_w }},height={{ popup_h }},scrollbars=yes,resizable=yes`);
+      try{
+        const res = await fetch('{{ url_for('web_bank.popbill_url') }}', { credentials: 'same-origin' });
+        const data = await res.json();
 
-  btn.addEventListener('click', async () => {
-    // 팝업 차단 회피: 클릭 이벤트 안에서 먼저 창을 열어둔다
-    const w = window.open('about:blank', 'popbill_bank', `width={{ popup_w }},height={{ popup_h }},scrollbars=yes,resizable=yes`);
-    try{
-      const res = await fetch('{{ url_for('web_bank.popbill_url') }}', { credentials: 'same-origin' });
-      const data = await res.json();
+        if(!data.ok){
+          if(w) w.close();
+          alert(data.error || '팝빌 URL 생성에 실패했습니다.');
+          return;
+        }
 
-      if(!data.ok){
+        if(!w){
+          alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해주세요.');
+          return;
+        }
+
+        w.location.href = data.url;
+        w.focus();
+      }catch(e){
         if(w) w.close();
-        alert(data.error || '팝빌 URL 생성에 실패했습니다.');
-        return;
+        alert('팝빌 연결 중 오류가 발생했습니다: ' + (e?.message || e));
       }
+    });
+  }
 
-      if(!w){
-        alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해주세요.');
-        return;
+  const accountCreateModal = document.getElementById('accountCreateModal');
+  const accountCreateOpen = document.getElementById('btn-open-account-create');
+  if(accountCreateModal && accountCreateOpen){
+    const closeTargets = accountCreateModal.querySelectorAll('[data-account-create-close]');
+    const closeModal = () => {
+      accountCreateModal.classList.remove('open');
+      accountCreateModal.setAttribute('aria-hidden', 'true');
+    };
+    const openModal = () => {
+      accountCreateModal.classList.add('open');
+      accountCreateModal.setAttribute('aria-hidden', 'false');
+    };
+    accountCreateOpen.addEventListener('click', openModal);
+    closeTargets.forEach((el) => el.addEventListener('click', closeModal));
+    accountCreateModal.addEventListener('click', (e) => {
+      if(e.target === accountCreateModal){ closeModal(); }
+    });
+    window.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape' && accountCreateModal.classList.contains('open')){
+        closeModal();
       }
-
-      w.location.href = data.url;
-      w.focus();
-    }catch(e){
-      if(w) w.close();
-      alert('팝빌 연결 중 오류가 발생했습니다: ' + (e?.message || e));
+    });
+    const form = accountCreateModal.querySelector('form');
+    if(form){
+      form.addEventListener('submit', () => {
+        closeModal();
+      });
     }
-  });
+  }
+
+  const guideSelect = document.getElementById('bank-guide-select');
+  const guideEmpty = document.getElementById('bank-guide-empty');
+  const guideContent = document.getElementById('bank-guide-content');
+  const guideBankName = document.getElementById('bank-guide-bank-name');
+  const guideMessage = document.getElementById('bank-guide-message');
+  const guidePreview = document.getElementById('bank-guide-preview');
+  const guideOfficialLink = document.getElementById('bank-guide-official-link');
+  const guideSteps = document.getElementById('bank-guide-steps');
+  const guideDocLink = document.getElementById('bank-guide-doc-link');
+  const guideDetails = document.getElementById('bank-guide-details');
+  const guideModeWrap = document.getElementById('bank-guide-mode');
+  const guideModeInputs = Array.from(document.querySelectorAll('input[name=\"bank-guide-scope\"]'));
+  const guideExtraNote = document.getElementById('bank-guide-extra-note');
+  const guideRaw = document.getElementById('bank-guide-map-data');
+  let guideMap = {};
+  try{
+    guideMap = JSON.parse((guideRaw && guideRaw.textContent) || "{}");
+  }catch(_err){
+    guideMap = {};
+  }
+  const defaultDocUrl = "{{ guide_doc_url }}";
+  const defaultSteps = ["은행 홈페이지 또는 앱 접속", "로그인 후 조회/편의서비스 메뉴 이동", "빠른조회(또는 유사 서비스) 신청"];
+
+  const resolveGuideMode = (row) => {
+    const corporateSteps = (row && Array.isArray(row.corporate_steps)) ? row.corporate_steps.filter(Boolean) : [];
+    const personalSteps = (row && Array.isArray(row.personal_steps)) ? row.personal_steps.filter(Boolean) : [];
+    const hasCorporate = corporateSteps.length > 0;
+    const hasPersonal = personalSteps.length > 0;
+
+    if(guideModeWrap){
+      guideModeWrap.hidden = !(hasCorporate && hasPersonal);
+    }
+
+    let mode = 'personal';
+    const checked = guideModeInputs.find((input) => input.checked);
+    if(checked){ mode = checked.value === 'corporate' ? 'corporate' : 'personal'; }
+
+    if(!hasCorporate && hasPersonal){ mode = 'personal'; }
+    if(hasCorporate && !hasPersonal){ mode = 'corporate'; }
+
+    guideModeInputs.forEach((input) => {
+      input.checked = (input.value === mode);
+    });
+
+    const picked = mode === 'corporate' ? corporateSteps : personalSteps;
+    const safePicked = (picked && picked.length > 0) ? picked : (corporateSteps.length > 0 ? corporateSteps : personalSteps);
+    return { mode, steps: safePicked.length > 0 ? safePicked : defaultSteps };
+  };
+
+  const renderStepList = (target, steps, limit = 5) => {
+    if(!target){ return; }
+    target.innerHTML = "";
+    steps.slice(0, limit).forEach((step) => {
+      const li = document.createElement('li');
+      li.textContent = String(step || '').trim();
+      target.appendChild(li);
+    });
+  };
+
+  const renderGuide = () => {
+    if(!guideSelect || !guideContent){ return; }
+    const code = (guideSelect.value || '').trim();
+    if(!code){
+      guideContent.hidden = true;
+      if(guideEmpty){ guideEmpty.hidden = false; }
+      return;
+    }
+    if(guideEmpty){ guideEmpty.hidden = true; }
+
+    const row = guideMap[code] || null;
+    const shortNotice = "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.";
+    const bankName = (row && row.bank_name) ? row.bank_name : "선택한 은행";
+    const serviceName = (row && row.service_name) ? row.service_name : "빠른조회 서비스";
+    const homepageUrl = (row && row.homepage_url) ? row.homepage_url : defaultDocUrl;
+    const officialUrl = (row && row.official_doc_url) ? row.official_doc_url : defaultDocUrl;
+    const modeInfo = resolveGuideMode(row);
+    const steps = modeInfo.steps;
+    if(guideBankName){ guideBankName.textContent = `${bankName} · ${serviceName}`; }
+    if(guideMessage){ guideMessage.textContent = shortNotice; }
+    if(guideOfficialLink){ guideOfficialLink.href = homepageUrl; }
+    if(guideDocLink){ guideDocLink.href = officialUrl; }
+    renderStepList(guidePreview, steps, 3);
+    renderStepList(guideSteps, steps, 8);
+    if(guideExtraNote){
+      const note = (row && row.extra_note) ? String(row.extra_note).trim() : "";
+      guideExtraNote.hidden = !note;
+      guideExtraNote.textContent = note;
+    }
+    if(guideDetails){ guideDetails.open = false; }
+    guideContent.hidden = false;
+  };
+
+  if(guideSelect){
+    guideSelect.addEventListener('change', renderGuide);
+    guideModeInputs.forEach((input) => {
+      input.addEventListener('change', renderGuide);
+    });
+    renderGuide();
+  }
 })();
 </script>
 {% endblock %}

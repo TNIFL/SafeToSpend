@@ -24,7 +24,7 @@ from werkzeug.utils import secure_filename
 
 from core.extensions import db
 from domain.models import EvidenceItem, Transaction
-from services.evidence_store import evidence_abs_path
+from services.evidence_vault import resolve_file_path
 
 
 def build_vault_export_zip(*, user_pk: int) -> tuple[io.BytesIO, str]:
@@ -63,7 +63,7 @@ def build_vault_export_zip(*, user_pk: int) -> tuple[io.BytesIO, str]:
         if not file_key:
             continue
 
-        p = evidence_abs_path(file_key)
+        p = resolve_file_path(file_key)
         if not p.exists() or not p.is_file():
             skipped += 1
             continue
@@ -153,7 +153,7 @@ def delete_all_evidence_files(*, user_pk: int) -> int:
         file_key = (ev.file_key or "").strip()
         if file_key:
             try:
-                p = evidence_abs_path(file_key)
+                p = resolve_file_path(file_key)
                 if p.exists() and p.is_file():
                     p.unlink()
             except Exception:

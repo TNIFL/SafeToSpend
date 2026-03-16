@@ -5,7 +5,7 @@
 <div class="wrap cal-wrap">
 
   <div class="page-head">
-    <div>
+    <div class="page-head-main">
       <div class="h1">고정비(정기거래)</div>
       <div class="p">매일/매주/매월 반복되는 거래를 등록해두면, 캘린더에 “예정”으로 표시돼요.</div>
     </div>
@@ -30,7 +30,10 @@
             <div class="vitem">
               <div>
                 <div class="vtitle">
-                  {{ r.counterparty or '거래처 없음' }}
+                  {{ r.counterparty or r.memo or "알 수 없음" }}
+                  {% if r.memo %}
+                    <div class="muted tiny">{{ r.memo }}</div>
+                  {% endif %}
                   {% if r.is_active %}
                     <span class="badge good" style="margin-left:8px;">활성</span>
                   {% else %}

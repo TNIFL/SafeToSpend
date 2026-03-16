@@ -6,7 +6,7 @@ SQLAlchemy>=2.0,<3.0
 psycopg[binary]>=3.1,<4.0
 
 python-dotenv>=1.0,<2.0
-python-dateutil>=2.9,<3.0
+python-dateutil==2.9.0.post0
 
 reportlab>=4.0,<5.0
 
@@ -16,3 +16,12 @@ popbill>=1.0
 # (팝빌/네트워크 이슈 대응에 유용)
 requests>=2.31,<3.0
 certifi>=2024.2.2
+redis>=5.0,<6.0
+
+openpyxl>=3.1,<4.0
+# .xls(구형 엑셀)까지 지원하려면 아래도 추가 (선택)
+xlrd>=2.0,<3.0
+
+# 영수증 자동 인식(HEIC/HEIF 변환 포함)
+Pillow>=10.0,<12.0
+pillow-heif>=0.15,<1.0

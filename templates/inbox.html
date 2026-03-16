@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}처리함 | 쓸수있어{% endblock %}
+{% block title %}정리하기 | 쓸수있어{% endblock %}
 
 {% block content %}
 <div class="container">
 
   <section class="card pad">
-    <div class="row" style="justify-content:space-between;">
-      <div>
-        <div class="h2">처리함</div>
-        <div class="small-note muted2" style="margin-top:4px;">오늘 1~3개만 처리하면 충분합니다.</div>
+    <div class="page-head" style="margin-bottom:0;">
+      <div class="page-head-main">
+        <div class="h1">정리하기</div>
+        <div class="p">오늘 1~3개만 처리하면 충분합니다.</div>
       </div>
       <div class="row" style="gap:8px; flex-wrap:wrap;">
         <a class="btn small" href="{{ url_for('web_overview.overview') }}">요약</a>
@@ -17,6 +17,21 @@
     </div>
 
     <div class="hr"></div>
+
+    {% if show_import_done %}
+      <div class="card pad" style="box-shadow:none;background:linear-gradient(180deg, rgba(37,99,235,.08), rgba(37,99,235,.03));border:1px solid rgba(37,99,235,.2);margin-bottom:12px;">
+        <div class="row" style="justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:900;">가져오기가 끝났어요. 지금 정리하면 더 빨리 끝나요.</div>
+            <div class="small-note muted2" style="margin-top:4px;">다음 단계는 거래 분류/증빙 정리 화면입니다.</div>
+          </div>
+          <div class="row" style="gap:8px;flex-wrap:wrap;">
+            <a class="btn small primary" href="{{ review_url }}">정리 화면으로 이동</a>
+            <a class="btn small ghost" href="{{ url_for('web_inbox.index', tab='evidence') }}">증빙부터 보기</a>
+          </div>
+        </div>
+      </div>
+    {% endif %}
 
     <div class="tabs">
       <a class="tab {% if tab=='evidence' %}active{% endif %}" href="{{ url_for('web_inbox.index', tab='evidence') }}">

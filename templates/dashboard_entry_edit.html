@@ -3,14 +3,14 @@
 
 {% block content %}
 <div class="wrap" style="max-width:720px;">
-  <div class="top" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;margin:14px 0;">
-    <div>
-      <div class="title" style="font-size:1.25rem;font-weight:1100;letter-spacing:-.4px;">기록 수정</div>
-      <div class="sub" style="margin-top:6px;color:var(--muted);font-size:.95rem;line-height:1.5;">
+  <div class="top page-head" style="margin:14px 0;">
+    <div class="page-head-main">
+      <div class="h1">기록 수정</div>
+      <div class="p">
         {{ entry.created_at.strftime("%Y-%m-%d") }}
       </div>
     </div>
-    <div class="row" style="display:flex;gap:10px;align-items:center;">
+    <div class="page-actions">
       <a class="btn" href="{{ url_for('web_dashboard.index') }}">돌아가기</a>
       <form method="POST" action="{{ url_for('web_dashboard.delete_entry', entry_id=entry.id) }}">
         <button class="btn danger" type="submit">삭제</button>

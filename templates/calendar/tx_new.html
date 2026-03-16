@@ -5,7 +5,7 @@
 <div class="wrap cal-wrap">
 
   <div class="page-head">
-    <div>
+    <div class="page-head-main">
       <div class="h1">거래 추가</div>
       <div class="p">캘린더에 바로 반영돼요. 날짜만 맞춰두면 나머지는 빠르게.</div>
     </div>
@@ -52,6 +52,16 @@
         </div>
 
         <label class="field">
+          <span class="label">계좌(선택)</span>
+          <select name="bank_account_id">
+            <option value="">기타(수동) 기본</option>
+            {% for acc in account_options %}
+              <option value="{{ acc.id }}" {% if default_bank_account_id and default_bank_account_id == acc.id %}selected{% endif %}>{{ acc.display_name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="field">
           <span class="label">거래처</span>
           <input name="counterparty" placeholder="예: 네이버, 쿠팡, 스타벅스">
         </label>
@@ -82,9 +92,13 @@
                     data-dir="{{ t.direction }}"
                     data-amt="{{ t.amount_krw }}"
                     data-cp="{{ t.counterparty or '' }}"
-                    data-memo="{{ t.memo or '' }}">
+                    data-memo="{{ t.memo or '' }}"
+                    data-account="{{ t.bank_account_id or '' }}">
               <div>
-                <div class="vtitle">{{ t.counterparty or '거래처 없음' }}</div>
+                {{ t.counterparty or t.memo or "알 수 없음" }}
+                {% if t.memo %}
+                  <div class="muted tiny">{{ t.memo }}</div>
+                {% endif %}
                 <div class="vsub">{{ t.occurred_at.strftime('%m-%d') }} · {{ t.memo or '메모 없음' }}</div>
               </div>
               <div class="vright">
@@ -113,13 +127,20 @@
     const amt = form.querySelector('[name="amount_krw"]');
     const cp  = form.querySelector('[name="counterparty"]');
     const memo= form.querySelector('[name="memo"]');
+    const account= form.querySelector('[name="bank_account_id"]');
 
     document.querySelectorAll('.vitem-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if(dir) dir.value = btn.dataset.dir || 'out';
-        if(amt) amt.value = btn.dataset.amt || '';
+        if(amt) {
+          amt.value = btn.dataset.amt || '';
+          amt.dispatchEvent(new Event('input', { bubbles: true }));
+        }
         if(cp)  cp.value  = btn.dataset.cp || '';
         if(memo)memo.value= btn.dataset.memo || '';
+        if(account && btn.dataset.account){
+          account.value = btn.dataset.account || '';
+        }
         if(amt) amt.focus();
       });
     });

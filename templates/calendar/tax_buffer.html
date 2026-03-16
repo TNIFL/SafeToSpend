@@ -1,131 +1,664 @@
+{# templates/calendar/tax_buffer.html #}
+{% set tax_buffer_current = (current_buffer_target_krw if current_buffer_target_krw is not none else recommended)|int %}
+{% set tax_buffer_previous = (buffer_before if receipt_effect_event and buffer_before is not none else tax_buffer_current)|int %}
+{% set tax_buffer_expense_current = est.expense_business_krw|int %}
+{% set tax_buffer_expense_previous = (expense_before if receipt_effect_event and expense_before is not none else (tax_buffer_expense_current - (receipt_reflected_expense_krw if receipt_effect_event and receipt_reflected_expense_krw is not none else 0)))|int %}
+{% if tax_buffer_expense_previous < est.expense_business_base_krw|int %}
+  {% set tax_buffer_expense_previous = est.expense_business_base_krw|int %}
+{% endif %}
+{% set tax_buffer_profit_current = est.estimated_profit_krw|int %}
+{% set tax_buffer_profit_previous = (profit_before if receipt_effect_event and profit_before is not none else (tax_buffer_profit_current + (tax_buffer_expense_current - tax_buffer_expense_previous)))|int %}
+{% set tax_buffer_total_current = (tax_buffer_current + (health_insurance_buffer|int))|int %}
+{% set tax_buffer_total_previous = ((buffer_before if receipt_effect_event and buffer_before is not none else tax_buffer_current) + (health_insurance_buffer|int))|int %}
 {% extends "base.html" %}
 {% block title %}세금 보관함{% endblock %}
 
 {% block content %}
-<div class="wrap cal-wrap">
+<div class="wrap cal-wrap has-side-guide-layout">
 
   <div class="page-head">
-    <div>
+    <div class="page-head-main">
       <div class="h1">세금 보관함</div>
-      <div class="p">{{ month_first.strftime("%Y-%m") }} · 이번 달 수입 기준으로 “따로 떼둘 돈”을 관리해요</div>
+      <div class="p">{{ month_key }} · 선택한 달 예상 납부세액(추정)을 기준으로 부족분을 계산합니다</div>
+      {% if show_account_filter_badge %}
+        <div class="p muted2" style="margin-top:4px;">현재 계좌 필터: {{ account_filter_name }} · 세금 보관함 계산은 전체 기준으로 유지돼요.</div>
+      {% endif %}
     </div>
     <div class="actions">
-      <a class="btn" href="{{ url_for('web_calendar.month_calendar', month=month_key) }}">캘린더</a>
-      <a class="btn ghost" href="{{ url_for('web_calendar.year_view', year=month_first.year) }}">연간</a>
+      <div class="month-switch">
+        <a class="btn small ghost" href="{{ url_for('web_calendar.tax_buffer', month=prev_month, account=account_filter_value) }}">◀</a>
+        <span class="badge primary">{{ month_key }}</span>
+        <a class="btn small ghost" href="{{ url_for('web_calendar.tax_buffer', month=next_month, account=account_filter_value) }}">▶</a>
+      </div>
+      <a class="btn small ghost" href="{{ url_for('web_calendar.tax_buffer', account=account_filter_value) }}">이번 달</a>
+      <a class="btn small ghost" href="{{ url_for('web_guide.expense_guide') }}">어떤 영수증이 비용처리되나요?</a>
+      <a class="btn small ghost" href="{{ url_for('web_profile.assets_quiz', month=month_key) }}">자산 진단(30초)</a>
+      <a class="btn small ghost" href="{{ url_for('web_profile.assets_page', month=month_key, skip_quiz=1) }}">자산 정보 수정</a>
+      <a class="btn ghost" href="{{ calendar_url }}">캘린더</a>
     </div>
   </div>
 
-  <div class="kpiRow">
-    <div class="kpi">
-      <div class="label">이번 달 수입</div>
-      <div class="value big">+ {{ income_total|krw }}</div>
-      <div class="hint">세율 {{ (tax_rate * 100)|round(1) }}%</div>
+  {% set guide_title = "세금보관함 사용법" %}
+  {% set guide_lines = [
+    "권장 보관액과 현재 잔액 차이를 먼저 확인하세요.",
+    "부족하면 보관 계획을, 초과면 납부 계획을 정리하세요.",
+    "저장 후 진행률이 갱신됐는지 확인하세요."
+  ] %}
+  {% set guide_hint = "입력값이 바뀌면 권장액도 함께 바뀔 수 있어요." %}
+  {% set guide_cta_text = "세금보관함 가이드" %}
+  {% set guide_cta_href = url_for('web_dashboard.guide', month=month_key, from='tax-buffer') ~ '#tax-buffer' %}
+  {% set guide_more_href = url_for('web_dashboard.guide', month=month_key, from='tax-buffer') ~ '#messages' %}
+  {% include "components/usage_side_guide.html" %}
+
+  {% if seasonal_context %}
+    <div class="card pad" id="seasonal-tax-buffer-context" style="margin-bottom:12px; border-color:rgba(17,24,39,.14); background:{% if seasonal_context.strength == 'strong' %}linear-gradient(180deg, rgba(17,24,39,.05), #fff 65%){% else %}var(--surface-2){% endif %};">
+      <div class="row" style="justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+          <div class="p muted2" style="margin-bottom:4px;">{{ seasonal_context.season_label }}</div>
+          <div class="h2" style="font-size:1.02rem;">{{ seasonal_context.title }}</div>
+          <div class="p muted2" style="margin-top:6px;">{{ seasonal_context.summary }}</div>
+        </div>
+        <div class="row" style="gap:8px; flex-wrap:wrap;">
+          <span class="badge {% if seasonal_context.completion_state == 'done' %}good{% elif seasonal_context.completion_state == 'in_progress' %}warn{% else %}primary{% endif %}">{{ seasonal_context.completion_label }}</span>
+          <a class="btn small ghost" href="{{ seasonal_context.metric_cta_url if seasonal_context.metric_cta_url else seasonal_context.cta_url }}">{{ seasonal_context.cta_label }}</a>
+        </div>
+      </div>
     </div>
-    <div class="kpi">
-      <div class="label">권장 보관</div>
-      <div class="value big">{{ recommended|krw }}</div>
-      <div class="hint">이번 달 예상 세금(가이드)</div>
-    </div>
-    <div class="kpi">
-      <div class="label">현재 보관</div>
-      <div class="value big">{{ balance|krw }}</div>
-      {% if shortage > 0 %}
-        <div class="hint"><b class="neg">부족 {{ shortage|krw }}</b></div>
-      {% elif overage > 0 %}
-        <div class="hint"><b class="pos">여유 {{ overage|krw }}</b></div>
-      {% else %}
-        <div class="hint">권장치와 동일</div>
+  {% endif %}
+
+  {% set official_data_entrypoint_id = "tax-buffer-official-data-entrypoint" %}
+  {% set official_data_entrypoint_title = "홈택스 자료 가져오기 안내" %}
+  {% set official_data_entrypoint_summary = "사업용 카드, 현금영수증, 이미 빠진 세금 자료를 어디서 찾는지와 이 자료를 올리면 어떤 숫자가 좋아지는지 정리해 뒀어요." %}
+  {% set official_data_entrypoint_note = "링크가 안 열릴 때 따라갈 메뉴 경로도 같이 보여드려요." %}
+  {% set official_data_upload_href = url_for('web_official_data.upload_page', document_type='hometax_withholding_statement') %}
+  {% set official_data_upload_label = "홈택스 자료 바로 올리기" %}
+  {% set official_data_entrypoint_label = "홈택스 자료 안내 보기" %}
+  {% set official_data_entrypoint_anchor = "hometax" %}
+  {% include "partials/official_data_entrypoints.html" %}
+  {% include "partials/official_data_effect_notice.html" %}
+
+  <div class="card pad linked-balance-card" style="margin-bottom:12px;">
+    <div class="linked-balance-title-row">
+      <div class="h2 linked-balance-title">연동 계좌 잔액</div>
+      {% if linked_accounts %}
+        <span class="linked-balance-badge">{{ linked_accounts|length }}개 계좌</span>
       {% endif %}
     </div>
+    {% if linked_accounts %}
+      <div class="linked-balance-table-wrap">
+        <table class="linked-balance-table">
+          <thead>
+            <tr>
+              <th>은행</th>
+              <th>계좌번호</th>
+              <th class="right">잔액</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for acc in linked_accounts %}
+              <tr>
+                <td class="bank">{{ acc.bank_name }}</td>
+                <td class="account">{{ acc.account_number }}</td>
+                <td class="right amount {% if acc.balance_krw is none %}muted{% endif %}">
+                  {% if acc.balance_krw is not none %}
+                    {{ acc.balance_krw|krw }}
+                  {% else %}
+                    조회 불가
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if linked_accounts_has_unavailable %}
+        <div class="linked-balance-note">일부 계좌 잔액은 현재 조회되지 않을 수 있어요.</div>
+      {% endif %}
+    {% else %}
+      <div class="linked-balance-empty">연동된 계좌가 없어요. 계좌 연동 후 잔액을 확인할 수 있어요.</div>
+    {% endif %}
   </div>
 
-  <div class="card pad" style="margin-top:12px;">
-    <div class="cardTitle">
-      <span>진행률</span>
-      <span class="muted">{{ progress_pct }}%</span>
+  {# =========================
+     핵심 카드: 예상세액/업무경비/순이익/세후(추정)
+     ========================= #}
+  <div class="card pad" id="tax-buffer-kpis" style="margin-bottom:12px;">
+    {% set tax_level = (tax_calc_meta.level if tax_calc_meta and tax_calc_meta.level else 'limited') %}
+    {% set tax_badge_class = 'good' if tax_level == 'normal' else ('warn' if tax_level == 'limited' else 'bad') %}
+    <div class="p" style="margin-bottom:8px;">
+      <span class="badge {{ tax_badge_class }}">{{ tax_calc_meta.label if tax_calc_meta else '제한된 추정' }}</span>
+      <span class="muted2" style="margin-left:6px;">{{ (tax_calc_meta.message if tax_calc_meta else '세금 계산 정보를 확인 중이에요.') }}</span>
     </div>
-    <div class="hr"></div>
-    <div class="progress" style="margin-top:10px;">
-      <div style="width: {{ progress_pct }}%;"></div>
+    {% if tax_calc_meta and tax_calc_meta.detail %}
+      <div class="p muted2" style="margin-top:-2px; margin-bottom:8px;">사유: {{ tax_calc_meta.detail }}</div>
+    {% endif %}
+    {% set nhis_meta = (nhis_calc_meta if nhis_calc_meta else (nhis_payload.result_meta if nhis_payload and nhis_payload.result_meta else {})) %}
+    {% if nhis_meta %}
+      {% set nhis_badge_class = 'good' if nhis_meta.level == 'normal' else ('warn' if nhis_meta.level == 'limited' else 'bad') %}
+      <div class="p" style="margin-bottom:8px;">
+        <span class="badge {{ nhis_badge_class }}">건보 {{ nhis_meta.label }}</span>
+        <span class="muted2" style="margin-left:6px;">{{ nhis_meta.message }}</span>
+      </div>
+    {% endif %}
+    {% set tax_policy = tax_display_policy if tax_display_policy else {} %}
+    {% set nhis_policy = nhis_display_policy if nhis_display_policy else {} %}
+    {% set tax_blocked = tax_policy.blocked if tax_policy else false %}
+    {% set tax_limited = tax_policy.limited if tax_policy else true %}
+    {% set nhis_blocked = nhis_policy.blocked if nhis_policy else false %}
+    <div class="p muted2" style="margin-bottom:10px;">
+      이 화면의 세금/건보료는 확정값이 아닌 추정치예요. 입력이 부족하면 세금이 0원 또는 낮게 보일 수 있어요.
     </div>
-  </div>
-
-  <div class="split" style="margin-top:14px;">
-
-    <section class="card pad">
-      <div class="cardTitle">
-        <span>빠르게 보관/해제</span>
-        <span class="muted">“따로 떼어두는 금액”만 기록해요</span>
-      </div>
-      <div class="hr"></div>
-
-      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
-        <form method="POST" action="{{ url_for('web_calendar.tax_buffer_adjust') }}" class="card pad" style="box-shadow:none;">
-          <input type="hidden" name="next" value="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">
-          <div class="h2" style="margin-bottom:8px;">보관하기</div>
-          <div class="form-grid">
-            <label class="field">
-              <span class="label">금액(원)</span>
-              <input name="delta" type="number" min="1" step="100" placeholder="예: 300000">
-            </label>
-            <label class="field">
-              <span class="label">메모(선택)</span>
-              <input name="note" placeholder="예: 2월 세금 따로 보관">
-            </label>
-          </div>
-          <button class="btn primary full" type="submit" style="margin-top:10px;">+ 보관</button>
-        </form>
-
-        <form method="POST" action="{{ url_for('web_calendar.tax_buffer_adjust') }}" class="card pad" style="box-shadow:none;">
-          <input type="hidden" name="next" value="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">
-          <div class="h2" style="margin-bottom:8px;">꺼내기</div>
-          <div class="form-grid">
-            <label class="field">
-              <span class="label">금액(원)</span>
-              <input name="delta" type="number" max="-1" step="100" placeholder="예: -200000">
-            </label>
-            <label class="field">
-              <span class="label">메모(선택)</span>
-              <input name="note" placeholder="예: 세무대리인 납부">
-            </label>
-          </div>
-          <button class="btn full" type="submit" style="margin-top:10px;">- 꺼내기</button>
-          <div class="help">음수로 입력해요. 예: -100000</div>
-        </form>
-      </div>
-    </section>
-
-    <aside class="card pad">
-      <div class="cardTitle">
-        <span>최근 내역</span>
-        <span class="muted">최신 40개</span>
-      </div>
-      <div class="hr"></div>
-
-      {% if ledger %}
-        <div class="vlist">
-          {% for r in ledger %}
-            <div class="vitem">
-              <div>
-                <div class="vtitle">{{ (r.note or "메모 없음") }}</div>
-                <div class="vsub">{{ r.created_at.strftime("%Y-%m-%d") }}</div>
-              </div>
-              <div class="vright">
-                <div class="vamt {% if r.delta_amount_krw >= 0 %}pos{% else %}neg{% endif %}">
-                  {% if r.delta_amount_krw >= 0 %}+{% endif %}{{ r.delta_amount_krw|krw }}
+    {% if (tax_recovery_cta and tax_recovery_cta.show) or (nhis_recovery_cta and nhis_recovery_cta.show) %}
+      <div class="card" style="box-shadow:none; margin-bottom:12px; background:var(--surface-2);">
+        <div class="card pad" style="padding:12px;">
+          {% if tax_recovery_cta and tax_recovery_cta.show %}
+            <div class="p" style="margin-bottom:6px;"><b>세금 정확도 올리기</b></div>
+            <div class="p muted2">지금 보이는 숫자는 먼저 보여드리고 있고, 이 정보 몇 개만 보완하면 더 정확해져요.</div>
+            <div class="p muted2" style="margin-top:4px;">{{ tax_recovery_cta.title }}</div>
+            {% if tax_calc_meta and tax_calc_meta.reason == 'missing_income_classification' %}
+              <form method="post" action="{{ url_for('web_profile.tax_income_classification_quick_save') }}" style="margin-top:8px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ url_for('web_calendar.tax_buffer', month=month_key, account=account_filter_value) }}">
+                <input type="hidden" name="recovery_source" value="tax_tax_buffer_inline_card">
+                <div class="p muted2" style="margin-bottom:6px;">가장 먼저 소득 유형 1문항만 저장하면 계산을 시작할 수 있어요.</div>
+                <div class="row" style="gap:8px; flex-wrap:wrap;">
+                  <select class="input" name="income_classification" style="min-width:220px;">
+                    <option value="business">프리랜서/개인사업자 중심</option>
+                    <option value="mixed">근로소득도 있음</option>
+                    <option value="salary">근로소득 중심</option>
+                    <option value="other">기타소득 포함</option>
+                  </select>
+                  <button class="btn small primary" type="submit">소득 유형 먼저 저장</button>
                 </div>
+              </form>
+            {% endif %}
+            {% if tax_input_draft and tax_input_draft.has_draft %}
+              <div class="p muted2" style="margin-top:4px;">
+                자동 초안 {{ (tax_input_draft.draft_values or {})|length }}개를 준비했어요. 저장 전에는 숫자에 바로 반영되지 않아요.
               </div>
+            {% endif %}
+            {% if tax_recovery_cta.missing_labels %}
+              <div class="p muted2" style="margin-top:4px;">먼저 알려주면 좋은 정보: {{ tax_recovery_cta.missing_labels|join(', ') }}</div>
+            {% endif %}
+            <div class="row" style="margin-top:8px;">
+              <a class="btn small ghost" href="{{ tax_recovery_cta.url }}">기본 정보 이어서 입력</a>
             </div>
-          {% endfor %}
+          {% endif %}
+          {% if nhis_recovery_cta and nhis_recovery_cta.show %}
+            <div class="p" style="margin-top:10px; margin-bottom:6px;"><b>{{ nhis_recovery_cta.title }}</b></div>
+            <div class="p muted2">{{ nhis_recovery_cta.description }}</div>
+            {% if nhis_calc_meta and nhis_calc_meta.reason == 'missing_membership_type' %}
+              <form method="post" action="{{ url_for('web_profile.nhis_membership_type_quick_save') }}" style="margin-top:8px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="month" value="{{ month_key }}">
+                <input type="hidden" name="next" value="{{ url_for('web_profile.nhis_page', month=month_key, source='nhis') }}">
+                <input type="hidden" name="recovery_source" value="nhis_tax_buffer_inline_card">
+                <div class="row" style="gap:8px; flex-wrap:wrap;">
+                  <select class="input" name="member_type" style="min-width:180px;">
+                    <option value="employee">직장가입자</option>
+                    <option value="regional">지역가입자</option>
+                    <option value="dependent">피부양자</option>
+                  </select>
+                  <button class="btn small primary" type="submit">가입유형 먼저 저장</button>
+                </div>
+              </form>
+            {% endif %}
+            {% if nhis_recovery_cta.missing_labels %}
+              <div class="p muted2" style="margin-top:4px;">누락 항목: {{ nhis_recovery_cta.missing_labels|join(', ') }}</div>
+            {% endif %}
+            <div class="row" style="margin-top:8px;">
+              <a class="btn small ghost" href="{{ nhis_recovery_cta.url }}">건보 입력 화면으로 이동(보조)</a>
+            </div>
+          {% endif %}
         </div>
+      </div>
+    {% endif %}
+    <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="min-width:260px;">
+        <div class="p" style="opacity:.8; margin-bottom:4px;">선택한 달 추가 납부 예상세액(추정)</div>
+        {% if tax_blocked %}
+          <div class="h2">입력 보완 후 계산 가능</div>
+          {% if tax_missing_priority_fields %}
+            <div class="p muted2" style="margin-top:4px;">
+              필수 입력:
+              {% for key in tax_missing_priority_fields %}
+                {% if not loop.first %}, {% endif %}{{ (tax_required_input_labels.get(key) if tax_required_input_labels else key) or key }}
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="p muted2" style="margin-top:4px;">소득 유형/총수입/업무지출/원천·기납부 정보를 먼저 입력해 주세요.</div>
+          {% endif %}
+        {% elif tax_limited %}
+          <div class="h1" data-tax-animate="currency" data-tax-prefix="~" data-tax-current-value="{{ tax_buffer_current }}" data-tax-previous-value="{{ tax_buffer_previous }}" data-tax-changed="{{ 1 if receipt_effect_event and tax_buffer_current != tax_buffer_previous else 0 }}">~{{ "{:,}".format(tax_buffer_current) }}원</div>
+          {% if tax_missing_priority_fields %}
+            <div class="p muted2" style="margin-top:4px;">
+              정확도 제한: 
+              {% for key in tax_missing_priority_fields %}
+                {% if not loop.first %}, {% endif %}{{ (tax_required_input_labels.get(key) if tax_required_input_labels else key) or key }}
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% else %}
+          <div class="h1" data-tax-animate="currency" data-tax-current-value="{{ tax_buffer_current }}" data-tax-previous-value="{{ tax_buffer_previous }}" data-tax-changed="{{ 1 if receipt_effect_event and tax_buffer_current != tax_buffer_previous else 0 }}">{{ "{:,}".format(tax_buffer_current) }}원</div>
+        {% endif %}
+        <div class="p" style="opacity:.75;">적용 세율: {{ (tax_rate*100)|round(1) }}%</div>
+        {% if est and est.withheld_est_krw and est.withheld_est_krw > 0 %}
+          <div class="p" style="opacity:.85; margin-top:4px;">돈 받을 때 미리 빠진 세금 반영(추정): <b>-{{ "{:,}".format(est.withheld_est_krw) }}원</b></div>
+        {% else %}
+          <div class="p muted2" style="margin-top:4px;">돈 받을 때 미리 빠진 세금 정보가 없어요. 알려주면 더 정확해져요</div>
+        {% endif %}
+        <div class="p muted2" style="margin-top:6px;">
+          영수증 비용 반영 <b>{{ "{:,}".format(receipt_reflected_expense_krw if receipt_reflected_expense_krw is not none else est.receipt_reflected_expense_krw) }}원</b>
+          {% if (receipt_pending_expense_krw if receipt_pending_expense_krw is not none else est.receipt_pending_expense_krw)|int > 0 %}
+            · 반영 대기 <b>{{ "{:,}".format(receipt_pending_expense_krw if receipt_pending_expense_krw is not none else est.receipt_pending_expense_krw) }}원</b>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="min-width:220px;">
+        <div class="p" style="opacity:.8; margin-bottom:4px;">세금 금고(현재)</div>
+        <div class="h2">{{ "{:,}".format(balance) }}원</div>
+        <div class="p" style="opacity:.75;">
+          {% if shortage > 0 %}
+            부족: <b>{{ "{:,}".format(shortage) }}원</b>
+          {% else %}
+            초과: <b>{{ "{:,}".format(overage) }}원</b>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="min-width:340px;">
+        <div class="p" style="opacity:.8; margin-bottom:6px;">산출 근거(선택한 달)</div>
+        <div class="p">포함 수입(비수입 제외): <b>{{ "{:,}".format(income_total) }}원</b></div>
+
+        <div class="p">
+          일하면서 쓴 비용(업무로 확정):
+          <b data-tax-animate="currency" data-tax-current-value="{{ tax_buffer_expense_current }}" data-tax-previous-value="{{ tax_buffer_expense_previous }}" data-tax-changed="{{ 1 if receipt_effect_event and tax_buffer_expense_current != tax_buffer_expense_previous else 0 }}">
+            {% if est and est.expense_business_krw is not none %}
+              {{ "{:,}".format(est.expense_business_krw) }}원
+            {% else %}
+              0원
+            {% endif %}
+          </b>
+        </div>
+
+        <div class="p" style="opacity:.85;">
+          추정 순이익:
+          <b data-tax-animate="currency" data-tax-current-value="{{ tax_buffer_profit_current }}" data-tax-previous-value="{{ tax_buffer_profit_previous }}" data-tax-changed="{{ 1 if receipt_effect_event and tax_buffer_profit_current != tax_buffer_profit_previous else 0 }}">
+            {% if est and est.estimated_profit_krw is not none %}
+              {{ "{:,}".format(est.estimated_profit_krw) }}원
+            {% else %}
+              0원
+            {% endif %}
+          </b>
+        </div>
+
+        <div class="p" style="opacity:.9; margin-top:6px;">
+          세후(추정) 남는 돈:
+          <b>
+            {% if after_tax_profit is not none %}
+              {{ "{:,}".format(after_tax_profit) }}원
+            {% else %}
+              0원
+            {% endif %}
+          </b>
+          <span class="muted2">= 추정 순이익 - 예상 납부세액</span>
+        </div>
+
+        <div class="p" style="opacity:.85; margin-top:6px;">
+          세금 보관 권장:
+          {% if tax_blocked %}
+            <b>입력 보완 후 계산</b>
+          {% else %}
+            <b data-tax-animate="currency" data-tax-prefix="{{ '~' if tax_limited else '' }}" data-tax-current-value="{{ tax_buffer_current }}" data-tax-previous-value="{{ tax_buffer_previous }}" data-tax-changed="{{ 1 if receipt_effect_event and tax_buffer_current != tax_buffer_previous else 0 }}">{% if tax_limited %}~{% endif %}{{ "{:,}".format(tax_buffer_current) }}원</b>
+          {% endif %}
+        </div>
+        <div class="p" style="opacity:.85; margin-top:4px;">
+          건보료 보관(선택한 달):
+          {% if nhis_blocked %}
+            <b>입력 보완 후 계산</b>
+          {% else %}
+            <b>{% if nhis_policy and nhis_policy.limited %}~{% endif %}{{ "{:,}".format(health_insurance_buffer) }}원</b>
+          {% endif %}
+        </div>
+        <div class="p" style="opacity:.95; margin-top:4px;">
+          선택한 달 총 보관 권장액:
+          {% if tax_blocked or nhis_blocked %}
+            <b>입력 보완 후 계산</b>
+          {% else %}
+            <b data-tax-animate="currency" data-tax-current-value="{{ tax_buffer_total_current }}" data-tax-previous-value="{{ tax_buffer_total_previous }}" data-tax-changed="{{ 1 if receipt_effect_event and tax_buffer_total_current != tax_buffer_total_previous else 0 }}">{{ "{:,}".format(tax_buffer_total_current) }}원</b>
+          {% endif %}
+        </div>
+        {% set profile_complete = est and ('profile_complete' in est.applied_flags) %}
+        {% set withholding_mode = (est.withholding_mode if est and est.withholding_mode else 'not_applied') %}
+        {% set has_withheld = est and est.withheld_est_krw and est.withheld_est_krw > 0 %}
+        {% if withholding_mode == 'profile_yes' %}
+          {% set withholding_label = '3.3%/미리 빠진 세금(입력 반영)' %}
+        {% elif withholding_mode == 'profile_no' %}
+          {% set withholding_label = '3.3%/미리 빠진 세금(없음)' %}
+        {% elif withholding_mode == 'heuristic' %}
+          {% set withholding_label = '3.3%/미리 빠진 세금(거래 추정)' %}
+        {% else %}
+          {% set withholding_label = '3.3%/미리 빠진 세금(미입력)' %}
+        {% endif %}
+        {% if health_insurance_buffer|int > 0 %}
+          {% set insurance_label = '건보료(입력값)' %}
+        {% elif health_insurance_note and ('직장/피부양자' in health_insurance_note) %}
+          {% set insurance_label = '건보료(직장/피부양자 0원)' %}
+        {% else %}
+          {% set insurance_label = '건보료(미입력)' %}
+        {% endif %}
+        <div class="row" style="gap:8px; margin-top:6px; flex-wrap:wrap;">
+          {% if profile_complete %}
+            <span class="badge good">내 정보 반영됨</span>
+          {% else %}
+            <span class="badge warn">기본값 추정</span>
+          {% endif %}
+        </div>
+        <div class="p" style="opacity:.78; margin-top:4px;">
+          반영된 항목: {{ withholding_label }} · {{ insurance_label }} ·
+          {% if profile_complete %}
+            내 일 방식/부가세 방식 기준
+          {% else %}
+            기본값으로 추정(내 정보 입력 시 더 정확해요)
+            <a href="{{ profile_edit_url }}">내 정보 수정</a>
+          {% endif %}
+        </div>
+
+        <details style="margin-top:8px;">
+          <summary class="p" style="cursor:pointer; font-weight:900; color:var(--text);">왜 이렇게 나왔나요?</summary>
+          <div class="p muted2" style="margin-top:6px;">
+            수입 {{ "{:,}".format(income_total) }}원 · 업무경비 {{ "{:,}".format((est.expense_business_krw if est and est.expense_business_krw is not none else 0)) }}원
+          </div>
+          <div class="p muted2" style="margin-top:4px;">
+            {% if withholding_mode == 'official_verified_snapshot' %}
+              홈택스 공식 자료 기준으로 이미 빠진 세금을 반영했어요
+              {% if est and est.official_tax_reference_date %} · 기준일 {{ est.official_tax_reference_date }}{% endif %}
+              {% if has_withheld %} · -{{ "{:,}".format(est.withheld_est_krw) }}원{% endif %}
+            {% elif withholding_mode == 'profile_yes' %}
+              돈 받을 때 미리 빠진 세금 입력값(있음) 기준으로 반영했어요 · 수입 {{ "{:,}".format(est.withholding_base_krw or 0) }}원의 3.3%
+              {% if has_withheld %} = -{{ "{:,}".format(est.withheld_est_krw) }}원{% endif %}
+            {% elif withholding_mode == 'profile_no' %}
+              돈 받을 때 미리 빠진 세금이 없다고 보고 0원으로 계산했어요.
+            {% elif withholding_mode == 'heuristic' %}
+              3.3% 관련 거래 표현이 있는 수입 {{ "{:,}".format(est.withholding_base_krw or 0) }}원 기준으로 추정 반영했어요
+              {% if has_withheld %} · -{{ "{:,}".format(est.withheld_est_krw) }}원{% endif %}
+              · <a href="{{ review_income_url }}">수입 내역 확인</a>
+            {% else %}
+              돈 받을 때 미리 빠진 세금 정보가 없어 0원으로 계산했어요 · <a href="{{ review_income_url }}">수입 내역 확인</a>
+            {% endif %}
+          </div>
+          {% if est and est.local_tax_est_krw %}
+            <div class="p muted2" style="margin-top:4px;">
+              지방세 포함 · {{ "{:,}".format(est.local_tax_est_krw) }}원
+            </div>
+          {% endif %}
+          <div class="p muted2" style="margin-top:4px;">
+            건보료 보관 반영 · {{ "{:,}".format(health_insurance_buffer) }}원
+          </div>
+          <div class="p muted2" style="margin-top:4px;">
+            추정치이며 입력값/공제/다른 소득에 따라 달라질 수 있어요.
+          </div>
+          <div class="p muted2" style="margin-top:4px;">
+            돈 받을 때 3.3%가 떼이는 경우 반영은 입력값 또는 거래 내역 표현 기준 추정이에요.
+          </div>
+          <div class="p muted2" style="margin-top:4px;">
+            건보료는 공단 고지액이 아닌 추정치이며 가입유형/소득 반영시점/재산 기준에 따라 달라질 수 있어요.
+          </div>
+        </details>
+
+        {% if est and est.warnings %}
+          {% for msg in est.warnings[:2] %}
+            <div class="p muted2" style="margin-top:4px;">• {{ msg }} <a href="{{ profile_edit_url }}">기본 정보 보완</a></div>
+          {% endfor %}
+        {% endif %}
+        {% if health_insurance_note %}
+          <div class="p muted2" style="margin-top:4px;">• {{ health_insurance_note }} <a href="{{ nhis_edit_url }}">건보료 설정</a></div>
+        {% endif %}
+        <div class="p" style="margin-top:6px;">
+          <a class="btn small ghost" href="{{ profile_edit_url }}">기본 정보 이어서 입력</a>
+          <a class="btn small ghost" href="{{ nhis_edit_url }}">건보료 설정</a>
+        </div>
+      </div>
+    </div>
+
+    {# 진행률 바 #}
+    <div style="margin-top:14px;">
+      {% if tax_blocked %}
+        <div class="p muted2">핵심 입력을 채우면 달성률을 계산해 보여드려요.</div>
       {% else %}
-        <div class="empty">
-          아직 기록이 없어요. <b>보관하기</b>로 한 번이라도 남겨두면 추적이 쉬워집니다.
+        <div class="p" style="opacity:.8; margin-bottom:6px;">달성률: {{ progress_pct }}%</div>
+        <div style="height:10px; background:rgba(0,0,0,.06); border-radius:999px; overflow:hidden;">
+          <div style="height:10px; width: {{ progress_pct }}%; background: rgba(17,24,39,.85);"></div>
         </div>
       {% endif %}
-    </aside>
-
+    </div>
   </div>
 
+  {# =========================
+     ✅ 세금 보관/납부(입출금)
+     ========================= #}
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="h2" style="margin:0 0 10px 0;">세금 보관/납부</div>
+    <div class="p" style="opacity:.75; margin-bottom:10px;">
+      금고는 “따로 모아둔 돈”을 기록하기 위한 장부예요. 실제 계좌 잔액과 자동 연동되진 않아요.
+    </div>
+
+    <form method="post" action="{{ url_for('web_calendar.tax_buffer_adjust') }}" id="taxAdjForm">
+      <input type="hidden" name="delta" id="deltaInput" value="0">
+      <input type="hidden" name="month" value="{{ month_key }}">
+      <input type="hidden" name="account" value="{{ account_filter_value }}">
+      <input type="hidden" name="next" value="{{ url_for('web_calendar.tax_buffer', month=month_key, account=account_filter_value) }}">
+
+      <div class="grid2" style="gap:10px;">
+        <label class="field">
+          <span class="label">금액(원)</span>
+          <input id="amountInput" inputmode="numeric" placeholder="예: 100000" />
+          <div class="muted2" style="margin-top:6px;">* 숫자만 입력해도 돼요(쉼표 자동 제거).</div>
+        </label>
+
+        <label class="field">
+          <span class="label">메모(선택)</span>
+          <input name="note" id="noteInput" placeholder="예: 2월 세금 보관 / 종소세 납부">
+        </label>
+      </div>
+
+      <div class="row" style="gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <button type="button" class="btn small ghost" data-add="100000">+10만</button>
+        <button type="button" class="btn small ghost" data-add="500000">+50만</button>
+        <button type="button" class="btn small ghost" data-add="1000000">+100만</button>
+
+        <div style="flex:1;"></div>
+
+        <button type="submit" class="btn primary" data-sign="1">보관(+)</button>
+        <button type="submit" class="btn ghost" data-sign="-1">납부/사용(-)</button>
+      </div>
+    </form>
+  </div>
+
+  {# =========================
+     세금 금고 입출금(ledger)
+     ========================= #}
+  <div class="card pad">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+      <div>
+        <div class="h2" style="margin:0;">입출금 내역</div>
+        <div class="p" style="opacity:.75;">최근 40건</div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px; overflow:auto;">
+      <table class="table" style="min-width:720px; width:100%;">
+        <thead>
+          <tr>
+            <th style="text-align:left;">일시</th>
+            <th style="text-align:right;">변동</th>
+            <th style="text-align:right;">잔액(참고)</th>
+            <th style="text-align:left;">메모</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if ledger_rows and ledger_rows|length > 0 %}
+            {% for row in ledger_rows %}
+              <tr>
+                <td style="white-space:nowrap;">
+                  {{ row.created_at.strftime("%Y-%m-%d %H:%M") if row.created_at else "" }}
+                </td>
+                <td style="text-align:right; white-space:nowrap;">
+                  {% if row.delta >= 0 %}
+                    <span class="pos">+{{ "{:,}".format(row.delta) }}</span>
+                  {% else %}
+                    <span class="neg">{{ "{:,}".format(row.delta) }}</span>
+                  {% endif %}
+                </td>
+                <td style="text-align:right; white-space:nowrap;">
+                  {{ "{:,}".format(row.running) }}원
+                </td>
+                <td style="max-width:420px;">
+                  {{ row.note or "" }}
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="muted2">아직 기록이 없어요. “보관(+)”부터 시작해보세요.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% if toast and toast_amount %}
+    <div class="toast-wrap" id="toastWrap">
+      <div class="toast success" id="toastTax">
+        <div>
+          {% if toast == "deposit" %}
+            <div class="title">세금 보관 기록 완료</div>
+            <div class="desc">
+              {{ "{:,}".format(toast_amount) }}원을 금고에 <b>보관(+)</b>으로 기록했어요.
+              <br>
+              <b>이제 실제로</b> 세금 전용 계좌/저금통으로 이체해두면 안전해요.
+              {% if toast_note %}<span class="muted2"> ({{ toast_note }})</span>{% endif %}
+            </div>
+          {% elif toast == "withdraw" %}
+            <div class="title">세금 납부/사용 기록 완료</div>
+            <div class="desc">
+              {{ "{:,}".format(toast_amount) }}원을 금고에서 <b>납부/사용(-)</b>으로 기록했어요.
+              <br>
+              <b>이제 실제로</b> 세금 전용 계좌에서 출금/납부가 되었는지 확인해주세요.
+              {% if toast_note %}<span class="muted2"> ({{ toast_note }})</span>{% endif %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad" style="margin-top:12px; border:1px solid rgba(15,23,42,.10); background:rgba(15,23,42,.03);">
+      {% if toast == "deposit" %}
+        <div class="p"><b>다음 행동(중요)</b></div>
+        <div class="p muted2" style="margin-top:6px;">
+          이 페이지는 <b>기록</b>만 합니다. 실제 돈은 자동으로 이동하지 않아요.<br>
+          지금 바로 <b>세금 전용 계좌/저금통</b>으로 {{ "{:,}".format(toast_amount) }}원을 이체해두면,
+          “쓸 돈”과 “세금”이 섞이지 않아서 실수가 확 줄어들어요.
+        </div>
+      {% else %}
+        <div class="p"><b>다음 행동(중요)</b></div>
+        <div class="p muted2" style="margin-top:6px;">
+          ‘납부/사용(-)’은 <b>세금 납부/인출이 끝났다는 가정</b>으로 금고에서 빼는 기록이에요.<br>
+          홈택스/손택스 납부 또는 실제 계좌 출금이 완료되었는지 한 번 확인해주세요.
+        </div>
+      {% endif %}
+    </div>
+
+    <script>
+    (function(){
+      const wrap = document.getElementById("toastWrap");
+      if (!wrap) return;
+      const notifier = (window.SafeToSpendNotify && typeof window.SafeToSpendNotify.notify === "function")
+        ? window.SafeToSpendNotify.notify
+        : null;
+      if (notifier) {
+        const kind = {{ (toast or "")|tojson }};
+        const amountText = {{ ("{:,}".format(toast_amount) ~ "원")|tojson }};
+        const noteText = {{ (toast_note or "")|tojson }};
+        const title = kind === "withdraw" ? "세금 납부/사용 기록 완료" : "세금 보관 기록 완료";
+        const message = kind === "withdraw"
+          ? `${amountText} 납부/사용 기록이 저장됐어요.`
+          : `${amountText} 보관 기록이 저장됐어요.`;
+        const detail = noteText ? `메모: ${noteText}` : "세금 보관함 내역에서 다시 확인할 수 있어요.";
+        notifier(message, "success", {
+          delivery: "center_only",
+          title,
+          detail,
+          dedupe_key: `tax-buffer:${kind}:{{ month_key }}:{{ toast_amount }}:${noteText}`,
+          source: "tax_buffer",
+        });
+      }
+      setTimeout(() => { wrap.style.opacity = "0"; }, 3200);
+      setTimeout(() => { wrap.style.display = "none"; }, 3800);
+    })();
+    </script>
+  {% endif %}
 </div>
+
+<script>
+(function(){
+  const form = document.getElementById("taxAdjForm");
+  if (!form) return;
+
+  const amountInput = document.getElementById("amountInput");
+  const deltaInput = document.getElementById("deltaInput");
+  const noteInput = document.getElementById("noteInput");
+
+  function parseAmount(){
+    const raw = (amountInput.value || "").toString();
+    const n = parseInt(raw.replace(/[^0-9]/g, ""), 10);
+    return isNaN(n) ? 0 : n;
+  }
+  function formatAmount(n){
+    const v = Math.max(0, Number(n || 0));
+    return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+  function setAmount(n){
+    amountInput.value = formatAmount(n);
+  }
+
+  amountInput.addEventListener("input", () => {
+    const n = parseAmount();
+    setAmount(n);
+  });
+
+  form.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-add]");
+    if (!btn) return;
+    e.preventDefault();
+    const add = parseInt(btn.getAttribute("data-add") || "0", 10) || 0;
+    setAmount(parseAmount() + add);
+  });
+
+  form.addEventListener("submit", (e) => {
+    const submitter = e.submitter;
+    const sign = submitter ? parseInt(submitter.getAttribute("data-sign") || "0", 10) : 0;
+    if (!sign) return;
+
+    const amt = parseAmount();
+    if (amt <= 0){
+      e.preventDefault();
+      alert("금액을 입력해주세요.");
+      return;
+    }
+
+    deltaInput.value = String(sign * amt);
+
+    // 납부/사용(-)인데 메모가 비어있으면 기본값
+    if (sign < 0 && (!noteInput.value || !noteInput.value.trim())){
+      noteInput.value = "세금 납부";
+    }
+    if (sign > 0 && (!noteInput.value || !noteInput.value.trim())){
+      noteInput.value = "세금 보관";
+    }
+  });
+})();
+</script>
+
 {% endblock %}

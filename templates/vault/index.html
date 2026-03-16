@@ -2,11 +2,11 @@
 {% block title %}증빙 자료 보관함 | 쓸수있어{% endblock %}
 
 {% block content %}
-<div class="container vault-page">
+<div class="container vault-page has-side-guide-layout">
 
   <!-- Header -->
   <div class="page-head">
-    <div>
+    <div class="page-head-main">
       <div class="h1">증빙 자료 보관함</div>
       <div class="p">{{ month_first.strftime("%Y-%m") }} · “증빙 상태”를 한 번에 정리하는 화면</div>
     </div>
@@ -21,9 +21,21 @@
       </div>
 
       <a class="btn ghost" href="{{ url_for('web_package.page', month=month_key) }}">세무사 전달 패키지</a>
-      <a class="btn primary" href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_required') }}">누락부터 정리하기</a>
+      <a class="btn primary" href="{{ url_for('web_calendar.review', month=month_key, focus='receipt_required') }}">누락부터 정리하기</a>
     </div>
   </div>
+
+  {% set guide_title = "증빙 보관함 사용법" %}
+  {% set guide_lines = [
+    "상단 요약에서 누락 건수를 먼저 확인하세요.",
+    "필터로 필요한 항목만 추려서 빠르게 처리하세요.",
+    "업로드 후 상태가 첨부됨으로 바뀌는지 확인하세요."
+  ] %}
+  {% set guide_hint = "필수 누락부터 처리하면 전달 준비가 빠르게 끝나요." %}
+  {% set guide_cta_text = "보관함 가이드" %}
+  {% set guide_cta_href = url_for('web_dashboard.guide', month=month_key, from='vault') ~ '#vault' %}
+  {% set guide_more_href = url_for('web_dashboard.guide', month=month_key, from='vault') ~ '#messages' %}
+  {% include "components/usage_side_guide.html" %}
 
   <!-- Summary + Legend -->
   <div class="grid cols-2" style="margin-bottom:12px;">
@@ -272,7 +284,8 @@
       <span class="muted2">첨부 파일만 즉시 제거 (거래/증빙 목록은 유지)</span>
     </summary>
     <div class="danger-body">
-      <form method="POST" action="{{ url_for('web_vault.purge_month_files') }}">
+      <form method="POST" action="{{ url_for('web_vault.purge_month_files') }}"
+            onsubmit="return confirm('이번 달 첨부 파일을 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.');">
         <input type="hidden" name="month" value="{{ month_key }}">
         <button class="btn small ghost" type="submit">이번 달 파일 전부 삭제</button>
       </form>

@@ -2,20 +2,332 @@
 {% block title %}정리하기{% endblock %}
 
 {% block content %}
-<div class="wrap cal-wrap">
+<div class="wrap cal-wrap has-side-guide-layout">
+  {% set review_tax_current = (current_tax_due_est_krw if current_tax_due_est_krw is not none else tax_recommended)|int %}
+  {% set review_tax_previous = (tax_before if receipt_effect_event and tax_before is not none else review_tax_current)|int %}
+  {% set review_expense_current = (expense_after if expense_after is not none else tax_est.expense_business_krw)|int %}
+  {% set review_expense_previous = (expense_before if receipt_effect_event and expense_before is not none else review_expense_current)|int %}
+  {% set review_profit_current = (profit_after if profit_after is not none else tax_est.estimated_profit_krw)|int %}
+  {% set review_profit_previous = (profit_before if receipt_effect_event and profit_before is not none else review_profit_current)|int %}
+  {% set review_total_current = (review_tax_current + (health_insurance_buffer|int))|int %}
+  {% set review_total_previous = ((tax_before if receipt_effect_event and tax_before is not none else review_tax_current) + (health_insurance_buffer|int))|int %}
 
   <!-- =========================
        Header
   ========================= -->
   <div class="page-head">
-    <div>
+    <div class="page-head-main">
       <div class="h1">정리하기</div>
-      <div class="p">{{ month_first.strftime('%Y-%m') }} · 남은 것부터 처리하면 “세금/증빙”이 편해져요</div>
+      <div class="p">{{ month_first.strftime('%Y-%m') }} · 지금 필요한 것부터 빠르게 처리해요</div>
     </div>
     <div class="actions">
-      <a class="btn ghost" href="{{ url_for('web_calendar.month_calendar', month=month_key) }}">캘린더</a>
-      <a class="btn" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금 보관함</a>
-      <a class="btn primary" href="{{ url_for('web_package.page', month=month_key) }}">세무사 전달 패키지</a>
+      <a class="btn ghost" href="{{ review_calendar_url }}">캘린더</a>
+      <a class="btn" href="{{ review_tax_buffer_url }}">세금 보관함</a>
+      <a class="btn ghost" href="{{ url_for('web_guide.expense_guide') }}">비용처리 안내</a>
+      <a class="btn ghost" href="{{ url_for('web_calendar.reconcile', month=month_key, account=account_filter_value) }}">대사 리포트</a>
+      <a class="btn primary" href="{{ url_for('web_package.page', month=month_key, account=account_filter_value) }}">세무사 전달 패키지</a>
+    </div>
+  </div>
+
+  {% set guide_title = "정리하기 사용법" %}
+  {% set guide_lines = [
+    "누락 탭에서 필수 증빙부터 먼저 처리하세요.",
+    "추천 매칭은 맞아요/아니에요로 빠르게 확정하세요.",
+    "처리 후 저장 상태가 바뀌었는지 확인하세요."
+  ] %}
+  {% set guide_hint = "판단이 어려우면 나중에를 눌러 보류해도 괜찮아요." %}
+  {% set guide_cta_text = "리뷰 가이드" %}
+  {% set guide_cta_href = url_for('web_dashboard.guide', month=month_key, from='review') ~ '#review' %}
+  {% set guide_more_href = url_for('web_dashboard.guide', month=month_key, from='review') ~ '#messages' %}
+  {% include "components/usage_side_guide.html" %}
+
+  {% if seasonal_context %}
+    <div class="card pad" id="seasonal-review-context" style="margin-bottom:12px; border-color:rgba(17,24,39,.14); background:{% if seasonal_context.strength == 'strong' %}linear-gradient(180deg, rgba(17,24,39,.05), #fff 65%){% else %}var(--surface-2){% endif %};">
+      <div class="row" style="justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+          <div class="p muted2" style="margin-bottom:4px;">{{ seasonal_context.season_label }}</div>
+          <div class="h2" style="font-size:1.02rem;">{{ seasonal_context.title }}</div>
+          <div class="p muted2" style="margin-top:6px;">{{ seasonal_context.summary }}</div>
+        </div>
+        <div class="row" style="gap:8px; flex-wrap:wrap;">
+          <span class="badge {% if seasonal_context.completion_state == 'done' %}good{% elif seasonal_context.completion_state == 'in_progress' %}warn{% else %}primary{% endif %}">{{ seasonal_context.completion_label }}</span>
+          <a class="btn small ghost" href="{{ seasonal_context.metric_cta_url if seasonal_context.metric_cta_url else seasonal_context.cta_url }}">{{ seasonal_context.cta_label }}</a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card pad" id="review-summary-progress" style="margin-bottom:12px;">
+    <div class="row" style="justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <div>
+        {% if evidence_completion and evidence_completion.has_target %}
+          <div class="h2" style="font-size:1.02rem;">
+            이번 달 증빙 완성률 {{ evidence_completion.rate_pct }}% · 남은 것 {{ evidence_completion.remaining }}건
+          </div>
+          <div class="p muted2" style="margin-top:4px;">증빙이 필요한 거래 {{ evidence_completion.denominator }}건 중 {{ evidence_completion.numerator }}건 완료</div>
+        {% else %}
+          <div class="h2" style="font-size:1.02rem;">이번 달은 증빙이 필요한 거래가 없어요.</div>
+          <div class="p muted2" style="margin-top:4px;">새로운 업무 지출이 생기면 자동으로 추적해요.</div>
+        {% endif %}
+      </div>
+      <div class="row" style="gap:8px; flex-wrap:wrap;">
+        <a class="btn small ghost" href="{{ url_for('web_calendar.review', month=month_key, lane='required', focus='receipt_required', q=q, limit=limit, account=account_filter_value) }}">누락 보기</a>
+        {% if quick_match_metrics and quick_match_metrics.sample_count >= 10 and quick_match_metrics.accuracy_pct is not none %}
+          <span class="badge good">이번 달 자동 추천 정확도 {{ quick_match_metrics.accuracy_pct }}% (표본 {{ quick_match_metrics.sample_count }})</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if quick_match_card %}
+    <div class="card pad" style="margin-bottom:12px; border-color:rgba(16,185,129,.28); background:linear-gradient(180deg, rgba(16,185,129,.07), #fff 65%);">
+      <div class="row" style="justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+          <div class="h2" style="font-size:1.05rem;">1초 확인</div>
+          <div class="p" style="margin-top:6px;">이 증빙이 이 거래가 맞나요?</div>
+          <div class="p muted2" style="margin-top:6px;">
+            추천 거래: {{ quick_match_card.candidate_date }} · {{ quick_match_card.candidate_counterparty }} · {{ "{:,}".format(quick_match_card.candidate_amount_krw) }}원
+          </div>
+          {% if quick_match_card.reason_text %}
+            <div class="small-note muted2" style="margin-top:4px;">추천 근거: {{ quick_match_card.reason_text }}</div>
+          {% endif %}
+          <div class="small-note muted2" style="margin-top:4px;">증빙 파일: {{ quick_match_card.evidence_filename }}</div>
+        </div>
+        {% if quick_match_card.evidence_is_image %}
+          <a href="{{ url_for('web_calendar.review_evidence_file', tx_id=quick_match_card.source_tx_id) }}" target="_blank" rel="noopener" style="display:inline-block;">
+            <img
+              src="{{ url_for('web_calendar.review_evidence_file', tx_id=quick_match_card.source_tx_id) }}"
+              alt="증빙 미리보기"
+              style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:#fff;">
+          </a>
+        {% endif %}
+      </div>
+      <div class="row" style="margin-top:10px; gap:8px; flex-wrap:wrap;">
+        <form method="POST" action="{{ url_for('web_calendar.receipt_match_save', tx_id=quick_match_card.source_tx_id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="month" value="{{ month_key }}">
+          <input type="hidden" name="focus" value="{{ focus }}">
+          <input type="hidden" name="q" value="{{ q }}">
+          <input type="hidden" name="limit" value="{{ limit }}">
+          <input type="hidden" name="account" value="{{ account_filter_value }}">
+          <input type="hidden" name="chosen_tx_id" value="{{ quick_match_card.candidate_tx_id }}">
+          <input type="hidden" name="expense_kind" value="{{ quick_match_card.candidate_expense_kind or 'mixed' }}">
+          <input type="hidden" name="quick_match_event" value="confirmed">
+          <input type="hidden" name="quick_match_candidate_tx_id" value="{{ quick_match_card.candidate_tx_id }}">
+          <button class="btn small primary" type="submit">맞아요</button>
+        </form>
+        <a class="btn small ghost" href="{{ url_for('web_calendar.receipt_match_page', tx_id=quick_match_card.source_tx_id, month=month_key, focus=focus, q=q, limit=limit, account=account_filter_value, quick_match_event='rejected', quick_candidate_tx_id=quick_match_card.candidate_tx_id) }}">아니에요</a>
+        <form method="POST" action="{{ url_for('web_calendar.review_hold', tx_id=quick_match_card.source_tx_id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="month" value="{{ month_key }}">
+          <input type="hidden" name="focus" value="{{ focus }}">
+          <input type="hidden" name="q" value="{{ q }}">
+          <input type="hidden" name="limit" value="{{ limit }}">
+          <input type="hidden" name="account" value="{{ account_filter_value }}">
+          <input type="hidden" name="quick_match_event" value="later">
+          <input type="hidden" name="quick_match_candidate_tx_id" value="{{ quick_match_card.candidate_tx_id }}">
+          <button class="btn small ghost" type="submit">나중에</button>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if show_tax_profile_prompt %}
+    <div class="card pad" style="margin-bottom:12px; border-color:rgba(37,99,235,.28); background:linear-gradient(180deg, rgba(37,99,235,.06), #fff 60%);">
+      <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+          <div class="h2" style="font-size:1.05rem;">세금 정확도 올리기</div>
+          <div class="p" style="margin-top:6px;">지금 숫자는 먼저 보여드리고 있어요. 돈 받을 때 3.3%가 떼이는지와 올해 들어온 돈, 일하면서 쓴 비용 정도만 알려주면 더 정확해져요.</div>
+          <div class="p muted2" style="margin-top:6px;">왜 묻나요? 예상세금과 영수증 분류가 같이 더 또렷해져요.</div>
+          <div class="p" style="margin-top:6px; opacity:.8;">프로필 준비도 {{ tax_profile_meta.done_count }}/{{ tax_profile_meta.total_count }}</div>
+        </div>
+        <div class="row" style="gap:8px; flex-wrap:wrap;">
+          <a class="btn primary" href="{{ tax_profile_input_url }}">기본 정보 이어서 입력</a>
+          <a class="btn ghost" href="{{ tax_profile_later_url }}">지금은 이대로 볼게요</a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card pad linked-balance-card" style="margin-bottom:12px;">
+    <div class="linked-balance-title-row">
+      <div class="h2 linked-balance-title">연동 계좌 잔액</div>
+      {% if linked_accounts %}
+        <span class="linked-balance-badge">{{ linked_accounts|length }}개 계좌</span>
+      {% endif %}
+    </div>
+    {% if linked_accounts %}
+      <div class="linked-balance-table-wrap">
+        <table class="linked-balance-table">
+          <thead>
+            <tr>
+              <th>은행</th>
+              <th>계좌번호</th>
+              <th class="right">잔액</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for acc in linked_accounts %}
+              <tr>
+                <td class="bank">{{ acc.bank_name }}</td>
+                <td class="account">{{ acc.account_number }}</td>
+                <td class="right amount {% if acc.balance_krw is none %}muted{% endif %}">
+                  {% if acc.balance_krw is not none %}
+                    {{ acc.balance_krw|krw }}
+                  {% else %}
+                    조회 불가
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if linked_accounts_has_unavailable %}
+        <div class="linked-balance-note">일부 계좌 잔액은 현재 조회되지 않을 수 있어요.</div>
+      {% endif %}
+    {% else %}
+      <div class="linked-balance-empty">연동된 계좌가 없어요. 계좌 연동 후 잔액을 확인할 수 있어요.</div>
+    {% endif %}
+  </div>
+
+  <!-- =========================
+       세금 즉시 반영(업무경비 반영) 요약 카드
+  ========================= -->
+  <div class="card pad" id="review-worklist" style="margin-bottom:12px;">
+    <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="min-width:260px;">
+        <div class="p" style="opacity:.8; margin-bottom:4px;">이번 달 추가 납부 예상세액(추정)</div>
+        <div
+          class="h1"
+          id="taxTarget"
+          data-tax-animate="currency"
+          data-tax-current-value="{{ review_tax_current }}"
+          data-tax-previous-value="{{ review_tax_previous }}"
+          data-tax-changed="{{ 1 if receipt_effect_event and review_tax_current != review_tax_previous else 0 }}"
+        >{{ "{:,}".format(review_tax_current) }}원</div>
+        <div class="p" style="opacity:.75;">적용 세율: {{ (tax_est.tax_rate * 100)|round(1) }}%</div>
+        {% if tax_est.withheld_est_krw and tax_est.withheld_est_krw > 0 %}
+          <div class="p" style="opacity:.85; margin-top:4px;">돈 받을 때 미리 빠진 세금 반영(추정): <b>-{{ "{:,}".format(tax_est.withheld_est_krw) }}원</b></div>
+        {% else %}
+          <div class="p muted2" style="margin-top:4px;">돈 받을 때 미리 빠진 세금 정보가 없어요. 알려주면 더 정확해져요</div>
+        {% endif %}
+        <div class="p muted2" style="margin-top:6px;">
+          영수증 비용 반영 <b>{{ "{:,}".format(receipt_reflected_expense_krw if receipt_reflected_expense_krw is not none else tax_est.receipt_reflected_expense_krw) }}원</b>
+          {% if (receipt_pending_expense_krw if receipt_pending_expense_krw is not none else tax_est.receipt_pending_expense_krw)|int > 0 %}
+            · 반영 대기 <b>{{ "{:,}".format(receipt_pending_expense_krw if receipt_pending_expense_krw is not none else tax_est.receipt_pending_expense_krw) }}원</b>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="min-width:220px;">
+        <div class="p" style="opacity:.8; margin-bottom:4px;">세금 금고(현재)</div>
+        <div class="h2">{{ "{:,}".format(tax_balance) }}원</div>
+        <div class="p" style="opacity:.75;">
+          {% if tax_shortage > 0 %}
+            부족: <b>{{ "{:,}".format(tax_shortage) }}원</b>
+          {% else %}
+            초과: <b>{{ "{:,}".format(tax_overage) }}원</b>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="min-width:340px;">
+        <div class="p" style="opacity:.8; margin-bottom:6px;">산출 근거(이번 달)</div>
+        <div class="p">포함 수입(비수입 제외): <b>{{ "{:,}".format(tax_est.income_included_krw) }}원</b></div>
+        <div class="p">일하면서 쓴 비용(업무로 확정): <b id="bizExpense" data-tax-animate="currency" data-tax-current-value="{{ review_expense_current }}" data-tax-previous-value="{{ review_expense_previous }}" data-tax-changed="{{ 1 if receipt_effect_event and review_expense_current != review_expense_previous else 0 }}">{{ "{:,}".format(review_expense_current) }}원</b></div>
+        {% if biz_missing_amt and biz_missing_amt > 0 %}
+          <div class="p" style="opacity:.85;">└ 영수증 미첨부(리스크): <b>{{ "{:,}".format(biz_missing_amt) }}원</b></div>
+        {% endif %}
+        <div class="p" style="opacity:.85;">추정 순이익: <b id="estProfit" data-tax-animate="currency" data-tax-current-value="{{ review_profit_current }}" data-tax-previous-value="{{ review_profit_previous }}" data-tax-changed="{{ 1 if receipt_effect_event and review_profit_current != review_profit_previous else 0 }}">{{ "{:,}".format(review_profit_current) }}원</b></div>
+        <div class="p" style="opacity:.85; margin-top:6px;">
+          세금 보관 권장: <b data-tax-animate="currency" data-tax-current-value="{{ review_tax_current }}" data-tax-previous-value="{{ review_tax_previous }}" data-tax-changed="{{ 1 if receipt_effect_event and review_tax_current != review_tax_previous else 0 }}">{{ "{:,}".format(review_tax_current) }}원</b>
+          · 건보료 보관(이번 달): <b>{{ "{:,}".format(health_insurance_buffer) }}원</b>
+        </div>
+        <div class="p" style="opacity:.95; margin-top:4px;">
+          이번 달 총 보관 권장액: <b data-tax-animate="currency" data-tax-current-value="{{ review_total_current }}" data-tax-previous-value="{{ review_total_previous }}" data-tax-changed="{{ 1 if receipt_effect_event and review_total_current != review_total_previous else 0 }}">{{ "{:,}".format(review_total_current) }}원</b>
+        </div>
+
+        {% set profile_complete = ('profile_complete' in tax_est.applied_flags) %}
+        {% set withholding_mode = (tax_est.withholding_mode if tax_est.withholding_mode else 'not_applied') %}
+        {% set has_withheld = tax_est.withheld_est_krw and tax_est.withheld_est_krw > 0 %}
+        {% if withholding_mode == 'profile_yes' %}
+          {% set withholding_label = '3.3%/미리 빠진 세금(입력 반영)' %}
+        {% elif withholding_mode == 'profile_no' %}
+          {% set withholding_label = '3.3%/미리 빠진 세금(없음)' %}
+        {% elif withholding_mode == 'heuristic' %}
+          {% set withholding_label = '3.3%/미리 빠진 세금(거래 추정)' %}
+        {% else %}
+          {% set withholding_label = '3.3%/미리 빠진 세금(미입력)' %}
+        {% endif %}
+        {% if health_insurance_buffer|int > 0 %}
+          {% set insurance_label = '건보료(입력값)' %}
+        {% elif health_insurance_note and ('직장/피부양자' in health_insurance_note) %}
+          {% set insurance_label = '건보료(직장/피부양자 0원)' %}
+        {% else %}
+          {% set insurance_label = '건보료(미입력)' %}
+        {% endif %}
+        <div class="row" style="gap:8px; margin-top:6px; flex-wrap:wrap;">
+          {% if profile_complete %}
+            <span class="badge good">내 정보 반영됨</span>
+          {% else %}
+            <span class="badge warn">기본값 추정</span>
+          {% endif %}
+        </div>
+        <div class="p" style="opacity:.78; margin-top:4px;">
+          반영된 항목: {{ withholding_label }} · {{ insurance_label }} ·
+          {% if profile_complete %}
+            내 일 방식/부가세 방식 기준
+          {% else %}
+            기본값 추정(내 정보 입력 시 더 정확)
+          {% endif %}
+        </div>
+        <details style="margin-top:8px;">
+          <summary class="p" style="cursor:pointer; font-weight:900; color:var(--text);">왜 이렇게 나왔나요?</summary>
+          <div class="p muted2" style="margin-top:6px;">
+            수입 {{ "{:,}".format(tax_est.income_included_krw or 0) }}원 · 업무경비 {{ "{:,}".format(tax_est.expense_business_krw or 0) }}원
+          </div>
+          <div class="p muted2" style="margin-top:4px;">
+            {% if withholding_mode == 'profile_yes' %}
+              돈 받을 때 미리 빠진 세금 입력값(있음) 기준 반영{% if has_withheld %} · -{{ "{:,}".format(tax_est.withheld_est_krw) }}원{% endif %}
+            {% elif withholding_mode == 'profile_no' %}
+              돈 받을 때 미리 빠진 세금이 없다고 보고 0원 반영
+            {% elif withholding_mode == 'heuristic' %}
+              3.3% 관련 거래 표현 기준으로 추정 반영{% if has_withheld %} · -{{ "{:,}".format(tax_est.withheld_est_krw) }}원{% endif %}
+            {% else %}
+              돈 받을 때 미리 빠진 세금 정보가 없어 0원으로 계산
+            {% endif %}
+          </div>
+          {% if tax_est.local_tax_est_krw %}
+            <div class="p muted2" style="margin-top:4px;">지방세 포함 · {{ "{:,}".format(tax_est.local_tax_est_krw) }}원</div>
+          {% endif %}
+          <div class="p muted2" style="margin-top:4px;">건보료 보관 반영 · {{ "{:,}".format(health_insurance_buffer) }}원</div>
+          <div class="p muted2" style="margin-top:4px;">추정치이며 입력/공제/다른 소득에 따라 달라질 수 있어요.</div>
+        </details>
+        {% if tax_est.warnings %}
+          {% for msg in tax_est.warnings[:2] %}
+            <div class="p muted2" style="margin-top:4px;">• {{ msg }} <a href="{{ tax_profile_input_url }}">기본 정보 보완</a></div>
+          {% endfor %}
+        {% endif %}
+        {% if health_insurance_note %}
+          <div class="p muted2" style="margin-top:4px;">• {{ health_insurance_note }} <a href="{{ nhis_input_url }}">건보료 설정</a></div>
+        {% endif %}
+        <div class="p" style="margin-top:6px;">
+          <a class="btn small ghost" href="{{ tax_profile_input_url }}">기본 정보 이어서 입력</a>
+          <a class="btn small ghost" href="{{ nhis_input_url }}">건보료 설정</a>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <div class="row" style="justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <div class="p" style="opacity:.8;">달성률: {{ tax_progress_pct }}%</div>
+        <a class="btn small ghost" href="{{ review_tax_buffer_url }}">세금 보관함</a>
+      </div>
+
+      <div style="height:10px; background:rgba(0,0,0,.06); border-radius:999px; overflow:hidden;">
+        <div style="height:10px; width: {{ tax_progress_pct }}%; background: rgba(17,24,39,.85);"></div>
+      </div>
     </div>
   </div>
 
@@ -23,161 +335,395 @@
        Tabs + Actionbar
   ========================= -->
   <div class="card pad" style="margin-bottom:12px;">
-    <div class="tabs">
-      <a class="tab {% if focus=='evidence_required' %}active{% endif %}"
-         href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_required', q=q, limit=limit) }}">
-        필수 영수증 <span class="count">{{ counts.get('evidence_required', 0) }}</span>
+    <div class="tabs" style="margin-bottom:8px;">
+      <a class="tab {% if lane=='required' %}active{% endif %}" data-review-nav="1"
+         href="{{ url_for('web_calendar.review', month=month_key, lane='required', focus='receipt_required', q=q, limit=limit, account=account_filter_value) }}">
+        필수 <span class="count">{{ lane_counts.get('required', 0) }}</span>
       </a>
-      <a class="tab {% if focus=='income_unknown' %}active{% endif %}"
-         href="{{ url_for('web_calendar.review', month=month_key, focus='income_unknown', q=q, limit=limit) }}">
-        수입 분류 <span class="count">{{ counts.get('income_unknown', 0) }}</span>
+      <a class="tab {% if lane=='review' %}active{% endif %}" data-review-nav="1"
+         href="{{ url_for('web_calendar.review', month=month_key, lane='review', focus=focus if focus in ('receipt_attach','expense_confirm','income_confirm') else 'expense_confirm', q=q, limit=limit, account=account_filter_value) }}">
+        검토 <span class="count">{{ lane_counts.get('review', 0) }}</span>
       </a>
-      <a class="tab {% if focus=='expense_unknown' %}active{% endif %}"
-         href="{{ url_for('web_calendar.review', month=month_key, focus='expense_unknown', q=q, limit=limit) }}">
-        지출 분류 <span class="count">{{ counts.get('expense_unknown', 0) }}</span>
+      <a class="tab {% if lane=='done' %}active{% endif %}" data-review-nav="1"
+         href="{{ url_for('web_calendar.review', month=month_key, lane='done', focus='done', q=q, limit=limit, account=account_filter_value) }}">
+        완료 <span class="count">{{ lane_counts.get('done', 0) }}</span>
       </a>
-      <a class="tab {% if focus=='evidence_maybe' %}active{% endif %}"
-         href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_maybe', q=q, limit=limit) }}">
-        검토 영수증 <span class="count">{{ counts.get('evidence_maybe', 0) }}</span>
+      <a class="tab {% if lane=='not_needed' %}active{% endif %}" data-review-nav="1"
+         href="{{ url_for('web_calendar.review', month=month_key, lane='not_needed', focus='not_needed', q=q, limit=limit, account=account_filter_value) }}">
+        불필요 <span class="count">{{ lane_counts.get('not_needed', 0) }}</span>
+      </a>
+      <a class="tab {% if lane=='hold' %}active{% endif %}" data-review-nav="1"
+         href="{{ url_for('web_calendar.review', month=month_key, lane='hold', focus='hold', q=q, limit=limit, account=account_filter_value) }}">
+        보류 <span class="count">{{ lane_counts.get('hold', 0) }}</span>
       </a>
     </div>
+
+    {% if lane == 'review' %}
+      <div class="tabs" style="margin-top:2px;">
+        <a class="tab {% if focus=='expense_confirm' %}active{% endif %}" data-review-nav="1"
+           href="{{ url_for('web_calendar.review', month=month_key, lane='review', focus='expense_confirm', q=q, limit=limit, account=account_filter_value) }}">
+          업무/개인 확정 <span class="count">{{ counts.get('expense_confirm', 0) }}</span>
+        </a>
+        <a class="tab {% if focus=='income_confirm' %}active{% endif %}" data-review-nav="1"
+           href="{{ url_for('web_calendar.review', month=month_key, lane='review', focus='income_confirm', q=q, limit=limit, account=account_filter_value) }}">
+          수입 확인 <span class="count">{{ counts.get('income_confirm', 0) }}</span>
+        </a>
+        <a class="tab {% if focus=='receipt_attach' %}active{% endif %}" data-review-nav="1"
+           href="{{ url_for('web_calendar.review', month=month_key, lane='review', focus='receipt_attach', q=q, limit=limit, account=account_filter_value) }}">
+          영수증 붙이면 끝 <span class="count">{{ counts.get('receipt_attach', 0) }}</span>
+        </a>
+      </div>
+    {% endif %}
 
     <div class="hr"></div>
 
     <div class="actionbar" style="gap:10px;">
-      <!-- Search -->
       <form class="search" method="GET" action="{{ url_for('web_calendar.review') }}">
         <input type="hidden" name="month" value="{{ month_key }}">
+        <input type="hidden" name="lane" value="{{ lane }}">
         <input type="hidden" name="focus" value="{{ focus }}">
         <input type="hidden" name="limit" value="{{ limit }}">
+        <input type="hidden" name="account" value="{{ account_filter_value }}">
         <input name="q" placeholder="거래처/메모 검색" value="{{ q }}">
         <button class="btn small ghost" type="submit">검색</button>
       </form>
 
-      <!-- Right cluster -->
+      <form method="GET" action="{{ url_for('web_calendar.review') }}" class="row" style="gap:6px; align-items:center;">
+        <input type="hidden" name="month" value="{{ month_key }}">
+        <input type="hidden" name="lane" value="{{ lane }}">
+        <input type="hidden" name="focus" value="{{ focus }}">
+        <input type="hidden" name="limit" value="{{ limit }}">
+        <input type="hidden" name="q" value="{{ q }}">
+        <select name="account">
+          <option value="all" {% if account_filter_value == 'all' %}selected{% endif %}>전체 계좌</option>
+          <option value="unassigned" {% if account_filter_value == 'unassigned' %}selected{% endif %}>미지정</option>
+          {% for acc in account_options %}
+            <option value="{{ acc.id }}" {% if account_filter_value == (acc.id|string) %}selected{% endif %}>{{ acc.display_name }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn small ghost" type="submit">보기</button>
+      </form>
+
+      {% if lane in ('required', 'review') %}
+        <a class="btn small ghost" data-review-nav="1" href="{{ url_for('web_calendar.review', month=month_key, lane=lane, focus='receipt_attach', q=q, limit=limit, account=account_filter_value) }}">
+          기존 거래에 영수증 첨부
+        </a>
+        <a class="btn small" data-review-nav="1" href="{{ url_for('web_calendar.receipt_new_upload_page', month=month_key, focus=focus, q=q, limit=limit, account=account_filter_value) }}">
+          거래 없이 새 지출 추가
+        </a>
+      {% endif %}
+
       <div class="row" style="flex-wrap:wrap; gap:8px;">
         <span class="badge">{{ title }}</span>
-        <span class="badge {% if totals.get(focus, 0) > 0 %}warn{% endif %}">
-          남은 {{ totals.get(focus, 0) }}건
+        <span class="badge">계좌: {{ account_filter_name }}</span>
+        <span class="badge {% if lane_counts.get(lane, 0) > 0 %}warn{% endif %}">
+          {% if q %}
+            검색 {{ items|length }}건 / 전체 {{ lane_counts.get(lane, 0) }}건
+          {% else %}
+            남은 {{ lane_counts.get(lane, 0) }}건
+          {% endif %}
         </span>
+        <button class="btn small ghost" type="button" id="openRecentActions">
+          최근 작업{% if undo_count and undo_count > 0 %} ({{ undo_count }}){% endif %}
+        </button>
+        <button class="btn small ghost" type="button" id="openCmdPalette">⌘K 빠른 실행</button>
+        <button class="btn small ghost" type="button" id="openShortcutHelp">? 단축키</button>
 
-        {# 10분 모드 토글: limit=30을 “10분 모드”로 간주 #}
         {% set is_ten = (limit|int <= 40) %}
         {% if is_ten %}
-          <a class="btn small ghost"
-             href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=200) }}">
+          <a class="btn small ghost" data-review-nav="1"
+             href="{{ url_for('web_calendar.review', month=month_key, lane=lane, focus=focus, q=q, limit=200, account=account_filter_value) }}">
             전체 보기
           </a>
           <span class="badge">10분 모드 · {{ limit }}개만</span>
         {% else %}
-          <a class="btn small"
-             href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=30) }}">
+          <a class="btn small" data-review-nav="1"
+             href="{{ url_for('web_calendar.review', month=month_key, lane=lane, focus=focus, q=q, limit=30, account=account_filter_value) }}">
             10분 모드
           </a>
         {% endif %}
       </div>
     </div>
 
-    {% if focus in ('income_unknown', 'expense_unknown') %}
-      <div style="margin-top:10px;" class="note">
-        “항상”을 체크하면 <b>같은 거래처</b>는 다음부터 자동 분류돼요.
-      </div>
+    {% if focus in ('income_confirm', 'expense_confirm') %}
+      <div style="margin-top:10px;" class="note">앞으로 자동을 켜면 같은 거래처에 자동 적용되고, 최근 3개월에도 바로 반영할 수 있어요.</div>
+    {% elif focus in ('receipt_required', 'receipt_attach') %}
+      <div style="margin-top:10px;" class="note">이미 결제된 거래는 첨부로 처리하고, 거래가 없으면 새 거래 추가를 선택하세요.</div>
     {% endif %}
+
+    {% if items and lane in ('required', 'review') %}
+      <div class="row" style="margin-top:10px; gap:10px; flex-wrap:wrap; align-items:center;">
+        <label class="chk"><input type="checkbox" id="bulkSelectAll">전체 선택</label>
+        <button class="btn small ghost" type="button" id="bulkClearBtn">선택 해제</button>
+        <span class="small-note muted2">선택한 항목만 한 번에 처리할 수 있어요.</span>
+      </div>
+
+      <form method="POST"
+            action="{{ url_for('web_calendar.review_bulk') }}"
+            id="reviewBulkForm"
+            class="card pad"
+            style="display:none; margin-top:8px; border-color:rgba(17,24,39,.18);">
+        <input type="hidden" name="month" value="{{ month_key }}">
+        <input type="hidden" name="focus" value="{{ focus }}">
+        <input type="hidden" name="q" value="{{ q }}">
+        <input type="hidden" name="limit" value="{{ limit }}">
+        <input type="hidden" name="account" value="{{ account_filter_value }}">
+        <input type="hidden" name="selected_ids" id="bulkSelectedIds" value="">
+        <div class="row" style="justify-content:space-between; gap:8px; flex-wrap:wrap;">
+          <span class="badge warn" id="bulkSelectedCount">0건 선택됨</span>
+          <div class="row" style="gap:8px; flex-wrap:wrap;">
+            <button class="btn small primary" type="submit" name="action" value="business">업무로</button>
+            <button class="btn small ghost" type="submit" name="action" value="personal">개인으로</button>
+            <button class="btn small ghost" type="submit" name="action" value="not_needed">불필요</button>
+            <button class="btn small ghost" type="submit" name="action" value="attach_receipt">영수증 첨부</button>
+            <button class="btn small ghost" type="submit" name="action" value="mark_required">필수로 표시</button>
+            <button class="btn small ghost" type="submit" name="action" value="mark_review">검토로 표시</button>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px; gap:8px; flex-wrap:wrap; align-items:center;">
+          <select name="bulk_account_id">
+            <option value="">계좌 일괄 지정</option>
+            <option value="unassigned">미지정으로 변경</option>
+            {% for acc in account_options %}
+              <option value="{{ acc.id }}">{{ acc.display_name }}</option>
+            {% endfor %}
+            <option value="__new__">새 계좌(별칭) 만들기</option>
+          </select>
+          <input name="bulk_new_account_alias" placeholder="새 계좌 별칭 (예: 사업용 2)" style="min-width:220px;">
+          <button class="btn small ghost" type="submit" name="action" value="assign_account">계좌 지정</button>
+        </div>
+        <div class="small-note muted2" style="margin-top:6px;">일괄 처리 직후에도 되돌리기로 복구할 수 있어요.</div>
+      </form>
+    {% endif %}
+
+    {% if undo_item %}
+      <div class="note" style="margin-top:10px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;">
+        <span>최근 작업 {{ undo_count }}건 중 1건을 되돌릴 수 있어요.</span>
+        <form method="POST" action="{{ url_for('web_calendar.review_undo') }}" id="reviewUndoForm">
+          <input type="hidden" name="month" value="{{ month_key }}">
+          <input type="hidden" name="focus" value="{{ focus }}">
+          <input type="hidden" name="q" value="{{ q }}">
+          <input type="hidden" name="limit" value="{{ limit }}">
+          <input type="hidden" name="account" value="{{ account_filter_value }}">
+          <button class="btn small ghost" type="submit">되돌리기 (U)</button>
+        </form>
+      </div>
+      {% if undo_recent %}
+        <div class="undo-list">
+          {% for u in undo_recent %}
+            <form method="POST" action="{{ url_for('web_calendar.review_undo') }}" class="undo-item">
+              <input type="hidden" name="month" value="{{ month_key }}">
+              <input type="hidden" name="focus" value="{{ focus }}">
+              <input type="hidden" name="q" value="{{ q }}">
+              <input type="hidden" name="limit" value="{{ limit }}">
+              <input type="hidden" name="account" value="{{ account_filter_value }}">
+              <input type="hidden" name="undo_id" value="{{ u.id }}">
+              <span class="undo-text">{{ u.label }}</span>
+              <button class="btn small ghost" type="submit">선택 되돌리기</button>
+            </form>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <div class="card pad" id="recentActionsPanel" style="margin-top:10px; display:none;">
+      <div class="row" style="justify-content:space-between; gap:8px; flex-wrap:wrap; align-items:center;">
+        <div class="h2" style="font-size:1rem;">최근 작업</div>
+        <button type="button" class="btn small ghost" id="closeRecentActions">닫기</button>
+      </div>
+      <div class="p muted2" style="margin-top:4px;">최근 10개 작업을 확인하고 바로 되돌릴 수 있어요.</div>
+      <div class="undo-list" style="margin-top:8px;">
+        {% if undo_recent_all %}
+          {% for u in undo_recent_all %}
+            <form method="POST" action="{{ url_for('web_calendar.review_undo') }}" class="undo-item">
+              <input type="hidden" name="month" value="{{ month_key }}">
+              <input type="hidden" name="focus" value="{{ focus }}">
+              <input type="hidden" name="q" value="{{ q }}">
+              <input type="hidden" name="limit" value="{{ limit }}">
+              <input type="hidden" name="account" value="{{ account_filter_value }}">
+              <input type="hidden" name="undo_id" value="{{ u.id }}">
+              <span class="undo-text">
+                {% if u.time %}<span class="muted2">{{ u.time }}</span> · {% endif %}{{ u.label }}
+              </span>
+              <button class="btn small ghost" type="submit">되돌리기</button>
+            </form>
+          {% endfor %}
+        {% else %}
+          <div class="p muted2">아직 되돌릴 작업이 없어요.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div id="reviewLoading" class="skeleton-list" style="display:none; margin-bottom:12px;">
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-line" style="width:44%;"></div>
+      <div class="skeleton skeleton-line" style="width:68%; margin-top:8px;"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-line" style="width:38%;"></div>
+      <div class="skeleton skeleton-line" style="width:74%; margin-top:8px;"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-line" style="width:36%;"></div>
+      <div class="skeleton skeleton-line" style="width:64%; margin-top:8px;"></div>
+    </div>
   </div>
 
   <!-- =========================
        List
   ========================= -->
+  <div id="reviewListWrap">
   {% if items %}
     <div class="vlist">
       {% for item in items %}
         {% set tx = item.tx %}
-        <div class="vitem" id="tx-{{ tx.id }}" style="align-items:flex-start; gap:14px;">
-          <!-- Left -->
+        <div class="vitem review-row" id="tx-{{ tx.id }}" data-review-row="1" style="align-items:flex-start; gap:14px;">
+          {% if lane in ('required', 'review') %}
+            <div style="padding-top:4px;">
+              <input
+                type="checkbox"
+                class="bulk-item-check"
+                data-bulk-item="1"
+                value="{{ tx.id }}"
+                aria-label="거래 선택 {{ tx.id }}"
+              >
+            </div>
+          {% endif %}
           <div style="min-width:0; flex:1;">
-            <div class="vtitle" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <span class="strong">{{ tx.counterparty or '거래처 없음' }}</span>
-              <span class="muted2">{{ tx.occurred_at.strftime('%m-%d %H:%M') }}</span>
-
+            <div class="vtitle review-main-title" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <span class="review-title-text">{{ item.display_title }}</span>
               {% if tx.direction == 'in' %}
-                <span class="pill good">수입</span>
+                <span class="state-chip done">입금</span>
               {% else %}
-                <span class="pill">지출</span>
+                <span class="state-chip not-needed">지출</span>
               {% endif %}
-
-              {% if focus in ('evidence_required','evidence_maybe') %}
-                {% if focus == 'evidence_required' %}
-                  <span class="pill warn">필수</span>
-                {% else %}
-                  <span class="pill">검토</span>
-                {% endif %}
+              {% if item.kind == 'receipt_required' %}
+                <span class="state-chip required">필수</span>
+              {% elif item.kind == 'hold' %}
+                <span class="state-chip warn">보류</span>
+              {% elif item.kind in ('receipt_attach', 'expense_confirm', 'income_confirm') %}
+                <span class="state-chip review">검토</span>
+              {% elif item.kind == 'done' %}
+                <span class="state-chip done">완료</span>
+              {% else %}
+                <span class="state-chip not-needed">불필요</span>
               {% endif %}
             </div>
 
-            {% if tx.memo %}
-              <div class="vsub">{{ tx.memo }}</div>
-            {% else %}
-              <div class="vsub muted2">메모 없음</div>
+            <div class="review-inline-values" style="margin-top:8px;">
+              <span class="review-info-item review-info-amount {% if tx.direction=='in' %}pos{% else %}neg{% endif %}">
+                {% if tx.direction=='in' %}+{% else %}-{% endif %}{{ item.display_amount|krw }}
+              </span>
+              <span class="review-info-item review-info-time">{{ item.display_time }}</span>
+              <span class="review-info-item review-info-account" style="--review-account-color: {{ (item.account_badge.color_hex if item.account_badge else '#64748B') }};">
+                <span class="review-account-dot" aria-hidden="true"></span>
+                <span>{{ item.display_account }}</span>
+              </span>
+              {% if item.display_source and item.display_source != item.display_account %}
+                <span class="review-info-item review-info-source">{{ item.display_source }}</span>
+              {% endif %}
+            </div>
+            {% if item.display_memo %}
+              {% set memo_parts = (item.display_memo or '').split('|') %}
+              <div class="review-linked-memo">
+                <span class="review-linked-label">정보 |</span>
+                {% for raw_part in memo_parts %}
+                  {% set memo_part = (raw_part or '').strip() %}
+                  {% if memo_part %}
+                    {% if not loop.first %}<span class="review-data-sep" aria-hidden="true">·</span>{% endif %}
+                    <span class="review-data-token">{{ memo_part }}</span>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+            {% if item.expense_guidance %}
+              {% set expense_guidance = item.expense_guidance %}
+              {% set show_disclaimer = false %}
+              {% set expense_followup_action = url_for('web_calendar.review_expense_followup_save', tx_id=tx.id) %}
+              {% set expense_followup_return_view = 'review' %}
+              {% set expense_followup_partial = false %}
+              {% set expense_reinforcement = item.expense_reinforcement %}
+              {% set expense_reinforcement_action = url_for('web_calendar.review_expense_reinforcement_save', tx_id=tx.id) %}
+              {% set expense_reinforcement_return_view = 'review' %}
+              {% set expense_reinforcement_partial = false %}
+              {% include "calendar/partials/receipt_expense_hint.html" %}
             {% endif %}
           </div>
 
-          <!-- Right -->
           <div class="vright" style="display:flex; flex-direction:column; gap:10px; align-items:flex-end;">
-            <div class="vamt {% if tx.direction=='in' %}pos{% else %}neg{% endif %}">
-              {% if tx.direction=='in' %}+{% else %}-{% endif %}{{ tx.amount_krw|krw }}
+            <div class="review-action-group">
+              {% if item.kind == 'income_confirm' %}
+                <form method="POST" action="{{ url_for('web_calendar.review_set_income', tx_id=tx.id) }}"
+                      class="actions-inline"
+                      style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                  <input type="hidden" name="month" value="{{ month_key }}">
+                  <input type="hidden" name="focus" value="{{ focus }}">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <input type="hidden" name="limit" value="{{ limit }}">
+                  <label class="chk"><input type="checkbox" name="always" value="1" checked>앞으로 자동</label>
+                  <label class="chk"><input type="checkbox" name="apply_recent" value="1" checked>최근 3개월 재적용</label>
+                  <button class="btn small primary" type="submit" name="status" value="income" data-k="1">수입</button>
+                  <button class="btn small ghost" type="submit" name="status" value="non_income" data-k="2">비수입</button>
+                </form>
+              {% elif item.kind == 'expense_confirm' %}
+                <form method="POST" action="{{ url_for('web_calendar.review_set_expense', tx_id=tx.id) }}"
+                      class="actions-inline"
+                      style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                  <input type="hidden" name="month" value="{{ month_key }}">
+                  <input type="hidden" name="focus" value="{{ focus }}">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <input type="hidden" name="limit" value="{{ limit }}">
+                  <label class="chk"><input type="checkbox" name="always" value="1" checked>앞으로 자동</label>
+                  <label class="chk"><input type="checkbox" name="apply_recent" value="1" checked>최근 3개월 재적용</label>
+                  <button class="btn small primary" type="submit" name="status" value="business" data-k="1">업무</button>
+                  <button class="btn small ghost" type="submit" name="status" value="personal" data-k="2">개인</button>
+                  <button class="btn small ghost" type="submit" name="status" value="mixed" data-k="3">혼합</button>
+                </form>
+              {% elif item.kind in ('receipt_required', 'receipt_attach') %}
+                <div class="row" style="gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                  <a class="btn small primary"
+                     href="{{ url_for('web_calendar.review_evidence_upload_page', tx_id=tx.id, month=month_key, focus=focus, q=q, limit=limit) }}"
+                     data-receipt-wizard="1"
+                     data-k="1">
+                    기존 거래에 영수증 첨부
+                  </a>
+                  <form method="POST" action="{{ url_for('web_calendar.review_set_expense', tx_id=tx.id) }}">
+                    <input type="hidden" name="month" value="{{ month_key }}">
+                    <input type="hidden" name="focus" value="{{ focus }}">
+                    <input type="hidden" name="q" value="{{ q }}">
+                    <input type="hidden" name="limit" value="{{ limit }}">
+                    <button class="btn small ghost" type="submit" name="status" value="personal" data-k="2">개인</button>
+                  </form>
+                </div>
+              {% elif item.kind == 'hold' %}
+                <form method="POST" action="{{ url_for('web_calendar.review_unhold', tx_id=tx.id) }}">
+                  <input type="hidden" name="month" value="{{ month_key }}">
+                  <input type="hidden" name="focus" value="{{ focus }}">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <input type="hidden" name="limit" value="{{ limit }}">
+                  <button class="btn small ghost" type="submit">다시 처리</button>
+                </form>
+              {% endif %}
+
+              {% if item.kind != 'hold' %}
+                <form method="POST" action="{{ url_for('web_calendar.review_hold', tx_id=tx.id) }}">
+                  <input type="hidden" name="month" value="{{ month_key }}">
+                  <input type="hidden" name="focus" value="{{ focus }}">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <input type="hidden" name="limit" value="{{ limit }}">
+                  <button class="btn small ghost" type="submit">나중에</button>
+                </form>
+              {% endif %}
+              <a class="btn small ghost" href="{{ url_for('web_calendar.day_detail', ymd=tx.occurred_at.strftime('%Y-%m-%d'), account=account_filter_value) }}" data-k="enter">당일 보기</a>
             </div>
-
-            {% if focus == 'income_unknown' %}
-              <form method="POST" action="{{ url_for('web_calendar.review_set_income', tx_id=tx.id) }}"
-                    class="actions-inline" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-                <input type="hidden" name="month" value="{{ month_key }}">
-                <input type="hidden" name="focus" value="{{ focus }}">
-                <input type="hidden" name="q" value="{{ q }}">
-                <input type="hidden" name="limit" value="{{ limit }}">
-
-                <label class="chk"><input type="checkbox" name="always" value="1">항상</label>
-                <button class="btn small primary" type="submit" name="status" value="income">수입</button>
-                <button class="btn small ghost" type="submit" name="status" value="non_income">비수입</button>
-              </form>
-
-            {% elif focus == 'expense_unknown' %}
-              <form method="POST" action="{{ url_for('web_calendar.review_set_expense', tx_id=tx.id) }}"
-                    class="actions-inline" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-                <input type="hidden" name="month" value="{{ month_key }}">
-                <input type="hidden" name="focus" value="{{ focus }}">
-                <input type="hidden" name="q" value="{{ q }}">
-                <input type="hidden" name="limit" value="{{ limit }}">
-
-                <label class="chk"><input type="checkbox" name="always" value="1">항상</label>
-                <button class="btn small primary" type="submit" name="status" value="business">업무</button>
-                <button class="btn small ghost" type="submit" name="status" value="personal">개인</button>
-                <button class="btn small ghost" type="submit" name="status" value="mixed">혼합</button>
-              </form>
-
-            {% else %}
-              <form method="POST" action="{{ url_for('web_calendar.review_set_evidence', tx_id=tx.id) }}"
-                    class="actions-inline" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-                <input type="hidden" name="month" value="{{ month_key }}">
-                <input type="hidden" name="focus" value="{{ focus }}">
-                <input type="hidden" name="q" value="{{ q }}">
-                <input type="hidden" name="limit" value="{{ limit }}">
-
-                <button class="btn small primary" type="submit" name="action" value="attached">첨부함</button>
-                <button class="btn small ghost" type="submit" name="action" value="not_needed">불필요</button>
-                <button class="btn small ghost" type="submit" name="action" value="missing">아직</button>
-              </form>
-            {% endif %}
-
-            <a class="btn small ghost"
-               href="{{ url_for('web_calendar.day_detail', ymd=tx.occurred_at.strftime('%Y-%m-%d')) }}">
-              당일 보기
-            </a>
+            <div class="review-status-note">{{ item.reason }}</div>
           </div>
         </div>
       {% endfor %}
     </div>
 
-    {% if totals.get(focus, 0) > (items|length) %}
+    {% if lane_counts.get(lane, 0) > (items|length) %}
       <div class="card pad" style="margin-top:12px;">
         <div class="row" style="justify-content:space-between; gap:10px; flex-wrap:wrap;">
           <div class="muted2">
@@ -185,12 +731,12 @@
             {% if limit|int < 200 %} (10분 모드){% endif %}
           </div>
           <div class="row" style="gap:8px; flex-wrap:wrap;">
-            <a class="btn small ghost"
-               href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=200) }}">
+            <a class="btn small ghost" data-review-nav="1"
+               href="{{ url_for('web_calendar.review', month=month_key, lane=lane, focus=focus, q=q, limit=200, account=account_filter_value) }}">
               전체 보기
             </a>
-            <a class="btn small"
-               href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=30) }}">
+            <a class="btn small" data-review-nav="1"
+               href="{{ url_for('web_calendar.review', month=month_key, lane=lane, focus=focus, q=q, limit=30, account=account_filter_value) }}">
               10분 모드
             </a>
           </div>
@@ -199,26 +745,529 @@
     {% endif %}
 
   {% else %}
-    <div class="card pad">
-      <div class="empty">{{ title }} 항목이 없어요.</div>
-      <div class="row" style="margin-top:10px; gap:8px; flex-wrap:wrap;">
-        <a class="btn small ghost" href="{{ url_for('web_calendar.month_calendar', month=month_key) }}">캘린더로</a>
-        <a class="btn small" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금 보관함</a>
-      </div>
+    <div class="empty-state">
+      {% if lane == 'done' %}
+        <div class="title">좋아요, 이번 달은 거의 끝났어요</div>
+        <div class="desc">다운로드 전 점검만 확인하면 세무사 전달 준비가 됩니다.</div>
+        <div class="row" style="margin-top:12px; gap:8px; flex-wrap:wrap;">
+          <a class="btn small primary" href="{{ url_for('web_package.page', month=month_key, account=account_filter_value) }}">패키지 확인</a>
+        </div>
+      {% else %}
+        <div class="title">{{ title }} 항목이 없어요</div>
+        <div class="desc">남은 것부터 자동으로 줄어들어요. 다음 행동으로 이어가면 됩니다.</div>
+        <div class="row" style="margin-top:12px; gap:8px; flex-wrap:wrap;">
+          <a class="btn small ghost" href="{{ review_calendar_url }}">캘린더로</a>
+          <a class="btn small" href="{{ review_tax_buffer_url }}">세금 보관함</a>
+        </div>
+      {% endif %}
     </div>
   {% endif %}
-
+  </div>
 </div>
 
-{# 앵커로 이동했을 때 시야 중앙쯤 오게 (UX) #}
+<div class="mobile-review-bar" aria-label="모바일 빠른 동작">
+  <button class="btn small ghost" type="button" id="mobilePrevItem">이전</button>
+  <button class="btn small ghost" type="button" id="mobileNextItem">다음</button>
+  <button class="btn small" type="button" id="mobileCmdPalette">빠른 실행</button>
+  <button class="btn small ghost" type="button" id="mobileUndoAction">되돌리기</button>
+</div>
+
+<div class="modal" id="commandPaletteModal" aria-hidden="true">
+  <div class="modal-backdrop" data-cmd-close></div>
+  <div class="modal-dialog card cmdk-dialog">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">빠른 실행</div>
+        <div class="modal-sub">검색 후 Enter로 즉시 실행</div>
+      </div>
+      <button type="button" class="modal-x" data-cmd-close>✕</button>
+    </div>
+    <div class="modal-body">
+      <input id="cmdPaletteInput" class="cmdk-input" placeholder="명령 검색 (예: 업무, 영수증, 되돌리기)" autocomplete="off">
+      <div class="cmdk-list" id="cmdPaletteList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="shortcutHelpModal" aria-hidden="true">
+  <div class="modal-backdrop" data-shortcut-close></div>
+  <div class="modal-dialog card" style="max-width:520px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">정리하기 단축키</div>
+        <div class="modal-sub">리스트 이동과 분류를 빠르게</div>
+      </div>
+      <button type="button" class="modal-x" data-shortcut-close>✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="vlist">
+        <div class="vitem"><b>⌘K / Ctrl+K</b><span class="muted2">빠른 실행 열기</span></div>
+        <div class="vitem"><b>J / K</b><span class="muted2">다음/이전 항목 이동</span></div>
+        <div class="vitem"><b>1 / 2 / 3</b><span class="muted2">현재 항목 빠른 처리</span></div>
+        <div class="vitem"><b>Enter</b><span class="muted2">당일 보기 열기</span></div>
+        <div class="vitem"><b>U</b><span class="muted2">최근 처리 되돌리기</span></div>
+        <div class="vitem"><b>?</b><span class="muted2">이 도움말 열기/닫기</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================
+     Receipt Wizard Modal (페이지 이동 최소화)
+========================= -->
+<div class="modal" id="receiptWizardModal" aria-hidden="true">
+  <div class="modal-backdrop" data-close></div>
+
+  <div class="modal-dialog wide card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="rwTitle">영수증 처리</div>
+        <div class="modal-sub" id="rwSub">업로드 → 확인 → 확정</div>
+        <div class="rw-progress" id="rwProgress" aria-label="영수증 처리 단계">
+          <span class="dot is-on"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="txt" id="rwProgressText">1 / 3</span>
+        </div>
+      </div>
+      <button type="button" class="modal-x" data-close>✕</button>
+    </div>
+
+    <div class="modal-body" id="rwBody" style="background:#fff; padding:14px;">
+      <div class="p muted2">불러오는 중...</div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
-  if (!location.hash) return;
-  const el = document.querySelector(location.hash);
-  if (!el) return;
-  try{
-    el.scrollIntoView({behavior:"smooth", block:"center"});
-  }catch(e){}
+  const modal = document.getElementById("receiptWizardModal");
+  const body = document.getElementById("rwBody");
+  const titleEl = document.getElementById("rwTitle");
+  const subEl = document.getElementById("rwSub");
+  const progressEl = document.getElementById("rwProgress");
+  const progressTextEl = document.getElementById("rwProgressText");
+
+  function setWizardStep(stepNum){
+    const s = Math.max(1, Math.min(3, Number(stepNum) || 1));
+    if (progressTextEl) progressTextEl.textContent = `${s} / 3`;
+    if (!progressEl) return;
+    const dots = progressEl.querySelectorAll(".dot");
+    dots.forEach((dot, idx) => {
+      dot.classList.toggle("is-on", idx < s);
+    });
+  }
+
+  function openModal(){
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden","false");
+  }
+  function closeModal(){
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden","true");
+  }
+
+  function withPartial(url){
+    if (!url) return url;
+    if (url.includes("partial=1")) return url;
+    return url + (url.includes("?") ? "&" : "?") + "partial=1";
+  }
+
+  async function loadStep(url){
+    openModal();
+    body.innerHTML = '<div class="p muted2">불러오는 중...</div>';
+
+    const res = await fetch(withPartial(url), { credentials: "same-origin" });
+    const html = await res.text();
+    body.innerHTML = html;
+
+    const step = body.querySelector(".rw-step");
+    if (step){
+      const t = step.getAttribute("data-title");
+      const s = step.getAttribute("data-sub");
+      const n = step.getAttribute("data-step");
+      if (t) titleEl.textContent = t;
+      if (s) subEl.textContent = s;
+      setWizardStep(n);
+    }
+  }
+
+  // open from list
+  document.addEventListener("click", (e) => {
+    const a = e.target && e.target.closest ? e.target.closest("a[data-receipt-wizard]") : null;
+    if (!a) return;
+    e.preventDefault();
+    loadStep(a.getAttribute("href"));
+  });
+
+  // close
+  modal.addEventListener("click", (e) => {
+    if (e.target && e.target.dataset && e.target.dataset.close !== undefined) closeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
+  });
+
+  // inside modal: links
+  body.addEventListener("click", (e) => {
+    const a = e.target && e.target.closest ? e.target.closest("a[data-rw-link]") : null;
+    if (!a) return;
+    e.preventDefault();
+    loadStep(a.getAttribute("href"));
+  });
+
+  // inside modal: forms
+  body.addEventListener("submit", async (e) => {
+    const form = e.target;
+    if (!form || !form.dataset || form.dataset.rwForm === undefined) return;
+    e.preventDefault();
+
+    const fd = new FormData(form);
+    fd.set("partial","1");
+
+    const action = form.getAttribute("action");
+    const expectJson = (form.dataset.rwExpect || "") === "json";
+
+    const res = await fetch(action, {
+      method: (form.getAttribute("method") || "POST").toUpperCase(),
+      body: fd,
+      credentials: "same-origin",
+    });
+
+    if (expectJson){
+      let j = null;
+      try{ j = await res.json(); }catch(_){}
+      if (j && j.redirect){
+        window.location.href = j.redirect;
+        return;
+      }
+      body.innerHTML = '<div class="p muted2">처리 결과를 불러오지 못했어요.</div>';
+      return;
+    }
+
+    const html = await res.text();
+    body.innerHTML = html;
+
+    const step = body.querySelector(".rw-step");
+    if (step){
+      const t = step.getAttribute("data-title");
+      const s = step.getAttribute("data-sub");
+      const n = step.getAttribute("data-step");
+      if (t) titleEl.textContent = t;
+      if (s) subEl.textContent = s;
+      setWizardStep(n);
+    }
+  });
 })();
 </script>
+
+<script>
+(function(){
+  const helpModal = document.getElementById("shortcutHelpModal");
+  const helpBtn = document.getElementById("openShortcutHelp");
+  const cmdModal = document.getElementById("commandPaletteModal");
+  const cmdBtn = document.getElementById("openCmdPalette");
+  const recentBtn = document.getElementById("openRecentActions");
+  const recentPanel = document.getElementById("recentActionsPanel");
+  const closeRecentBtn = document.getElementById("closeRecentActions");
+  const mobileCmdBtn = document.getElementById("mobileCmdPalette");
+  const mobilePrevBtn = document.getElementById("mobilePrevItem");
+  const mobileNextBtn = document.getElementById("mobileNextItem");
+  const mobileUndoBtn = document.getElementById("mobileUndoAction");
+  const cmdInput = document.getElementById("cmdPaletteInput");
+  const cmdList = document.getElementById("cmdPaletteList");
+  function openHelp(){
+    if (!helpModal) return;
+    helpModal.classList.add("open");
+    helpModal.setAttribute("aria-hidden", "false");
+  }
+  function closeHelp(){
+    if (!helpModal) return;
+    helpModal.classList.remove("open");
+    helpModal.setAttribute("aria-hidden", "true");
+  }
+  helpBtn && helpBtn.addEventListener("click", openHelp);
+  helpModal && helpModal.addEventListener("click", (e) => {
+    if (e.target && e.target.dataset && e.target.dataset.shortcutClose !== undefined) closeHelp();
+  });
+  function openCmd(){
+    if (!cmdModal) return;
+    cmdModal.classList.add("open");
+    cmdModal.setAttribute("aria-hidden", "false");
+    renderCmds(cmdInput ? cmdInput.value : "");
+    window.setTimeout(() => cmdInput && cmdInput.focus(), 0);
+  }
+  function closeCmd(){
+    if (!cmdModal) return;
+    cmdModal.classList.remove("open");
+    cmdModal.setAttribute("aria-hidden", "true");
+  }
+  function openRecentActions(){
+    if (!recentPanel) return;
+    recentPanel.style.display = "block";
+  }
+  function closeRecentActions(){
+    if (!recentPanel) return;
+    recentPanel.style.display = "none";
+  }
+  recentBtn && recentBtn.addEventListener("click", () => {
+    if (!recentPanel) return;
+    if (recentPanel.style.display === "block") closeRecentActions();
+    else openRecentActions();
+  });
+  closeRecentBtn && closeRecentBtn.addEventListener("click", closeRecentActions);
+
+  cmdBtn && cmdBtn.addEventListener("click", openCmd);
+  mobileCmdBtn && mobileCmdBtn.addEventListener("click", openCmd);
+  cmdModal && cmdModal.addEventListener("click", (e) => {
+    if (e.target && e.target.dataset && e.target.dataset.cmdClose !== undefined) closeCmd();
+  });
+
+  const rows = Array.from(document.querySelectorAll("[data-review-row]"));
+  const bulkChecks = Array.from(document.querySelectorAll("input[data-bulk-item='1']"));
+  const bulkSelectAll = document.getElementById("bulkSelectAll");
+  const bulkClearBtn = document.getElementById("bulkClearBtn");
+  const bulkForm = document.getElementById("reviewBulkForm");
+  const bulkSelectedIds = document.getElementById("bulkSelectedIds");
+  const bulkSelectedCount = document.getElementById("bulkSelectedCount");
+  let idx = 0;
+
+  function currentBulkIds(){
+    return bulkChecks.filter((el) => el.checked).map((el) => String(el.value || "").trim()).filter(Boolean);
+  }
+  function updateBulkUi(){
+    if (!bulkChecks.length || !bulkForm) return;
+    const ids = currentBulkIds();
+    if (bulkSelectedIds) bulkSelectedIds.value = ids.join(",");
+    if (bulkSelectedCount) bulkSelectedCount.textContent = `${ids.length}건 선택됨`;
+    bulkForm.style.display = ids.length > 0 ? "block" : "none";
+    if (bulkSelectAll){
+      bulkSelectAll.checked = ids.length > 0 && ids.length === bulkChecks.length;
+      bulkSelectAll.indeterminate = ids.length > 0 && ids.length < bulkChecks.length;
+    }
+  }
+
+  bulkChecks.forEach((el) => {
+    el.addEventListener("change", updateBulkUi);
+  });
+  bulkSelectAll && bulkSelectAll.addEventListener("change", () => {
+    const checked = !!bulkSelectAll.checked;
+    bulkChecks.forEach((el) => {
+      el.checked = checked;
+    });
+    updateBulkUi();
+  });
+  bulkClearBtn && bulkClearBtn.addEventListener("click", () => {
+    bulkChecks.forEach((el) => {
+      el.checked = false;
+    });
+    updateBulkUi();
+  });
+  bulkForm && bulkForm.addEventListener("submit", (e) => {
+    const ids = currentBulkIds();
+    if (!ids.length){
+      e.preventDefault();
+      return;
+    }
+    if (bulkSelectedIds) bulkSelectedIds.value = ids.join(",");
+    showLoadingState();
+  });
+
+  function paint(){
+    if (!rows.length) return;
+    rows.forEach((row, i) => row.classList.toggle("is-active", i === idx));
+    rows[idx]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+  function activeRow(){
+    return rows[idx] || null;
+  }
+  function clickKey(key){
+    const row = activeRow();
+    if (!row) return false;
+    const target = row.querySelector(`[data-k='${key}']`);
+    if (!target) return false;
+    target.click();
+    return true;
+  }
+  function goPrev(){
+    if (!rows.length) return;
+    idx = Math.max(0, idx - 1);
+    paint();
+  }
+  function goNext(){
+    if (!rows.length) return;
+    idx = Math.min(rows.length - 1, idx + 1);
+    paint();
+  }
+  function submitUndo(){
+    const undoForm = document.getElementById("reviewUndoForm");
+    if (!undoForm) return;
+    undoForm.submit();
+  }
+  mobilePrevBtn && mobilePrevBtn.addEventListener("click", goPrev);
+  mobileNextBtn && mobileNextBtn.addEventListener("click", goNext);
+  mobileUndoBtn && mobileUndoBtn.addEventListener("click", submitUndo);
+  function openFocus(nextFocus, nextLane){
+    const q = "{{ q }}";
+    const limit = "{{ limit }}";
+    const month = "{{ month_key }}";
+    const account = "{{ account_filter_value }}";
+    const lane = nextLane || "{{ lane }}";
+    const url = `{{ url_for('web_calendar.review') }}?month=${encodeURIComponent(month)}&lane=${encodeURIComponent(lane)}&focus=${encodeURIComponent(nextFocus)}&q=${encodeURIComponent(q)}&limit=${encodeURIComponent(limit)}&account=${encodeURIComponent(account)}`;
+    window.location.href = url;
+  }
+
+  const commands = [
+    { label: "다음 항목", hint: "J", run: goNext },
+    { label: "이전 항목", hint: "K", run: goPrev },
+    { label: "빠른 처리 1", hint: "1", run: () => clickKey("1") },
+    { label: "빠른 처리 2", hint: "2", run: () => clickKey("2") },
+    { label: "빠른 처리 3", hint: "3", run: () => clickKey("3") },
+    { label: "당일 보기", hint: "Enter", run: () => clickKey("enter") },
+    { label: "최근 작업 되돌리기", hint: "U", run: submitUndo },
+    { label: "탭: 필수", hint: "lane", run: () => openFocus("receipt_required", "required") },
+    { label: "탭: 검토", hint: "lane", run: () => openFocus("expense_confirm", "review") },
+    { label: "탭: 완료", hint: "lane", run: () => openFocus("done", "done") },
+    { label: "탭: 불필요", hint: "lane", run: () => openFocus("not_needed", "not_needed") },
+    { label: "탭: 보류", hint: "lane", run: () => openFocus("hold", "hold") },
+    { label: "탭: 영수증 붙이면 끝", hint: "focus", run: () => openFocus("receipt_attach", "review") },
+    { label: "탭: 업무/개인 확정", hint: "focus", run: () => openFocus("expense_confirm", "review") },
+    { label: "탭: 수입 확인", hint: "focus", run: () => openFocus("income_confirm", "review") },
+    { label: "10분 모드", hint: "limit=30", run: () => window.location.href = `{{ url_for('web_calendar.review', month=month_key, lane=lane, focus=focus, q=q, limit=30, account=account_filter_value) }}` },
+    { label: "전체 보기", hint: "limit=200", run: () => window.location.href = `{{ url_for('web_calendar.review', month=month_key, lane=lane, focus=focus, q=q, limit=200, account=account_filter_value) }}` }
+  ];
+
+  let cmdActive = 0;
+  function renderCmds(keyword){
+    if (!cmdList) return;
+    const k = (keyword || "").trim().toLowerCase();
+    const filtered = commands.filter((c) => !k || c.label.toLowerCase().includes(k));
+    if (cmdActive >= filtered.length) cmdActive = 0;
+    const html = filtered.map((c, i) => (
+      `<button type="button" class="cmdk-item${i === cmdActive ? " is-active" : ""}" data-cmd-index="${i}">
+        <span>${c.label}</span><span class="muted2">${c.hint}</span>
+      </button>`
+    )).join("") || `<div class="muted2" style="padding:8px 4px;">검색 결과가 없어요.</div>`;
+    cmdList.innerHTML = html;
+    cmdList.querySelectorAll("[data-cmd-index]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const i = Number(el.getAttribute("data-cmd-index"));
+        if (!Number.isFinite(i) || !filtered[i]) return;
+        closeCmd();
+        filtered[i].run();
+      });
+    });
+    return filtered;
+  }
+  cmdInput && cmdInput.addEventListener("input", () => {
+    cmdActive = 0;
+    renderCmds(cmdInput.value);
+  });
+
+  function inEditable(el){
+    if (!el) return false;
+    const tag = (el.tagName || "").toLowerCase();
+    if (["input", "textarea", "select", "button"].includes(tag)) return true;
+    return !!el.closest("input, textarea, select, button, [contenteditable='true']");
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      if (cmdModal && cmdModal.classList.contains("open")) closeCmd();
+      else openCmd();
+      return;
+    }
+    if (inEditable(e.target)) return;
+    const modal = document.getElementById("receiptWizardModal");
+    if (modal && modal.classList.contains("open")) return;
+    if (cmdModal && cmdModal.classList.contains("open")) {
+      const filtered = renderCmds(cmdInput ? cmdInput.value : "") || [];
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeCmd();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (filtered.length) cmdActive = Math.min(filtered.length - 1, cmdActive + 1);
+        renderCmds(cmdInput ? cmdInput.value : "");
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (filtered.length) cmdActive = Math.max(0, cmdActive - 1);
+        renderCmds(cmdInput ? cmdInput.value : "");
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (filtered[cmdActive]) {
+          closeCmd();
+          filtered[cmdActive].run();
+        }
+        return;
+      }
+      return;
+    }
+    if (helpModal && helpModal.classList.contains("open")) {
+      if (e.key === "?" || e.key === "Escape") {
+        e.preventDefault();
+        closeHelp();
+      }
+      return;
+    }
+
+    if (e.key === "?") {
+      e.preventDefault();
+      openHelp();
+      return;
+    }
+
+    if (e.key === "j" || e.key === "ArrowDown") {
+      e.preventDefault();
+      goNext();
+      return;
+    }
+    if (e.key === "k" || e.key === "ArrowUp") {
+      e.preventDefault();
+      goPrev();
+      return;
+    }
+    if (["1", "2", "3", "Enter"].includes(e.key)) {
+      const key = e.key === "Enter" ? "enter" : e.key;
+      if (clickKey(key)) {
+        e.preventDefault();
+      }
+    }
+
+    if (e.key === "u" || e.key === "U") {
+      if (document.getElementById("reviewUndoForm")) {
+        e.preventDefault();
+        submitUndo();
+      }
+    }
+  });
+
+  function showLoadingState(){
+    const loading = document.getElementById("reviewLoading");
+    const listWrap = document.getElementById("reviewListWrap");
+    if (!loading || !listWrap) return;
+    listWrap.style.opacity = "0.35";
+    loading.style.display = "grid";
+  }
+
+  document.querySelectorAll("a[data-review-nav='1']").forEach((a) => {
+    a.addEventListener("click", showLoadingState);
+  });
+  const searchForm = document.querySelector(".actionbar form.search");
+  if (searchForm) {
+    searchForm.addEventListener("submit", showLoadingState);
+  }
+
+  if (rows.length) paint();
+  updateBulkUi();
+})();
+</script>
+
 {% endblock %}

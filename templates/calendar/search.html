@@ -2,14 +2,20 @@
 {% block title %}검색{% endblock %}
 {% block content %}
 <div class="wrap cal-wrap">
-  <div class="cal-top">
-    <div><div class="title">검색</div><div class="sub">{{ month_first.strftime("%Y-%m") }} · "{{ q }}"</div></div>
+  <div class="cal-top page-head">
+    <div class="page-head-main"><div class="title">검색</div><div class="sub">{{ month_first.strftime("%Y-%m") }} · "{{ q }}"</div></div>
     <div class="cal-nav">
-      <a class="btn" href="{{ url_for('web_calendar.month_calendar', month=month_first.strftime('%Y-%m')) }}">달력</a>
+      <a class="btn" href="{{ url_for('web_calendar.month_calendar', month=month_first.strftime('%Y-%m'), account=account_scope_value) }}">달력</a>
     </div>
   </div>
 
   <section class="card" style="padding:14px;">
+    <form class="search" method="GET" action="{{ url_for('web_calendar.month_search') }}" style="margin-bottom:12px;">
+      <input type="hidden" name="month" value="{{ month_first.strftime('%Y-%m') }}">
+      <input type="hidden" name="account" value="{{ account_scope_value }}">
+      <input name="q" value="{{ q }}" placeholder="거래처/메모 검색">
+      <button class="btn sm ghost" type="submit">다시 검색</button>
+    </form>
     {% if not groups %}
       <div class="empty big">검색 결과가 없어요.</div>
     {% else %}
@@ -17,7 +23,7 @@
         <div class="s-day">
           <div class="s-head">
             <div class="s-date">{{ d.strftime("%Y-%m-%d") }}</div>
-            <a class="btn sm ghost" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d')) }}">날짜 보기</a>
+            <a class="btn sm ghost" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), account=account_scope_value) }}">날짜 보기</a>
           </div>
           <div class="s-list">
             {% for t in items %}

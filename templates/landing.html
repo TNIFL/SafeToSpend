@@ -1,167 +1,164 @@
 {% extends "base.html" %}
-{% block title %}쓸수있어 | 프리랜서 세금 사고 방지 점검함{% endblock %}
+{% block title %}쓸수있어 | 세금·건보료를 미리 보고 준비하는 서비스{% endblock %}
+
+{% block head_extra %}
+<style>
+  .landing-wrap{max-width:1120px;margin:0 auto;padding:26px 16px 58px;}
+  .landing-hero{
+    display:grid;grid-template-columns:1.15fr .85fr;gap:14px;align-items:stretch;
+    border:1px solid var(--line);border-radius:22px;background:#fff;padding:20px;box-shadow:var(--shadow);
+    background:
+      radial-gradient(640px 280px at 8% -14%, rgba(37,99,235,.10), transparent 62%),
+      radial-gradient(520px 260px at 95% 10%, rgba(16,185,129,.08), transparent 60%),
+      #fff;
+  }
+  .landing-kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;border:1px solid rgba(37,99,235,.24);background:rgba(37,99,235,.07);font-size:.85rem;font-weight:900;color:#1d4ed8;}
+  .landing-title{margin-top:10px;font-size:clamp(1.55rem,2.7vw,2rem);line-height:1.18;font-weight:950;letter-spacing:-.7px;}
+  .landing-sub{margin-top:8px;color:var(--muted);line-height:1.62;font-size:.97rem;max-width:760px;}
+  .landing-cta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .landing-note{margin-top:10px;color:var(--muted-2);font-size:.91rem;line-height:1.5;}
+
+  .landing-proof{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px;}
+  .landing-proof h3{margin:0;font-size:1rem;letter-spacing:-.2px;}
+  .landing-proof-list{margin-top:10px;display:grid;gap:8px;}
+  .landing-proof-item{padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);}
+  .landing-proof-item b{display:block;font-size:.92rem;}
+  .landing-proof-item span{display:block;margin-top:3px;color:var(--muted-2);font-size:.88rem;line-height:1.45;}
+
+  .landing-strip{margin-top:12px;padding:11px 13px;border:1px solid var(--line);border-radius:14px;background:#fff;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center;}
+  .landing-strip strong{font-weight:900;}
+
+  .landing-sec{margin-top:20px;}
+  .landing-head{font-size:1.28rem;font-weight:950;letter-spacing:-.35px;}
+  .landing-subhead{margin-top:6px;color:var(--muted);}
+
+  .landing-value-grid{margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .landing-card{padding:13px;border:1px solid var(--line);border-radius:14px;background:#fff;}
+  .landing-card h3{margin:0;font-size:1rem;letter-spacing:-.2px;}
+  .landing-card p{margin:8px 0 0;color:var(--muted);line-height:1.56;font-size:.93rem;}
+
+  .landing-plan-grid{margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .landing-plan{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;display:grid;gap:8px;}
+  .landing-plan .name{font-weight:950;letter-spacing:-.2px;}
+  .landing-plan .price{font-size:1.3rem;font-weight:950;letter-spacing:-.4px;}
+  .landing-plan .desc{color:var(--muted);font-size:.92rem;line-height:1.5;}
+  .landing-plan .mini{color:var(--muted-2);font-size:.88rem;line-height:1.45;}
+  .landing-plan.recommend{border-color:rgba(37,99,235,.35);box-shadow:0 10px 26px rgba(37,99,235,.12);}
+
+  .landing-cta-box{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center;}
+  .landing-cta-box .txt{color:var(--muted);line-height:1.55;}
+
+  @media (max-width:980px){
+    .landing-hero{grid-template-columns:1fr;}
+    .landing-value-grid,.landing-plan-grid{grid-template-columns:1fr;}
+    .landing-cta .btn{width:100%;}
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container">
-
-  <!-- HERO -->
-  <section class="hero">
-    <div class="grid cols-2" style="align-items:center;">
-
-      <div class="stack" style="gap:14px;">
-        <div class="kicker"><span class="dot"></span>프리랜서/1인사업자 세금 리스크 점검</div>
-
-        <div class="h1">
-          거래내역에서<br>
-          <span style="color:#1d4ed8;">세금·증빙·혼재</span>만 뽑아서<br>
-          “이번 주 할 일”로 정리.
-        </div>
-
-        <div class="p" style="max-width: 52ch;">
-          숫자 계산기가 아니라, <b>사고가 나는 지점</b>만 자동으로 잡아주는 처리함입니다.
-        </div>
-
-        <div class="row" style="margin-top:4px;">
-          {% if session.get('user_id') %}
-            <a class="btn primary" href="{{ url_for('web_overview.overview') }}">내 요약 보기</a>
-            <a class="btn" href="{{ url_for('web_inbox.index') }}">처리함 열기</a>
-          {% else %}
-            <a class="btn primary" href="{{ url_for('web_auth.register') }}">바로 시작</a>
-            <a class="btn" href="{{ url_for('web_auth.login') }}">로그인</a>
-          {% endif %}
-          <span class="badge primary">9,900원/월</span>
-        </div>
-
-        <div class="row" style="gap:8px;margin-top:6px;">
-          <span class="badge">CSV 업로드</span>
-          <span class="badge good">반복 거래처는 룰로 잠금</span>
-          <span class="badge">훑어보기 최적</span>
-        </div>
+<div class="landing-wrap">
+  <section class="landing-hero">
+    <div>
+      <div class="landing-kicker">프리랜서 월말 정리 · 10분 루틴</div>
+      <div class="landing-title">세금·건보료, 미리 보고 미리 남겨두세요</div>
+      <div class="landing-sub">
+        예상 세금과 건보료는 모든 플랜에서 동일하게 확인할 수 있습니다.<br>
+        차이는 자동으로 얼마나 편하게 정리되느냐입니다.
       </div>
 
-      <!-- Right: small proof card (짧게) -->
-      <div class="card pad" style="background:rgba(255,255,255,.85);">
-        <div class="cardTitle">
-          <span>이게 유료 가치</span>
-          <span class="badge primary">리스크 제거</span>
-        </div>
-        <div class="hr"></div>
-
-        <div class="stack" style="gap:10px;">
-          <div class="row" style="justify-content:space-between;">
-            <span class="muted">증빙 누락</span>
-            <span class="badge bad">사고 포인트</span>
-          </div>
-          <div class="row" style="justify-content:space-between;">
-            <span class="muted">세금 금고 부족</span>
-            <span class="badge warn">자주 터짐</span>
-          </div>
-          <div class="row" style="justify-content:space-between;">
-            <span class="muted">개인/사업 혼재</span>
-            <span class="badge warn">계속 꼬임</span>
-          </div>
-
-          <div class="hr"></div>
-          <div class="small-note">
-            업로드하면 “위험한 것”만 처리함에 올라옵니다.<br>
-            매주 5분 루틴으로 유지되는 구조.
-          </div>
-        </div>
+      <div class="landing-cta">
+        {% if session.get('user_id') %}
+          <a class="btn primary" href="{{ url_for('web_inbox.import_page') }}">무료로 시작하기</a>
+        {% else %}
+          <a class="btn primary" href="{{ url_for('web_auth.register', next=url_for('web_inbox.import_page')) }}">무료로 시작하기</a>
+        {% endif %}
+        <a class="btn ghost" href="{{ url_for('web_main.pricing') }}">요금제 보기</a>
       </div>
 
+      <div class="landing-note">
+        세금이 얼마 나올지 몰라서 불안했다면, 이제는 미리 보고 준비하세요.
+      </div>
+    </div>
+
+    <aside class="landing-proof" aria-label="핵심 가치">
+      <h3>이 화면에서 바로 확인되는 3가지</h3>
+      <div class="landing-proof-list">
+        <div class="landing-proof-item">
+          <b>이번 달 예상 세금</b>
+          <span>먼저 확인하고 보관할 금액을 정할 수 있어요.</span>
+        </div>
+        <div class="landing-proof-item">
+          <b>예상 건보료</b>
+          <span>11월 변동 가능성까지 미리 보고 대비할 수 있어요.</span>
+        </div>
+        <div class="landing-proof-item">
+          <b>정리 시간 단축</b>
+          <span>계좌 연동과 정리 화면으로 월말 정리를 빠르게 끝냅니다.</span>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <div class="landing-strip">
+    <div><strong>전 플랜 공통:</strong> 예상 세금·건보료 계산은 동일합니다.</div>
+    <div><strong>플랜 차이:</strong> 자동 연동 수 · 동기화 주기 · 정리 편의성</div>
+  </div>
+
+  <section class="landing-sec" id="how-it-works">
+    <div class="landing-head">매달 필요한 흐름만 남겼습니다</div>
+    <div class="landing-subhead">기능 나열보다, 월말에 실제로 끝나는 경험에 집중했습니다.</div>
+    <div class="landing-value-grid">
+      <article class="landing-card">
+        <h3>1. 먼저 확인</h3>
+        <p>예상 세금·건보료와 세금 금고 권장액을 먼저 확인합니다.</p>
+      </article>
+      <article class="landing-card">
+        <h3>2. 필요한 것만 정리</h3>
+        <p>증빙 누락과 확인 필요한 거래를 중심으로 정리합니다.</p>
+      </article>
+      <article class="landing-card">
+        <h3>3. 전달 준비</h3>
+        <p>월말 정리 화면과 전달 파일로 마감 전 부담을 줄입니다.</p>
+      </article>
     </div>
   </section>
 
-  <!-- 3 benefits -->
-  <section class="section">
-    <div class="grid cols-3">
-      <div class="card pad">
-        <div class="cardTitle">
-          <span>증빙 누락</span>
-          <span class="badge bad">필수</span>
-        </div>
-        <div class="p" style="margin-top:8px;">
-          “필요한데 없는 거래”만 모아서 처리.
-        </div>
-      </div>
+  <section class="landing-sec" id="pricing-teaser">
+    <div class="landing-head">요금은 단순하게</div>
+    <div class="landing-subhead">무료로 확인하고, 필요하면 자동 연동 플랜으로 올리면 됩니다.</div>
 
-      <div class="card pad">
-        <div class="cardTitle">
-          <span>세금 금고</span>
-          <span class="badge warn">부족액</span>
-        </div>
-        <div class="p" style="margin-top:8px;">
-          이번 달 목표 대비 부족액을 한 줄로.
-        </div>
-      </div>
+    <div class="landing-plan-grid">
+      <article class="landing-plan">
+        <div class="name">무료</div>
+        <div class="price">0원</div>
+        <div class="desc">예상 세금·건보료 확인 + 직접 입력/CSV·엑셀 업로드</div>
+        <div class="mini">계좌 자동 연동 없음</div>
+      </article>
 
-      <div class="card pad">
-        <div class="cardTitle">
-          <span>혼재 정리</span>
-          <span class="badge warn">한 클릭</span>
-        </div>
-        <div class="p" style="margin-top:8px;">
-          사업/개인만 확정해도 전체가 정리됨.
-        </div>
-      </div>
+      <article class="landing-plan recommend">
+        <div class="name">베이직</div>
+        <div class="price">월 6,900원</div>
+        <div class="desc">계좌 1개 자동 연동 · 4시간마다 자동 동기화</div>
+        <div class="mini">가장 많이 선택하는 실사용 플랜</div>
+      </article>
+
+      <article class="landing-plan">
+        <div class="name">프로</div>
+        <div class="price">월 12,900원</div>
+        <div class="desc">계좌 2개 자동 연동 · 1시간마다 자동 동기화</div>
+        <div class="mini">계좌가 2개 이상이면 더 편합니다</div>
+      </article>
+    </div>
+
+    <div class="landing-note" style="margin-top:10px;">
+      처음 연결한 계좌는 최근 3개월 내역 가져오기를 지원해요.
+    </div>
+
+    <div class="landing-cta-box">
+      <div class="txt">매달 10분 안에 정리를 끝내는 흐름이 필요하다면, 베이직부터 시작해 보세요.</div>
+      <a class="btn primary" href="{{ url_for('web_main.pricing') }}">요금제 자세히 보기</a>
     </div>
   </section>
-
-  <!-- How it works -->
-  <section class="section card pad">
-    <div class="h2">작동 방식</div>
-    <div class="grid cols-3" style="margin-top:12px;">
-      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
-        <div class="badge primary">1</div>
-        <div style="margin-top:10px;font-weight:900;">CSV 업로드</div>
-        <div class="p" style="margin-top:6px;">내역을 넣으면 시작.</div>
-      </div>
-
-      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
-        <div class="badge primary">2</div>
-        <div style="margin-top:10px;font-weight:900;">리스크 추출</div>
-        <div class="p" style="margin-top:6px;">증빙/혼재/수입 의심.</div>
-      </div>
-
-      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
-        <div class="badge primary">3</div>
-        <div style="margin-top:10px;font-weight:900;">처리함에서 해결</div>
-        <div class="p" style="margin-top:6px;">오늘 1~3개만.</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Trust (짧게) -->
-  <section class="section">
-    <div class="grid cols-2">
-      <div class="card pad">
-        <div class="h2">신뢰를 위한 기본 약속</div>
-        <div class="stack" style="margin-top:12px;gap:8px;">
-          <div class="row"><span class="badge good">명확</span><span class="muted">왜 걸렸는지 한 줄로 설명</span></div>
-          <div class="row"><span class="badge good">재발 방지</span><span class="muted">거래처 룰로 같은 이슈 반복 차단</span></div>
-          <div class="row"><span class="badge good">훑어보기</span><span class="muted">긴 글 대신 KPI·처리 버튼 중심</span></div>
-        </div>
-      </div>
-
-      <div class="card pad">
-        <div class="h2">바로 써볼까요?</div>
-        <div class="p" style="margin-top:8px;">
-          가입 → 업로드 → 처리함.<br>
-          “관리”가 아니라 “해결”로 가게 만듭니다.
-        </div>
-        <div class="row" style="margin-top:12px;">
-          {% if session.get('user_id') %}
-            <a class="btn primary full" href="{{ url_for('web_overview.overview') }}">요약으로 가기</a>
-          {% else %}
-            <a class="btn primary full" href="{{ url_for('web_auth.register') }}">시작하기</a>
-          {% endif %}
-        </div>
-        <div class="small-note" style="margin-top:10px;">
-          초기 가격: 9,900원/월 · CSV(반자동) · 공식 연동은 병렬 준비
-        </div>
-      </div>
-    </div>
-  </section>
-
 </div>
 {% endblock %}

@@ -4,9 +4,7 @@
 {% block head_extra %}
 <style>
   .wrap{max-width:1120px;margin:0 auto;padding:18px 16px 44px;}
-  .top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px;}
-  .title{font-size:1.25rem;font-weight:1100;letter-spacing:-.4px;}
-  .sub{margin-top:6px;color:var(--muted);font-size:.95rem;line-height:1.5;}
+  .top{margin-bottom:14px;}
 
   .kpiRow{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px;}
   .kpi{border-radius:18px;background:#fff;border:1px solid rgba(15,23,42,.08);padding:14px;}
@@ -21,6 +19,16 @@
   .cardTitle{font-weight:1100;letter-spacing:-.3px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
   .tiny{color:var(--muted);font-size:.9rem;line-height:1.55;}
   .divider{height:1px;background:rgba(15,23,42,.08);margin:12px 0;}
+  .trendDetails{margin-bottom:14px;overflow:hidden;}
+  .trendDetails > summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:1100;letter-spacing:-.3px;}
+  .trendDetails > summary::-webkit-details-marker{display:none;}
+  .trendWrap{margin-top:12px;}
+  .trendGrid{display:grid;grid-template-columns:1fr;gap:12px;}
+  .trendCard{border:1px solid rgba(15,23,42,.08);border-radius:16px;padding:12px;background:rgba(2,6,23,.02);}
+  .trendHead{font-weight:1000;letter-spacing:-.2px;font-size:.94rem;}
+  .trendCanvasWrap{margin-top:8px;position:relative;min-height:180px;}
+  .trendCanvasWrap canvas{width:100%;height:180px;border:1px solid rgba(15,23,42,.08);border-radius:12px;background:#fff;}
+  .trendEmpty{display:flex;align-items:center;justify-content:center;height:180px;border:1px dashed rgba(15,23,42,.14);border-radius:12px;background:rgba(255,255,255,.8);color:var(--muted);font-size:.88rem;}
 
   .entryGrid{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .entry{
@@ -57,10 +65,16 @@
 {% block content %}
 <div class="wrap">
 
-  <div class="top">
-    <div>
-      <div class="title">대시보드</div>
-      <div class="sub">“세금/예비비 부족”과 “개인/사업 지출 섞임”을 막는 방향으로 여기서부터 확장합니다.</div>
+  <div class="top page-head">
+    <div class="page-head-main">
+      <div class="h1">대시보드</div>
+      <div class="p">“세금/예비비 부족”과 “개인/사업 지출 섞임”을 막는 방향으로 여기서부터 확장합니다.</div>
+      {% if account_filter_label %}
+        <div class="p" style="margin-top:4px;color:var(--muted-2);">현재 계좌 필터: {{ account_filter_label }} · 대시보드 핵심 계산은 전체 기준으로 보여줘요.</div>
+        <div class="p" style="margin-top:2px;">
+          <a href="{{ url_for('web_calendar.month_calendar', month=month_key, account=account_filter_value) }}">계좌 기준 보기(선택)</a>
+        </div>
+      {% endif %}
     </div>
   </div>
 
@@ -87,6 +101,49 @@
       <div class="hint">입금 / 지출(카드값/고정비 포함)</div>
     </div>
   </div>
+
+  {% set trend = trend_payload or {} %}
+  {% set trend_visible = trend.visible if trend and trend.visible else {} %}
+  {% set trend_comments = trend.comments if trend and trend.comments else {} %}
+  {% set trend_empty_messages = trend.empty_messages if trend and trend.empty_messages else {} %}
+  <details class="card trendDetails" id="monthly-trend-panel">
+    <summary>
+      <span>월별 변화</span>
+      <span class="tiny">최근 6개월 집계</span>
+    </summary>
+    <div class="trendWrap">
+      <div class="tiny">건보료/세금/증빙 완성률 변화를 월별로 확인할 수 있어요.</div>
+      <div class="trendGrid">
+        <article class="trendCard">
+          <div class="trendHead">건보료 월별 추이</div>
+          {% if trend_visible.nhis %}
+            <div class="tiny">{{ trend_comments.nhis }}</div>
+            <div class="trendCanvasWrap"><canvas id="trend-chart-nhis" aria-label="건보료 월별 추이"></canvas></div>
+          {% else %}
+            <div class="trendEmpty">{{ trend_empty_messages.nhis or "데이터가 쌓이면 보여드릴게요." }}</div>
+          {% endif %}
+        </article>
+        <article class="trendCard">
+          <div class="trendHead">세금(추정) 월별 추이</div>
+          {% if trend_visible.tax %}
+            <div class="tiny">{{ trend_comments.tax }}</div>
+            <div class="trendCanvasWrap"><canvas id="trend-chart-tax" aria-label="세금 월별 추이"></canvas></div>
+          {% else %}
+            <div class="trendEmpty">{{ trend_empty_messages.tax or "데이터가 쌓이면 보여드릴게요." }}</div>
+          {% endif %}
+        </article>
+        <article class="trendCard">
+          <div class="trendHead">증빙 완성률 월별 추이</div>
+          {% if trend_visible.completion %}
+            <div class="tiny">{{ trend_comments.completion }}</div>
+            <div class="trendCanvasWrap"><canvas id="trend-chart-completion" aria-label="증빙 완성률 월별 추이"></canvas></div>
+          {% else %}
+            <div class="trendEmpty">{{ trend_empty_messages.completion or "데이터가 쌓이면 보여드릴게요." }}</div>
+          {% endif %}
+        </article>
+      </div>
+    </div>
+  </details>
 
   <div class="grid">
 
@@ -170,4 +227,90 @@
 
   </div>
 </div>
+{% endblock %}
+
+{% block script_extra %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script>
+  (function () {
+    const trendPayload = {{ trend_payload|tojson }};
+    if (!trendPayload || typeof trendPayload !== "object") return;
+    if (typeof Chart !== "function") return;
+
+    const labels = Array.isArray(trendPayload.labels) ? trendPayload.labels : [];
+    const series = (trendPayload.series && typeof trendPayload.series === "object") ? trendPayload.series : {};
+    const visible = (trendPayload.visible && typeof trendPayload.visible === "object") ? trendPayload.visible : {};
+
+    const fmtInt = (raw) => Math.round(Number(raw || 0)).toLocaleString("ko-KR");
+    const lineOptions = (isPercent) => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const value = Number((ctx && ctx.raw) || 0);
+              if (isPercent) return `${value.toFixed(1)}%`;
+              return `${fmtInt(value)}원`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { maxTicksLimit: 6 },
+          grid: { color: "rgba(148,163,184,.25)" },
+        },
+        y: {
+          beginAtZero: true,
+          suggestedMax: isPercent ? 100 : undefined,
+          ticks: {
+            callback: (value) => {
+              const num = Number(value || 0);
+              if (isPercent) return `${num.toFixed(0)}%`;
+              return `${fmtInt(num)}원`;
+            },
+          },
+          grid: { color: "rgba(148,163,184,.25)" },
+        },
+      },
+    });
+
+    const renderLine = (canvasId, values, color, isPercent) => {
+      const canvas = document.getElementById(canvasId);
+      if (!(canvas instanceof HTMLCanvasElement)) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            data: Array.isArray(values) ? values : [],
+            borderColor: color,
+            backgroundColor: color,
+            borderWidth: 2,
+            pointRadius: 2,
+            fill: false,
+            tension: 0.28,
+            spanGaps: false,
+          }],
+        },
+        options: lineOptions(isPercent),
+      });
+    };
+
+    if (visible.nhis) {
+      renderLine("trend-chart-nhis", series.nhis, "rgba(37,99,235,.95)", false);
+    }
+    if (visible.tax) {
+      renderLine("trend-chart-tax", series.tax, "rgba(22,163,74,.95)", false);
+    }
+    if (visible.completion) {
+      renderLine("trend-chart-completion", series.completion, "rgba(245,158,11,.95)", true);
+    }
+  })();
+</script>
 {% endblock %}

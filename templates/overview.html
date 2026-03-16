@@ -1,100 +1,485 @@
 {% extends "base.html" %}
 {% block title %}요약 | 쓸수있어{% endblock %}
 
+{% block head_extra %}
+<style>
+  .home-cta{display:flex;gap:8px;flex-wrap:wrap}
+  .home-month-nav{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .home-section{margin-top:24px}
+  .todo-list{display:grid;gap:10px;margin-top:12px}
+  .todo-item{
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px;
+    background:var(--surface-2);
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .todo-meta{display:grid;gap:4px;min-width:220px}
+  .todo-title{font-weight:900;letter-spacing:-.2px}
+  .todo-desc{font-size:.92rem;color:var(--muted)}
+  .todo-action{align-self:center}
+  .home-link{margin-top:10px}
+  .package-issues{display:grid;gap:8px;margin-top:12px}
+  .package-issue{
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:10px;
+    background:var(--surface-2);
+  }
+  .package-issue-title{font-weight:900;letter-spacing:-.2px}
+  .package-issue-desc{font-size:.9rem;color:var(--muted);margin-top:6px;line-height:1.5}
+  .tax-main{
+    font-size: clamp(1.8rem, 4vw, 2.4rem);
+    line-height: 1.1;
+    font-weight: 950;
+    letter-spacing: -.8px;
+    margin-top: 8px;
+  }
+  .rec-list{display:grid;gap:10px;margin-top:12px}
+  .rec-item{
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:var(--surface-2);
+    padding:12px;
+    display:grid;
+    gap:8px;
+  }
+  .rec-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
+  .rec-name{font-weight:900;letter-spacing:-.2px}
+  .rec-meta{font-size:.9rem;color:var(--muted)}
+  .rec-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .rec-actions form{margin:0}
+  .season-card-list{display:grid;gap:10px;margin-top:14px}
+  .season-card{
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px;
+    background:rgba(255,255,255,.7);
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .season-copy{display:grid;gap:6px;min-width:240px}
+  .season-title{font-weight:950;letter-spacing:-.2px}
+  .season-summary{font-size:.92rem;color:var(--muted);line-height:1.5}
+  .season-state{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:.78rem;
+    font-weight:800;
+    border-radius:999px;
+    padding:4px 9px;
+    background:rgba(15,23,42,.08);
+    color:var(--text);
+  }
+  .season-state.todo{background:rgba(59,130,246,.12); color:#1d4ed8}
+  .season-state.in_progress{background:rgba(245,158,11,.15); color:#b45309}
+  .season-state.done{background:rgba(16,185,129,.14); color:#047857}
+  @media (max-width: 980px){
+    .home-cta .btn{width:100%}
+    .todo-action{width:100%}
+    .todo-action .btn{width:100%}
+    .rec-actions .btn{width:100%}
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
-
   <section class="card pad">
-    <div class="row" style="justify-content:space-between;">
-      <div>
-        <div class="h2">이번 달 요약</div>
-        <div class="small-note muted2" style="margin-top:4px;">{{ month_key }}</div>
+    <div class="page-head" style="margin-bottom:0;">
+      <div class="page-head-main">
+        <div class="h1">이번 달 한눈에</div>
+        <div class="p">{{ month_key }} · 지금 상태 기준 결과를 먼저 보고, 필요한 정보만 나중에 더하면 돼요</div>
       </div>
-      <div class="row">
-        <span class="badge primary">리스크 중심</span>
-        <a class="btn small" href="{{ url_for('web_inbox.index') }}">처리함</a>
-        <a class="btn small ghost" href="{{ url_for('web_calendar.tax_package', month=month_key) }}">세무사 패키지</a>
-      </div>
+      <span class="badge primary">월말 2분 루틴</span>
     </div>
 
-    <div class="hr"></div>
-
-    <div class="kpiRow">
-      <div class="kpi">
-        <div class="label">세금 금고 부족액</div>
-        <div class="value big mono">{{ "{:,}".format(tax_shortfall|int) }}원</div>
-        <div class="hint">
-          목표 {{ (tax_target_rate*100)|round(0)|int }}% · 목표 {{ "{:,}".format(tax_target|int) }}원 · 현재 {{ "{:,}".format(tax_buffer|int) }}원
-        </div>
-      </div>
-      <div class="kpi">
-        <div class="label">증빙 누락</div>
-        <div class="value big mono">{{ evidence_missing_count }}</div>
-        <div class="hint">필수/애매 중 미첨부</div>
-      </div>
-      <div class="kpi">
-        <div class="label">혼재 의심</div>
-        <div class="value big mono">{{ mixed_count }}</div>
-        <div class="hint">아직 확정 안 된 지출</div>
-      </div>
+    <div class="home-month-nav cal-nav">
+      <a class="btn sm ghost" href="{{ url_for('web_overview.overview', month=month_nav.prev_month) }}">←</a>
+      <a class="btn sm" href="{{ url_for('web_overview.overview', month=month_nav.this_month) }}">이번달</a>
+      <a class="btn sm ghost" href="{{ url_for('web_overview.overview', month=month_nav.next_month) }}">→</a>
+      <a class="btn sm ghost" href="{{ url_for('web_calendar.year_view', year=(month_nav.current[:4] | int)) }}">연간</a>
     </div>
 
-    <div class="hr"></div>
+    <div class="home-cta" style="margin-top:12px;">
+      <a class="btn primary" href="{{ import_url }}">가져오기</a>
+      <a class="btn ghost" href="{{ next_action_url }}">지금 처리하기</a>
+    </div>
 
-    <div class="grid cols-2">
-      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
-        <div class="cardTitle">
-          <span>이번 주 할 일 1개</span>
-          <span class="badge {% if weekly_task_level=='bad' %}bad{% elif weekly_task_level=='warn' %}warn{% else %}primary{% endif %}">
-            {{ weekly_task_badge }}
-          </span>
-        </div>
-        <div class="p" style="margin-top:10px;">
-          <b style="color:var(--text);">{{ weekly_task_title }}</b><br>
-          {{ weekly_task_desc }}
-        </div>
-        <div class="row" style="margin-top:12px;">
-          <a class="btn primary" href="{{ weekly_task_url }}">{{ weekly_task_cta }}</a>
-          <a class="btn" href="{{ url_for('web_inbox.index') }}">전체 보기</a>
-        </div>
-      </div>
-
-      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
-        <div class="cardTitle">
-          <span>이번 달 입력</span>
-          <span class="badge">CSV 기준</span>
-        </div>
-        <div class="hr"></div>
-
-        <div class="stack" style="gap:10px;">
-          <div class="row" style="justify-content:space-between;">
-            <span class="muted">수입(입금)</span>
-            <span class="mono" style="font-weight:900;">{{ "{:,}".format(gross_income|int) }}원</span>
-          </div>
-          <div class="row" style="justify-content:space-between;">
-            <span class="muted">지출</span>
-            <span class="mono" style="font-weight:900;">{{ "{:,}".format(expenses|int) }}원</span>
-          </div>
-
-          <div class="hr"></div>
-
-          <div>
-            <div class="small-note"><b>세금 금고 충족도</b></div>
-            {% set pct = tax_progress_percent %}
-            <div style="margin-top:8px;" class="progress">
-              <div style="width: {{ pct }}%;"></div>
+    {% if seasonal_experience and seasonal_experience.cards %}
+      <section class="home-section" id="seasonal-checklist">
+        <div class="card" style="box-shadow:none; border-radius:14px; {% if seasonal_experience.strength == 'strong' %}background:linear-gradient(180deg, rgba(17,24,39,.06), var(--surface-2)); border-color:rgba(17,24,39,.16);{% else %}background:var(--surface-2);{% endif %}">
+          <div class="card pad">
+            <div class="cardTitle">
+              <span>{{ seasonal_experience.season_label }}</span>
+              <span class="badge {% if seasonal_experience.strength == 'strong' %}primary{% endif %}">지금 할 일 {{ seasonal_experience.cards|length }}개</span>
             </div>
-            <div class="small-note muted2" style="margin-top:8px;">
-              {{ pct|round(0)|int }}% · 부족 {{ "{:,}".format(tax_shortfall|int) }}원
+            <div class="todo-title" style="margin-top:8px;">{{ seasonal_experience.title }}</div>
+            <div class="todo-desc" style="margin-top:6px;">{{ seasonal_experience.summary }}</div>
+            <div class="season-card-list">
+              {% for card in seasonal_experience.cards %}
+                <div class="season-card">
+                  <div class="season-copy">
+                    <div>
+                      <span class="season-state {{ card.completion_state }}">{{ '완료' if card.completion_state == 'done' else ('진행 중' if card.completion_state == 'in_progress' else '지금 확인') }}</span>
+                    </div>
+                    <div class="season-title">{{ card.title }}</div>
+                    <div class="season-summary">{{ card.summary }}</div>
+                  </div>
+                  <div class="todo-action">
+                    <a class="btn small {% if card.completion_state == 'done' %}ghost{% else %}primary{% endif %}" href="{{ card.metric_cta_url if card.metric_cta_url else card.cta_url }}">{{ card.cta_label }}</a>
+                  </div>
+                </div>
+              {% endfor %}
             </div>
           </div>
+        </div>
+      </section>
+    {% endif %}
 
-          <a class="btn full" href="{{ url_for('web_inbox.index') }}">처리함에서 해결하기</a>
+    {% set official_data_entrypoint_id = "overview-official-data-entrypoint" %}
+    {% set official_data_entrypoint_title = "공식 자료로 숫자 보정하기" %}
+    {% set official_data_entrypoint_summary = "홈택스와 NHIS에서 어떤 자료를 가져오면 세금·건보료 숫자가 더 실제에 가까워지는지 먼저 보고 시작하세요." %}
+    {% set official_data_entrypoint_note = "처음 한 번 맞춘 뒤에는 새 시즌이 오거나 숫자가 크게 달라질 때만 다시 확인하는 구조를 기준으로 설계했어요." %}
+    {% set official_data_upload_href = url_for('web_official_data.upload_page') %}
+    {% set official_data_upload_label = "공식 자료 바로 올리기" %}
+    {% set official_data_entrypoint_label = "공식 자료 안내 보기" %}
+    {% include "partials/official_data_entrypoints.html" %}
+    {% include "partials/official_data_effect_notice.html" %}
+
+    {% if has_recovery_cta %}
+      <section class="home-section" id="overview-recovery-banner">
+        <div class="card" style="box-shadow:none; border-radius:14px; {% if core_numbers_blocked %}border-color:rgba(220,38,38,.25); background:rgba(220,38,38,.06);{% else %}border-color:rgba(245,158,11,.28); background:rgba(245,158,11,.10);{% endif %}">
+          <div class="card pad">
+            {% if core_numbers_blocked %}
+              <div class="cardTitle">핵심 숫자 노출 제한 중</div>
+              <div class="p" style="margin-top:8px;">입력 보완 전에는 확정처럼 보이는 숫자를 숨겨요. 먼저 필수 입력을 저장해 주세요.</div>
+            {% else %}
+              <div class="cardTitle">정확도 보완 필요</div>
+              <div class="p" style="margin-top:8px;">지금 숫자는 제한된 추정이에요. 누락 입력을 채우면 high/exact로 올라갈 수 있어요.</div>
+            {% endif %}
+            {% if tax_result_meta and tax_result_meta.reason == 'missing_income_classification' %}
+              <form method="post" action="{{ url_for('web_profile.tax_income_classification_quick_save') }}" style="margin-top:10px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ url_for('web_overview.overview', month=month_key) }}">
+                <input type="hidden" name="recovery_source" value="tax_overview_inline_card">
+                <div class="p muted2" style="margin:0 0 6px 0;">세금 첫 단계: 소득 유형 1문항 먼저 저장</div>
+                <div class="row" style="gap:8px; flex-wrap:wrap;">
+                  <select class="input" name="income_classification" style="min-width:220px;">
+                    <option value="business">프리랜서/개인사업자 중심</option>
+                    <option value="mixed">근로소득도 있음</option>
+                    <option value="salary">근로소득 중심</option>
+                    <option value="other">기타소득 포함</option>
+                  </select>
+                  <button class="btn small primary" type="submit">바로 저장</button>
+                </div>
+              </form>
+            {% endif %}
+            {% if nhis_result_meta and nhis_result_meta.reason == 'missing_membership_type' %}
+              <form method="post" action="{{ url_for('web_profile.nhis_membership_type_quick_save') }}" style="margin-top:10px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="month" value="{{ month_key }}">
+                <input type="hidden" name="next" value="{{ url_for('web_profile.nhis_page', month=month_key, source='nhis') }}">
+                <input type="hidden" name="recovery_source" value="nhis_overview_inline_card">
+                <div class="p muted2" style="margin:0 0 6px 0;">건보 첫 단계: 가입유형 1문항 먼저 저장</div>
+                <div class="row" style="gap:8px; flex-wrap:wrap;">
+                  <select class="input" name="member_type" style="min-width:180px;">
+                    <option value="employee">직장가입자</option>
+                    <option value="regional">지역가입자</option>
+                    <option value="dependent">피부양자</option>
+                  </select>
+                  <button class="btn small primary" type="submit">바로 저장</button>
+                </div>
+              </form>
+            {% endif %}
+            <div class="row" style="gap:8px; margin-top:10px; flex-wrap:wrap;">
+              {% if tax_recovery_cta and tax_recovery_cta.show %}
+                <a class="btn small ghost" href="{{ tax_recovery_cta.url }}">입력 화면으로 이동(보조)</a>
+              {% endif %}
+              {% if nhis_recovery_cta and nhis_recovery_cta.show %}
+                <a class="btn small ghost" href="{{ nhis_recovery_cta.url }}">건보 입력 화면으로 이동(보조)</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+
+    {% if show_month_end_banner %}
+      <section class="home-section">
+        <div class="card" style="box-shadow:none;background:linear-gradient(180deg, rgba(37,99,235,.08), var(--surface-2));border-radius:14px;border-color:rgba(37,99,235,.22);">
+          <div class="card pad">
+            <div class="cardTitle">
+              <span>월말 정산이 가까워요</span>
+              <span class="badge warn">D-{{ month_end_days_left if month_end_days_left is not none else 0 }}</span>
+            </div>
+            <div class="p" style="margin-top:8px;">남은 것 Top3만 처리하면 이번 달 마감이 끝나요.</div>
+            <div class="row" style="gap:8px; margin-top:10px; flex-wrap:wrap;">
+              <a class="btn small primary" href="{{ next_action_url }}">정리하기</a>
+              <a class="btn small ghost" href="{{ package_url }}">패키지 확인</a>
+              <a class="btn small ghost" href="{{ month_end_hide_url }}">오늘은 숨기기</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+
+    <section class="home-section">
+      <div class="card" style="box-shadow:none;background:var(--surface-2);border-radius:14px;">
+        <div class="card pad">
+          <div class="cardTitle">
+            <span>이번 달 세금 보관 권장액</span>
+          </div>
+          {% if has_transactions %}
+            {% set overview_tax_policy = tax_display_policy if tax_display_policy else {} %}
+            {% set overview_nhis_policy = nhis_display_policy if nhis_display_policy else {} %}
+            {% if core_numbers_blocked %}
+              <div class="tax-main mono">입력 보완 후 계산 가능</div>
+              <div class="hint" style="margin-top:8px;">핵심 입력이 부족해 이번 달 권장액을 강하게 표시하지 않아요.</div>
+            {% else %}
+              <div class="tax-main mono">{% if (overview_tax_policy and overview_tax_policy.limited) or (overview_nhis_policy and overview_nhis_policy.limited) %}~{% endif %}{{ "{:,}".format(total_setaside_recommended|int) }}원</div>
+              <div class="hint" style="margin-top:8px;">
+                세금 {% if overview_tax_policy and overview_tax_policy.limited %}~{% endif %}{{ "{:,}".format(tax_setaside_recommended|int) }}원
+                {% if health_insurance_buffer|int > 0 %}
+                  + 건보료 {% if overview_nhis_policy and overview_nhis_policy.limited %}~{% endif %}{{ "{:,}".format(health_insurance_buffer|int) }}원
+                {% endif %}
+              </div>
+            {% endif %}
+            <div class="hint" style="margin-top:4px;">
+              {% if profile_complete %}
+                3.3%·건보료·내 정보 반영
+              {% else %}
+                기본 추정이에요. 돈 받을 때 3.3%가 떼이는지와 일하면서 쓴 비용을 알려주면 더 정확해져요
+              {% endif %}
+            </div>
+            <div class="small-note muted2" style="margin-top:6px;">
+              세금/건보료는 확정값이 아닌 추정치예요. 입력이 부족하면 실제보다 낮게 보일 수 있어요.
+            </div>
+            {% if has_recovery_cta %}
+              <div class="package-issues">
+                {% if tax_recovery_cta and tax_recovery_cta.show %}
+                  <div class="package-issue">
+                    <div class="package-issue-title">{{ tax_recovery_cta.title }}</div>
+                    <div class="package-issue-desc">{{ tax_recovery_cta.description }}</div>
+                    {% if tax_result_meta and tax_result_meta.reason == 'missing_income_classification' %}
+                      <form method="post" action="{{ url_for('web_profile.tax_income_classification_quick_save') }}" style="margin-top:8px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="next" value="{{ url_for('web_overview.overview', month=month_key) }}">
+                        <input type="hidden" name="recovery_source" value="tax_overview_inline_card">
+                        <div class="package-issue-desc" style="margin-top:0;">가장 먼저 소득 유형 1문항만 저장해 주세요.</div>
+                        <div class="home-cta" style="margin-top:6px;">
+                          <select class="input" name="income_classification" style="min-width:220px;">
+                            <option value="business">프리랜서/개인사업자 중심</option>
+                            <option value="mixed">근로소득도 있음</option>
+                            <option value="salary">근로소득 중심</option>
+                            <option value="other">기타소득 포함</option>
+                          </select>
+                          <button class="btn small primary" type="submit">소득 유형 먼저 저장</button>
+                        </div>
+                      </form>
+                    {% endif %}
+                    {% if tax_recovery_cta.missing_labels %}
+                      <div class="package-issue-desc" style="margin-top:4px;">
+                        누락 항목: {{ tax_recovery_cta.missing_labels|join(', ') }}
+                      </div>
+                    {% endif %}
+                    <div class="home-link" style="margin-top:8px;">
+                      <a class="btn small ghost" href="{{ tax_recovery_cta.url }}">입력 화면으로 이동(보조)</a>
+                    </div>
+                  </div>
+                {% endif %}
+                {% if nhis_recovery_cta and nhis_recovery_cta.show %}
+                  <div class="package-issue">
+                    <div class="package-issue-title">{{ nhis_recovery_cta.title }}</div>
+                    <div class="package-issue-desc">{{ nhis_recovery_cta.description }}</div>
+                    {% if nhis_result_meta and nhis_result_meta.reason == 'missing_membership_type' %}
+                      <form method="post" action="{{ url_for('web_profile.nhis_membership_type_quick_save') }}" style="margin-top:8px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="month" value="{{ month_key }}">
+                        <input type="hidden" name="next" value="{{ url_for('web_profile.nhis_page', month=month_key, source='nhis') }}">
+                        <input type="hidden" name="recovery_source" value="nhis_overview_inline_card">
+                        <div class="package-issue-desc" style="margin-top:0;">가입유형 1문항만 먼저 저장하세요.</div>
+                        <div class="home-cta" style="margin-top:6px;">
+                          <select class="input" name="member_type" style="min-width:180px;">
+                            <option value="employee">직장가입자</option>
+                            <option value="regional">지역가입자</option>
+                            <option value="dependent">피부양자</option>
+                          </select>
+                          <button class="btn small primary" type="submit">가입유형 먼저 저장</button>
+                        </div>
+                      </form>
+                    {% endif %}
+                    {% if nhis_recovery_cta.missing_labels %}
+                      <div class="package-issue-desc" style="margin-top:4px;">
+                        누락 항목: {{ nhis_recovery_cta.missing_labels|join(', ') }}
+                      </div>
+                    {% endif %}
+                    <div class="home-link" style="margin-top:8px;">
+                      <a class="btn small ghost" href="{{ nhis_recovery_cta.url }}">건보 입력 화면으로 이동(보조)</a>
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+            <div class="home-link"><a class="btn small ghost" href="{{ tax_buffer_url }}">세금 보관함 보기</a></div>
+          {% else %}
+            <div class="p" style="margin-top:10px;">아직 데이터가 없어요. 파일을 가져오면 보관 권장액을 바로 계산해요.</div>
+            <div class="home-link"><a class="btn small primary" href="{{ import_url }}">파일 업로드로 시작</a></div>
+          {% endif %}
         </div>
       </div>
-    </div>
+    </section>
 
+    <section class="home-section">
+      <div class="card" style="box-shadow:none;background:var(--surface-2);border-radius:14px;">
+        <div class="card pad">
+          <div class="cardTitle">
+            <span>결과 더 좋아지게 만들기</span>
+            <span class="badge">{{ improvement_cards|length }}개</span>
+          </div>
+          <div class="hint" style="margin-top:8px;">결과는 지금 바로 보고, 아래 카드 중 필요한 것만 이어서 하면 돼요.</div>
+          <div class="todo-list">
+            {% for task in improvement_cards %}
+              <div class="todo-item">
+                <div class="todo-meta">
+                  <div>
+                    {% if task.kind == 'tax_accuracy' %}
+                      <span class="state-chip review">세금 정확도</span>
+                    {% elif task.kind == 'receipt_reflection' %}
+                      <span class="state-chip required">반영 가능성</span>
+                    {% elif task.kind == 'package_quality' %}
+                      <span class="state-chip done">전달 품질</span>
+                    {% else %}
+                      <span class="state-chip review">빠른 시작</span>
+                    {% endif %}
+                  </div>
+                  <div class="todo-title">{{ task.title }}</div>
+                  <div class="todo-desc">{{ task.desc }}</div>
+                  {% if task.impact %}
+                    <div class="todo-desc" style="color:var(--text);">{{ task.impact }}</div>
+                  {% endif %}
+                </div>
+                <div class="todo-action">
+                  <a class="btn small ghost" href="{{ task.url }}">{{ task.action_text }}</a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="home-link">
+            <a class="btn small primary" href="{{ next_action_url }}">지금 처리하기</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-section">
+      <div class="card" style="box-shadow:none;background:var(--surface-2);border-radius:14px;">
+        <div class="card pad">
+          <div class="cardTitle">
+            <span>세무사 전달 패키지</span>
+            {% if package_status == 'pass' %}
+              <span class="badge good">{{ package_badge }}</span>
+            {% elif package_status == 'warn' %}
+              <span class="badge warn">{{ package_badge }}</span>
+            {% else %}
+              <span class="badge bad">{{ package_badge }}</span>
+            {% endif %}
+          </div>
+          <div class="hint" style="margin-top:8px;">다운로드 전 점검 · 준비도 {{ package_ready_percent }}%</div>
+          <div class="hint" style="margin-top:4px;">{{ package_hint }}</div>
+
+          {% if package_top_issues %}
+            <div class="package-issues">
+              {% for issue in package_top_issues %}
+                <div class="package-issue">
+                  <div class="package-issue-title">{{ issue.title }}</div>
+                  <div class="package-issue-desc">{{ issue.message }}</div>
+                  <div class="home-link" style="margin-top:8px;">
+                    <a class="btn small ghost" href="{{ issue.action_url }}">{{ issue.action_text }}</a>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <div class="home-link">
+            <a class="btn small ghost" href="{{ package_url }}">패키지로 이동</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-section">
+      <div class="card" style="box-shadow:none;background:var(--surface-2);border-radius:14px;">
+        <div class="card pad">
+          <div class="cardTitle">
+            <span>이번 달 예상(정기)</span>
+            <span class="badge">{{ recurring_candidates|length }}개</span>
+          </div>
+          {% if recurring_candidates %}
+            <div class="p" style="margin-top:6px;">반복되는 거래를 자동으로 분류하면 다음 달 정리 시간이 줄어들어요.</div>
+            <div class="rec-list">
+              {% for rc in recurring_candidates %}
+                <div class="rec-item">
+                  <div class="rec-head">
+                    <div>
+                      <div class="rec-name">{{ rc.counterparty }}</div>
+                      <div class="rec-meta">
+                        {% if rc.direction == 'out' %}지출{% else %}수입{% endif %}
+                        · {{ "{:,}".format(rc.amount_bucket|int) }}원
+                        · 신뢰도 {{ rc.confidence_pct }}%
+                      </div>
+                    </div>
+                    <span class="badge">{{ rc.sample_count }}회</span>
+                  </div>
+                  <div class="rec-actions">
+                    {% if rc.direction == 'out' %}
+                      <form method="post" action="{{ url_for('web_overview.apply_recurring_candidate', candidate_id=rc.id) }}">
+                        <input type="hidden" name="action" value="business">
+                        <input type="hidden" name="month" value="{{ month_key }}">
+                        <button type="submit" class="btn small ghost">업무로 자동</button>
+                      </form>
+                      <form method="post" action="{{ url_for('web_overview.apply_recurring_candidate', candidate_id=rc.id) }}">
+                        <input type="hidden" name="action" value="personal">
+                        <input type="hidden" name="month" value="{{ month_key }}">
+                        <button type="submit" class="btn small ghost">개인으로 자동</button>
+                      </form>
+                    {% else %}
+                      <form method="post" action="{{ url_for('web_overview.apply_recurring_candidate', candidate_id=rc.id) }}">
+                        <input type="hidden" name="action" value="income">
+                        <input type="hidden" name="month" value="{{ month_key }}">
+                        <button type="submit" class="btn small ghost">수입으로 자동</button>
+                      </form>
+                      <form method="post" action="{{ url_for('web_overview.apply_recurring_candidate', candidate_id=rc.id) }}">
+                        <input type="hidden" name="action" value="non_income">
+                        <input type="hidden" name="month" value="{{ month_key }}">
+                        <button type="submit" class="btn small ghost">수입 제외로 자동</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="p" style="margin-top:10px;">최근 90일 기준으로 반복 패턴을 찾고 있어요. 거래가 쌓이면 여기에 자동으로 추천돼요.</div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
   </section>
-
 </div>
 {% endblock %}

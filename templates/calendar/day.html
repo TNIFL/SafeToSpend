@@ -1,20 +1,180 @@
 {% extends "base.html" %}
 {% block title %}{{ d.strftime("%Y-%m-%d") }}{% endblock %}
 
+{% block head_extra %}
+<style>
+  .tx-actions{
+    display:flex;
+    gap:8px;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+    width:100%;
+  }
+  .tx-actions form{
+    margin:0;
+  }
+  .tx-right{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    justify-content:center;
+    gap:10px;
+    min-width:150px;
+  }
+  .tx-amt{
+    font-size:14px;
+    font-weight:900;
+  }
+  .tx-edit-wrap{
+    grid-column:2 / -1;
+    width:100%;
+    margin-top:10px;
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:var(--surface-2);
+  }
+  .tx-edit-grid{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+    gap:10px;
+  }
+  .tx-edit-grid .full{
+    grid-column:1 / -1;
+  }
+  .tx-edit-grid .field{
+    margin:0;
+  }
+  .tx-edit-grid .field input,
+  .tx-edit-grid .field select{
+    height:40px;
+  }
+  .tx-edit-actions{
+    justify-content:flex-end;
+    margin-top:6px;
+  }
+  .tx-account-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    flex:0 1 auto;
+    min-width:0;
+    width:min(100%, var(--day-tx-account-badge-width, 220px));
+    max-width:100%;
+    justify-self:start;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    border-color: color-mix(in srgb, var(--tx-account-color, #64748B) 55%, transparent);
+    color: var(--tx-account-color, #64748B);
+    font-weight:800;
+  }
+  .tx-account-dot{
+    width:8px;
+    height:8px;
+    border-radius:999px;
+    background: var(--tx-account-color, #64748B);
+    flex:0 0 8px;
+  }
+  .tx-meta{
+    display:grid;
+    grid-template-columns:52px 92px minmax(0, 1fr);
+    align-items:center;
+    gap:6px;
+    margin-top:10px;
+    min-width:0;
+  }
+  .tx-meta .tx-kind-badge{
+    min-width:0;
+    width:100%;
+    justify-content:center;
+  }
+  .tx-meta .tx-source-badge{
+    min-width:0;
+    width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    justify-content:center;
+  }
+  @media (max-width: 720px){
+    .tx-item{
+      grid-template-columns:6px 1fr;
+    }
+    .tx-right{
+      grid-column:2;
+      align-items:flex-start;
+      min-width:0;
+      gap:8px;
+    }
+    .tx-actions{
+      justify-content:flex-start;
+    }
+    .tx-edit-wrap{
+      grid-column:2;
+    }
+    .tx-edit-grid{
+      grid-template-columns:1fr;
+    }
+    .tx-meta{
+      grid-template-columns:52px 78px minmax(0, 1fr);
+    }
+    .tx-account-badge{
+      max-width:100%;
+    }
+  }
+  .day-account-filter{
+    margin-top: 10px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .day-account-filter .field{
+    margin:0;
+    min-width:220px;
+  }
+  .day-account-filter .summary{
+    font-size:.85rem;
+    color:var(--muted-2);
+    font-weight:700;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="wrap cal-wrap">
-  <div class="cal-top">
-    <div>
+<div class="wrap cal-wrap {% if account_scope.mode != 'all' %}day-account-filtered{% endif %}" {% if account_scope.mode != 'all' %}style="--account-accent: {{ account_scope.color_hex }};"{% endif %}>
+  <div class="cal-top page-head">
+    <div class="page-head-main">
       <div class="title">{{ d.strftime("%Y-%m-%d") }}</div>
       <div class="sub">일별 거래 · 수입/지출/순이익</div>
     </div>
 
     <div class="cal-nav">
-      <a class="btn" href="{{ url_for('web_calendar.day_detail', ymd=prev_day.strftime('%Y-%m-%d'), dir=direction, q=q) }}">←</a>
-      <a class="btn" href="{{ url_for('web_calendar.month_calendar', month=d.strftime('%Y-%m')) }}">달력</a>
-      <a class="btn" href="{{ url_for('web_calendar.day_detail', ymd=next_day.strftime('%Y-%m-%d'), dir=direction, q=q) }}">→</a>
+      <a class="btn" href="{{ url_for('web_calendar.day_detail', ymd=prev_day.strftime('%Y-%m-%d'), dir=direction, q=q, account=account_scope_value) }}">←</a>
+      <a class="btn" href="{{ url_for('web_calendar.month_calendar', month=d.strftime('%Y-%m'), account=account_scope_value) }}">달력</a>
+      <a class="btn" href="{{ url_for('web_calendar.day_detail', ymd=next_day.strftime('%Y-%m-%d'), dir=direction, q=q, account=account_scope_value) }}">→</a>
     </div>
   </div>
+
+  <form class="card pad day-account-filter" method="get" action="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d')) }}">
+    <input type="hidden" name="dir" value="{{ direction }}">
+    <input type="hidden" name="q" value="{{ q }}">
+    <label class="field">
+      <span class="label">계좌 선택</span>
+      <select name="account" onchange="this.form.submit()">
+        <option value="all" {% if account_scope_value == 'all' %}selected{% endif %}>전체</option>
+        <option value="unassigned" {% if account_scope_value == 'unassigned' %}selected{% endif %}>미지정</option>
+        {% for acc in account_options %}
+          <option value="{{ acc.id }}" {% if account_scope_value == (acc.id|string) %}selected{% endif %}>{{ acc.display_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="summary">선택 기준: <b>{{ account_scope.name }}</b></div>
+    {% if account_scope.mode == 'account' and selected_account %}
+      <button class="btn small ghost" type="button" id="btn-open-selected-account-edit-day">선택 계좌 수정</button>
+    {% endif %}
+  </form>
 
   <div class="kpi-grid">
     <div class="kpi card">
@@ -37,9 +197,9 @@
     <section class="card day-main">
       <div class="day-tools">
         <div class="seg">
-          <a class="seg-btn {% if direction=='all' %}active{% endif %}" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), dir='all', q=q) }}">전체</a>
-          <a class="seg-btn {% if direction=='in' %}active{% endif %}" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), dir='in', q=q) }}">수입</a>
-          <a class="seg-btn {% if direction=='out' %}active{% endif %}" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), dir='out', q=q) }}">지출</a>
+          <a class="seg-btn {% if direction=='all' %}active{% endif %}" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), dir='all', q=q, account=account_scope_value) }}">전체</a>
+          <a class="seg-btn {% if direction=='in' %}active{% endif %}" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), dir='in', q=q, account=account_scope_value) }}">수입</a>
+          <a class="seg-btn {% if direction=='out' %}active{% endif %}" href="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), dir='out', q=q, account=account_scope_value) }}">지출</a>
         </div>
         <button type="button" class="btn sm tinted" id="openQuickAdd">
         + 거래 추가
@@ -48,6 +208,7 @@
 
         <form class="search" method="GET" action="{{ url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d')) }}">
           <input type="hidden" name="dir" value="{{ direction }}">
+          <input type="hidden" name="account" value="{{ account_scope_value }}">
           <input name="q" value="{{ q }}" placeholder="거래처/메모 검색">
           <button class="btn sm" type="submit">검색</button>
         </form>
@@ -57,6 +218,7 @@
         <div class="empty big">이 날은 거래가 없어요.</div>
       {% else %}
         <div class="tx-list">
+          {% set day_return_url = url_for('web_calendar.day_detail', ymd=d.strftime('%Y-%m-%d'), dir=direction, q=q, account=account_scope_value) %}
           {% for t in txs %}
             <div class="tx-item">
               <div class="tx-mark {% if t.direction=='in' %}in{% else %}out{% endif %}"></div>
@@ -74,10 +236,15 @@
                 {% endif %}
 
                 <div class="tx-meta">
-                  <span class="badge {% if t.direction=='in' %}in{% else %}out{% endif %}">
+                  <span class="badge tx-kind-badge {% if t.direction=='in' %}in{% else %}out{% endif %}">
                     {% if t.direction=='in' %}수입{% else %}지출{% endif %}
                   </span>
-                  <span class="badge ghost">{{ t.source }}</span>
+                  <span class="badge ghost tx-source-badge">{{ t.source or '미분류' }}</span>
+                  {% set tx_account_color = t.account_badge_color or '#64748B' %}
+                  <span class="badge tx-account-badge" style="--tx-account-color: {{ tx_account_color }};">
+                    <span class="tx-account-dot"></span>
+                    {{ t.account_badge_name or '미지정' }}
+                  </span>
                 </div>
               </div>
 
@@ -85,6 +252,68 @@
                 <div class="tx-amt {% if t.direction=='in' %}pos{% else %}neg{% endif %}">
                   {% if t.direction=='in' %}+{% else %}-{% endif %} {{ t.amount_krw|krw }}
                 </div>
+                <div class="tx-actions">
+                  <button type="button" class="btn small ghost js-open-edit" data-tx-id="{{ t.id }}">수정</button>
+                  <form method="POST"
+                        action="{{ url_for('web_calendar.day_tx_delete', ymd=d.strftime('%Y-%m-%d'), tx_id=t.id) }}"
+                        class="js-day-delete-form">
+                  <input type="hidden" name="next" value="{{ day_return_url }}">
+                  <input type="hidden" name="account" value="{{ account_scope_value }}">
+                    <button type="submit" class="btn small warn">삭제</button>
+                  </form>
+                </div>
+              </div>
+
+              <div class="tx-edit-wrap" id="txEditWrap{{ t.id }}" hidden>
+                <form method="POST"
+                      action="{{ url_for('web_calendar.day_tx_update', ymd=d.strftime('%Y-%m-%d'), tx_id=t.id) }}"
+                      class="tx-edit-grid">
+                  <input type="hidden" name="next" value="{{ day_return_url }}">
+                  <input type="hidden" name="account" value="{{ account_scope_value }}">
+
+                  <label class="field">
+                    <span class="label">구분</span>
+                    <select name="direction" required>
+                      <option value="out" {% if t.direction == 'out' %}selected{% endif %}>지출</option>
+                      <option value="in" {% if t.direction == 'in' %}selected{% endif %}>수입</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="label">시간</span>
+                    <input name="time" type="time" value="{{ t.occurred_at.strftime('%H:%M') }}" required>
+                  </label>
+
+                  <label class="field full">
+                    <span class="label">금액(원)</span>
+                    <input name="amount_krw" type="number" min="1" step="1" value="{{ t.amount_krw }}" required>
+                  </label>
+
+                  <label class="field full">
+                    <span class="label">계좌(선택)</span>
+                    <select name="bank_account_id">
+                      <option value="">미지정</option>
+                      {% for acc in account_options %}
+                        <option value="{{ acc.id }}" {% if t.bank_account_id and t.bank_account_id == acc.id %}selected{% endif %}>{{ acc.display_name }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="label">거래처</span>
+                    <input name="counterparty" value="{{ t.counterparty or '' }}">
+                  </label>
+
+                  <label class="field">
+                    <span class="label">메모</span>
+                    <input name="memo" value="{{ t.memo or '' }}">
+                  </label>
+
+                  <div class="row full tx-edit-actions">
+                    <button type="button" class="btn small ghost js-cancel-edit" data-tx-id="{{ t.id }}">취소</button>
+                    <button type="submit" class="btn small primary">완료</button>
+                  </div>
+                </form>
               </div>
             </div>
           {% endfor %}
@@ -134,6 +363,46 @@
     </aside>
   </div>
 </div>
+{% if account_scope.mode == 'account' and selected_account %}
+<div class="modal" id="dayAccountEditModal" aria-hidden="true">
+  <div class="modal-backdrop" data-day-account-edit-close></div>
+  <div class="modal-dialog card" style="max-width:540px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">선택 계좌 수정</div>
+        <div class="modal-sub">{{ selected_account.display_name }}</div>
+      </div>
+      <button type="button" class="modal-x" data-day-account-edit-close>✕</button>
+    </div>
+    <form method="post" action="{{ url_for('web_calendar.calendar_account_color') }}" class="modal-body form-grid">
+      <input type="hidden" name="month" value="{{ d.strftime('%Y-%m') }}">
+      <input type="hidden" name="account" value="{{ account_scope_value }}">
+      <input type="hidden" name="next" value="{{ request.full_path }}">
+      <input type="hidden" name="account_id" value="{{ selected_account.id }}">
+      <label class="field">
+        <span class="label">계좌 이름</span>
+        <input type="text" name="alias" maxlength="64" value="{{ selected_account.alias or '' }}" placeholder="예: 생활비, 사업용">
+      </label>
+      <label class="field">
+        <span class="label">색상</span>
+        <select name="color_hex">
+          <option value="#DC2626" {% if (selected_account.color_hex or '').upper() == '#DC2626' %}selected{% endif %}>🔴 빨강</option>
+          <option value="#EA580C" {% if (selected_account.color_hex or '').upper() == '#EA580C' %}selected{% endif %}>🟠 주황</option>
+          <option value="#CA8A04" {% if (selected_account.color_hex or '').upper() == '#CA8A04' %}selected{% endif %}>🟡 노랑</option>
+          <option value="#16A34A" {% if (selected_account.color_hex or '').upper() == '#16A34A' %}selected{% endif %}>🟢 초록</option>
+          <option value="#2563EB" {% if (selected_account.color_hex or '').upper() == '#2563EB' %}selected{% endif %}>🔵 파랑</option>
+          <option value="#1E3A8A" {% if (selected_account.color_hex or '').upper() == '#1E3A8A' %}selected{% endif %}>🔷 남색</option>
+          <option value="#7C3AED" {% if (selected_account.color_hex or '').upper() == '#7C3AED' %}selected{% endif %}>🟣 보라</option>
+        </select>
+      </label>
+      <div class="row" style="justify-content:flex-end; margin-top:4px;">
+        <button type="button" class="btn sm ghost" data-day-account-edit-close>취소</button>
+        <button type="submit" class="btn sm tinted">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
 {# ===== Quick Add Modal ===== #}
 <div class="modal" id="quickAddModal" aria-hidden="true">
   <div class="modal-backdrop" data-close></div>
@@ -142,13 +411,13 @@
     <div class="modal-head">
       <div>
         <div class="modal-title">거래 추가</div>
-        <div class="modal-sub">{{ ymd }} · 날짜는 자동 설정</div>
+        <div class="modal-sub">{{ d.strftime("%Y-%m-%d") }} · 날짜는 자동 설정</div>
       </div>
       <button type="button" class="modal-x" data-close>✕</button>
     </div>
 
     <form method="POST" action="{{ request.path.rstrip('/') }}/quick-add" class="modal-body form-grid">
-      <div class="modal-sub">{{ request.view_args.get('ymd') }} · 날짜는 자동 설정</div>
+      <input type="hidden" name="account" value="{{ account_scope_value }}">
       <label class="field">
         <span class="label">구분</span>
         <select name="direction" required>
@@ -160,6 +429,16 @@
       <label class="field">
         <span class="label">금액(원)</span>
         <input type="number" name="amount_krw" id="qaAmount" placeholder="예: 35000" required>
+      </label>
+
+      <label class="field">
+        <span class="label">계좌(선택)</span>
+        <select name="bank_account_id">
+          <option value="">기타(수동) 기본</option>
+          {% for acc in account_options %}
+            <option value="{{ acc.id }}" {% if account_scope.mode == 'account' and account_scope.value == (acc.id|string) %}selected{% endif %}>{{ acc.display_name }}</option>
+          {% endfor %}
+        </select>
       </label>
 
       <label class="field">
@@ -180,8 +459,52 @@
   </div>
 </div>
 
+<div class="modal" id="dayDeleteConfirmModal" aria-hidden="true">
+  <div class="modal-backdrop" data-delete-close></div>
+  <div class="modal-dialog card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">정말로 삭제하시겠습니까?</div>
+        <div class="modal-sub">삭제한 거래는 되돌릴 수 없어요.</div>
+      </div>
+      <button type="button" class="modal-x" data-delete-close>✕</button>
+    </div>
+    <div class="modal-body form-grid">
+      <label style="display:flex; align-items:center; gap:8px; margin:0; font-size:.92rem;">
+        <input type="checkbox" id="skipDeleteConfirm">
+        <span>다음부터 묻지 않기</span>
+      </label>
+      <div class="row" style="justify-content:flex-end; margin-top:4px;">
+        <button type="button" class="btn sm ghost" data-delete-close>취소</button>
+        <button type="button" class="btn sm warn" id="confirmDeleteBtn">삭제</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
+  const accountModal = document.getElementById("dayAccountEditModal");
+  const openAccountBtn = document.getElementById("btn-open-selected-account-edit-day");
+  const closeAccountModal = () => {
+    if(!accountModal) return;
+    accountModal.classList.remove("open");
+    accountModal.setAttribute("aria-hidden","true");
+  };
+  const openAccountModal = () => {
+    if(!accountModal) return;
+    accountModal.classList.add("open");
+    accountModal.setAttribute("aria-hidden","false");
+  };
+  openAccountBtn?.addEventListener("click", openAccountModal);
+  accountModal?.addEventListener("click", (e) => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    if(target.hasAttribute("data-day-account-edit-close") || target === accountModal){
+      closeAccountModal();
+    }
+  });
+
   const modal = document.getElementById("quickAddModal");
   const openBtn = document.getElementById("openQuickAdd");
   const amount = document.getElementById("qaAmount");
@@ -204,6 +527,136 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
+    if (e.key === "Escape" && accountModal?.classList.contains("open")) closeAccountModal();
+  });
+})();
+</script>
+
+<script>
+(function(){
+  // 거래행에서 가장 긴 계좌 배지를 기준으로 공통 너비를 맞춰 정렬을 안정화
+  function syncAccountBadgeWidth(){
+    const badges = Array.from(document.querySelectorAll(".tx-meta .tx-account-badge"));
+    if (!badges.length) return;
+    let widest = 0;
+    badges.forEach((badge) => {
+      if (!(badge instanceof HTMLElement)) return;
+      const prevWidth = badge.style.width;
+      const prevMaxWidth = badge.style.maxWidth;
+      badge.style.width = "max-content";
+      badge.style.maxWidth = "none";
+      widest = Math.max(widest, Math.ceil(badge.getBoundingClientRect().width));
+      badge.style.width = prevWidth;
+      badge.style.maxWidth = prevMaxWidth;
+    });
+    const width = Math.max(140, Math.min(320, widest));
+    document.documentElement.style.setProperty("--day-tx-account-badge-width", `${width}px`);
+  }
+
+  syncAccountBadgeWidth();
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    if (resizeTimer) window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(syncAccountBadgeWidth, 120);
+  });
+
+  // 카드 내부 수정 폼 열기/닫기
+  const openButtons = document.querySelectorAll(".js-open-edit");
+  const cancelButtons = document.querySelectorAll(".js-cancel-edit");
+
+  function closeAllEditForms(exceptId){
+    document.querySelectorAll(".tx-edit-wrap[id^='txEditWrap']").forEach((wrap) => {
+      if (exceptId && wrap.id === `txEditWrap${exceptId}`) return;
+      wrap.hidden = true;
+    });
+  }
+
+  openButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const txId = btn.getAttribute("data-tx-id");
+      if (!txId) return;
+      const wrap = document.getElementById(`txEditWrap${txId}`);
+      if (!wrap) return;
+      const willOpen = !!wrap.hidden;
+      closeAllEditForms(willOpen ? txId : "");
+      wrap.hidden = !willOpen;
+      if (willOpen) {
+        const firstInput = wrap.querySelector("input, select");
+        if (firstInput) firstInput.focus();
+      }
+    });
+  });
+
+  cancelButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const txId = btn.getAttribute("data-tx-id");
+      if (!txId) return;
+      const wrap = document.getElementById(`txEditWrap${txId}`);
+      if (wrap) wrap.hidden = true;
+    });
+  });
+
+  // 삭제 확인 모달 + 다음부터 묻지 않기
+  const deleteModal = document.getElementById("dayDeleteConfirmModal");
+  const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+  const skipDeleteConfirm = document.getElementById("skipDeleteConfirm");
+  const deleteForms = document.querySelectorAll(".js-day-delete-form");
+  const SKIP_KEY = "sts_skip_day_tx_delete_confirm_v1";
+  let pendingDeleteForm = null;
+
+  function openDeleteModal(){
+    if (!deleteModal) return;
+    deleteModal.classList.add("open");
+    deleteModal.setAttribute("aria-hidden", "false");
+  }
+  function closeDeleteModal(){
+    if (!deleteModal) return;
+    deleteModal.classList.remove("open");
+    deleteModal.setAttribute("aria-hidden", "true");
+    pendingDeleteForm = null;
+  }
+
+  if (skipDeleteConfirm) {
+    skipDeleteConfirm.checked = localStorage.getItem(SKIP_KEY) === "1";
+  }
+
+  deleteForms.forEach((form) => {
+    form.addEventListener("submit", (e) => {
+      const skip = localStorage.getItem(SKIP_KEY) === "1";
+      if (skip) return;
+      e.preventDefault();
+      pendingDeleteForm = form;
+      openDeleteModal();
+    });
+  });
+
+  confirmDeleteBtn?.addEventListener("click", () => {
+    if (!pendingDeleteForm) {
+      closeDeleteModal();
+      return;
+    }
+    if (skipDeleteConfirm?.checked) {
+      localStorage.setItem(SKIP_KEY, "1");
+    } else {
+      localStorage.removeItem(SKIP_KEY);
+    }
+    const form = pendingDeleteForm;
+    closeDeleteModal();
+    form.submit();
+  });
+
+  deleteModal?.addEventListener("click", (e) => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    if (target.hasAttribute("data-delete-close")) {
+      closeDeleteModal();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && deleteModal?.classList.contains("open")) {
+      closeDeleteModal();
+    }
   });
 })();
 </script>

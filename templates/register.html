@@ -7,8 +7,8 @@
   .auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch;}
   .hero{border-radius:22px;border:1px solid rgba(15,23,42,.08);background:linear-gradient(180deg,#fff,rgba(2,6,23,.02));padding:18px;}
   .kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.18);font-weight:1000;color:#166534;font-size:.85rem;}
-  .h1{margin-top:12px;font-size:1.6rem;line-height:1.2;font-weight:1200;letter-spacing:-.8px;}
-  .p{margin-top:10px;color:var(--muted);line-height:1.6;}
+  .h1{margin-top:12px;font-size:clamp(1.45rem,2.2vw,1.8rem);line-height:1.2;font-weight:950;letter-spacing:-.6px;}
+  .p{margin-top:10px;color:var(--muted);line-height:1.55;font-size:.95rem;}
   .card{border-radius:22px;border:1px solid rgba(15,23,42,.08);background:#fff;padding:18px;}
   .form-grid{margin-top:12px;display:grid;gap:10px;}
   .field .label{display:block;margin-bottom:8px;color:var(--muted);font-weight:900;font-size:.9rem;}
@@ -24,10 +24,14 @@
 
     <section class="hero">
       <span class="kicker">회원가입</span>
-      <div class="h1">저장/반복 사용을 위해<br>계정을 만들어두세요.</div>
-      <div class="p">닉네임/생년월일은 DB에서 제거했습니다. (지금 단계에선 실사용 가치가 낮고 장애만 유발)</div>
+      <div class="page-head" style="margin-bottom:0;">
+        <div class="page-head-main">
+          <div class="h1">저장/반복 사용을 위해<br>계정을 만들어두세요.</div>
+          <div class="p">닉네임/생년월일은 DB에서 제거했습니다. (지금 단계에선 실사용 가치가 낮고 장애만 유발)</div>
+        </div>
+      </div>
       <div class="row">
-        <a class="btn solid" href="{{ url_for('web_auth.login') }}">이미 계정 있음</a>
+        <a class="btn solid" href="{{ url_for('web_auth.login', next=next_url) }}">이미 계정 있음</a>
         <a class="btn" href="{{ url_for('web_main.landing') }}">랜딩으로</a>
       </div>
     </section>
@@ -35,7 +39,9 @@
     <section class="card">
       <div style="font-weight:1100;letter-spacing:-.3px;">계정 만들기</div>
 
-      <form method="POST" action="{{ url_for('web_auth.register') }}" style="margin-top:12px;">
+      <form method="POST" action="{{ url_for('web_auth.register', next=next_url) }}" style="margin-top:12px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="next" value="{{ next_url }}">
         <div class="form-grid" style="margin-top:0;">
           <label class="field">
             <span class="label">이메일</span>

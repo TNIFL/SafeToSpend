@@ -3,32 +3,339 @@
 
 {% block title %}내역 가져오기 | 쓸수있어{% endblock %}
 
+{% block head_extra %}
+<style>
+  .import-layout{
+    display:grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+    gap:14px;
+    align-items:start;
+  }
+  .import-main{
+    display:grid;
+    gap:10px;
+  }
+  .import-side{
+    display:grid;
+    gap:10px;
+  }
+  #connect-bank,
+  #upload-csv{
+    scroll-margin-top: 92px;
+  }
+  .import-side-list{
+    margin:8px 0 0;
+    padding-left:18px;
+    color:var(--muted);
+    font-size:.9rem;
+    line-height:1.6;
+  }
+  .import-strong{
+    margin-top:8px;
+    font-size:.95rem;
+    font-weight:900;
+    color:var(--text);
+    line-height:1.5;
+  }
+  .import-csv-example{
+    margin-top:8px;
+    padding:10px;
+    border-radius:10px;
+    border:1px dashed rgba(15,23,42,.18);
+    background:var(--surface-2);
+    font-size:.82rem;
+    color:var(--muted-2);
+    line-height:1.5;
+    overflow:auto;
+    white-space:nowrap;
+  }
+  .import-plan-table{
+    margin-top:8px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+    background:#fff;
+  }
+  .import-plan-row{
+    display:grid;
+    grid-template-columns:84px 1fr 1fr;
+    gap:8px;
+    align-items:start;
+    padding:8px 10px;
+    font-size:.84rem;
+    border-bottom:1px solid var(--line);
+  }
+  .import-plan-row:last-child{
+    border-bottom:none;
+  }
+  .import-plan-row.head{
+    background:var(--surface-2);
+    color:var(--muted-2);
+    font-weight:900;
+    font-size:.78rem;
+  }
+  .import-plan-k{
+    color:var(--muted-2);
+    font-weight:900;
+  }
+  .bank-tip-wrap{
+    margin-top:10px;
+    display:grid;
+    gap:8px;
+  }
+  .bank-tip-wrap .label{
+    color:var(--text);
+  }
+  .bank-tip-wrap select{
+    width:100%;
+    min-height:46px;
+    border-color: rgba(37,99,235,.30);
+    background: linear-gradient(180deg, #ffffff, #f8fbff);
+    color: var(--text);
+    font-weight: 900;
+  }
+  .bank-tip-wrap select:focus{
+    border-color: rgba(37,99,235,.44);
+    box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+  }
+  .bank-tip-select-hint{
+    margin-top:-2px;
+    font-size:.8rem;
+    color:#1d4ed8;
+    font-weight:800;
+    line-height:1.4;
+  }
+  .bank-tip-text{
+    border:1px solid rgba(37,99,235,.20);
+    border-radius:10px;
+    padding:10px 12px;
+    background: linear-gradient(180deg, rgba(37,99,235,.08), rgba(37,99,235,.04));
+    font-size:.86rem;
+    color:#0f172a;
+    font-weight:700;
+    line-height:1.58;
+  }
+  .import-file-picker{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-height:46px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+  }
+  .import-file-picker .btn{
+    flex:0 0 auto;
+  }
+  .import-file-name{
+    min-width:0;
+    flex:1 1 auto;
+    font-size:.9rem;
+    color:var(--muted-2);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .import-file-name.is-selected{
+    color:var(--text);
+    font-weight:800;
+  }
+  @media (max-width:980px){
+    .import-layout{
+      grid-template-columns:1fr;
+    }
+    .import-main{
+      gap:12px;
+    }
+    .import-plan-row{
+      grid-template-columns:74px 1fr 1fr;
+      font-size:.82rem;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="topbar">
-  <div>
-    <h1 class="h1" style="margin:0; font-size:1.6rem;">내역 가져오기</h1>
-    <p class="lead" style="margin:6px 0 0;">CSV를 올리면 자동 분류/증빙 체크가 시작됩니다.</p>
+<div class="container">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">내역 가져오기</div>
+      <div class="p">파일을 올리면 미리보기 후 자동 분류/증빙 점검으로 이어집니다.</div>
+    </div>
+    <div class="page-actions">
+      <a class="btn ghost" href="{{ url_for('web_inbox.index') }}">정리하기로 돌아가기</a>
+    </div>
   </div>
-  <a class="btn" href="{{ url_for('web_inbox.index') }}">인박스 돌아가기</a>
+
+  <div class="card pad" style="margin-bottom:12px;">
+    {% set guide_title = "90일 이전은 왜 CSV가 필요해요?" %}
+    {% set guide_one_liner = "계좌 연동은 최근 90일을 우선 가져오고, 그 이전은 파일 업로드가 가장 빠릅니다." %}
+    {% set guide_details_html = "연동이 시작된 뒤에는 최신 내역이 자동 반영됩니다. 과거 내역만 CSV/엑셀로 한 번 채워두면 이후 정리 부담이 크게 줄어듭니다." %}
+    {% set guide_link_url = "#upload-csv" %}
+    {% set guide_link_text = "업로드 바로가기" %}
+    {% include "partials/mini_guide.html" %}
+  </div>
+
+  <div class="import-layout">
+    <div class="import-main">
+      <section id="connect-bank" class="card pad">
+        <div class="cardTitle">
+          <span>계좌 연동 빠른 이동</span>
+          <span class="badge primary">자동 수집</span>
+        </div>
+        <div class="p" style="margin-top:8px;">연동을 켜면 오늘 기준 최근 90일 내역을 가져오고, 이후 내역은 자동으로 계속 들어옵니다.</div>
+        <div class="small-note muted2" style="margin-top:6px;">연동 전 확인: 사업자등록이 완료되어 있어야 계좌 연동이 가능합니다.</div>
+        <div class="row" style="gap:8px; margin-top:8px;">
+          <a class="btn small ghost" href="{{ url_for('web_bank.index') }}">계좌 연동 화면 열기</a>
+        </div>
+      </section>
+
+      <section id="upload-csv" class="card pad">
+        <div class="cardTitle">
+          <span>파일 업로드</span>
+          <span class="badge primary">1/2 단계</span>
+        </div>
+        <div class="p" style="margin-top:8px;">가장 잘 읽히는 형식은 헤더가 있는 CSV 또는 Excel 파일입니다.</div>
+
+        <form action="{{ url_for('web_inbox.import_preview') }}" method="post" enctype="multipart/form-data" class="form-grid" style="margin-top:14px;">
+          <div class="field">
+            <div class="label">내역 파일</div>
+            <input id="import-file-input" class="file-hidden" type="file" name="csv" accept=".csv,.xlsx,.xls,text/csv" required>
+            <div class="import-file-picker">
+              <label class="btn small ghost" for="import-file-input">파일 선택</label>
+              <div id="import-file-name" class="import-file-name">CSV/엑셀 파일을 선택해 주세요</div>
+            </div>
+            <div class="small-note muted2" style="margin-top:8px;">권장: CSV(UTF-8/CP949), Excel(.xlsx) · 첫 행 헤더 포함</div>
+          </div>
+
+          <div class="card pad" style="background:var(--surface-2); box-shadow:none;">
+            <div style="font-weight:900;">다음 단계에서 컬럼만 확인하면 바로 가져오기 됩니다.</div>
+            <div class="small-note muted2" style="margin-top:6px;">자동 인식 정확도가 높으면 확인 없이 바로 완료됩니다.</div>
+          </div>
+
+          <div class="row" style="gap:10px; margin-top:4px;">
+            <button type="submit" class="btn primary">미리보기로 계속</button>
+            <a class="btn ghost" href="{{ url_for('web_inbox.index') }}">취소</a>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <aside class="import-side">
+      <section class="card pad">
+        <div class="cardTitle"><span>계좌 연동으로 가능한 범위</span></div>
+        <div class="import-strong">계좌 연동을 하면 최근 90일 내역을 가져오고, 이후로는 자동으로 계속 들어와요.</div>
+        <div class="small-note muted2" style="margin-top:6px;">팝빌 계좌연동 기준 조회 기간은 오늘 기준 90일입니다.</div>
+        <div class="small-note muted2" style="margin-top:4px;">연동 이후부터는 최신 내역이 주기적으로 반영됩니다.</div>
+        <div class="small-note muted2" style="margin-top:4px;">사업자등록이 완료되어 있어야 계좌 연동을 진행할 수 있습니다.</div>
+      </section>
+
+      <section class="card pad">
+        <div class="cardTitle"><span>90일 이전 과거 내역은 이렇게</span></div>
+        <div class="import-strong">90일 이전 내역은 은행 앱/웹에서 CSV를 내려받아 업로드해 주세요.</div>
+        <div class="small-note muted2" style="margin-top:6px;">은행마다 다운로드 메뉴 이름은 조금씩 다릅니다.</div>
+        <div class="small-note muted2" style="margin-top:4px;">CSV/엑셀 파일은 자동으로 포맷을 감지해 정리해요.</div>
+        <details style="margin-top:8px;">
+          <summary class="small-note" style="cursor:pointer; font-weight:900; color:var(--text);">은행에서 CSV 받는 방법(간단)</summary>
+          <div class="small-note muted2" style="margin-top:6px;">거래내역 → 내보내기/다운로드 → CSV(또는 엑셀) 저장</div>
+        </details>
+        <div class="bank-tip-wrap field">
+          <label class="label" for="bank-tip-select">은행 선택(간단 팁)</label>
+          <select id="bank-tip-select">
+            <option value="" selected>은행별 팁 보기</option>
+            <option value="kb">KB국민은행</option>
+            <option value="shinhan">신한은행</option>
+            <option value="hana">하나은행</option>
+            <option value="woori">우리은행</option>
+            <option value="nh">NH농협은행</option>
+            <option value="ibk">IBK기업은행</option>
+            <option value="kakao">카카오뱅크</option>
+            <option value="toss">토스뱅크</option>
+            <option value="kbank">케이뱅크</option>
+          </select>
+          <div class="bank-tip-select-hint">먼저 은행을 선택하면 바로 아래에 맞춤 팁이 보여요.</div>
+          <div id="bank-tip-text" class="bank-tip-text">거래내역 화면에서 ‘내보내기/다운로드’ 또는 ‘엑셀/CSV’ 메뉴를 찾으면 됩니다. (앱 버전에 따라 메뉴 이름이 조금 다를 수 있어요)</div>
+        </div>
+      </section>
+
+      <section class="card pad">
+        <div class="cardTitle"><span>무료/유료 차이</span></div>
+        <div class="import-plan-table">
+          <div class="import-plan-row head">
+            <div></div>
+            <div>무료</div>
+            <div>유료(자동화)</div>
+          </div>
+          <div class="import-plan-row">
+            <div class="import-plan-k">가져오기</div>
+            <div>CSV/엑셀 업로드</div>
+            <div>계좌 연동 자동 수집</div>
+          </div>
+          <div class="import-plan-row">
+            <div class="import-plan-k">최신 반영</div>
+            <div>직접 업로드 시 반영</div>
+            <div>연동 이후 자동 갱신</div>
+          </div>
+          <div class="import-plan-row">
+            <div class="import-plan-k">정리/점검</div>
+            <div>분류·증빙 점검 가능</div>
+            <div>동일 + 자동 수집 기반</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <a class="btn small ghost" href="{{ url_for('web_main.pricing') }}">자동 수집 알아보기</a>
+        </div>
+      </section>
+
+      <section class="card pad">
+        <div class="cardTitle"><span>헤더 예시</span></div>
+        <div class="import-csv-example mono">거래일시,입금금액,출금금액,거래처,메모</div>
+        <div class="small-note muted2" style="margin-top:8px;">파일마다 헤더명이 달라도 다음 단계에서 직접 맞출 수 있어요.</div>
+      </section>
+    </aside>
+  </div>
 </div>
 
-<div class="card pad" style="max-width: 720px;">
-  <form action="{{ url_for('web_inbox.import_preview') }}" method="post" enctype="multipart/form-data" class="form-grid">
-    <div class="field">
-      <div class="label">CSV 파일</div>
-      <input type="file" name="csv" accept=".csv,text/csv" required>
-      <div class="tiny muted">권장: UTF-8(또는 CP949) / 첫 행 헤더 포함</div>
-    </div>
-
-    <div class="helpbox">
-      <b>대부분의 은행/카드 CSV OK.</b><br>
-      다음 화면에서 컬럼만 연결하면 됩니다.
-    </div>
-
-    <div style="display:flex; gap:10px;">
-      <button type="submit" class="btn solid">다음</button>
-      <a class="btn" href="{{ url_for('web_inbox.index') }}">취소</a>
-    </div>
-  </form>
-</div>
+<script>
+  (function(){
+    const select = document.getElementById("bank-tip-select");
+    const box = document.getElementById("bank-tip-text");
+    const fileInput = document.getElementById("import-file-input");
+    const fileName = document.getElementById("import-file-name");
+    if (!select || !box) return;
+    const tips = {
+      kb: "거래내역 조회 후 하단/더보기 메뉴에서 내보내기 항목을 확인해 보세요.",
+      shinhan: "입출금 거래내역 화면에서 다운로드(엑셀/CSV) 메뉴를 먼저 확인해 주세요.",
+      hana: "거래내역 상세에서 기간을 지정한 뒤 파일 저장 메뉴가 보이는 경우가 많아요.",
+      woori: "거래내역 조회 화면의 전체 메뉴에서 내보내기/파일저장 항목을 찾아보세요.",
+      nh: "조회 기간 설정 후 ‘엑셀/CSV 저장’ 메뉴가 별도 버튼으로 제공되는 경우가 많아요.",
+      ibk: "거래내역 조회에서 기간을 먼저 선택한 뒤, 하단의 내보내기/파일저장 메뉴를 확인해 주세요.",
+      kakao: "입출금 내역 화면에서 기간 설정 후 ‘내보내기’ 또는 ‘공유/저장’ 메뉴를 확인해 주세요.",
+      toss: "거래내역 상세에서 기간 지정 후 ‘내보내기’나 ‘파일로 저장’ 메뉴를 찾아보세요.",
+      kbank: "거래내역 화면에서 기간을 고른 뒤 ‘다운로드/내보내기’ 메뉴를 확인하면 빠르게 찾을 수 있어요."
+    };
+    select.addEventListener("change", function(){
+      const key = String(select.value || "");
+      box.textContent = tips[key] || "거래내역 화면에서 ‘내보내기/다운로드’ 또는 ‘엑셀/CSV’ 메뉴를 찾으면 됩니다. (앱 버전에 따라 메뉴 이름이 조금 다를 수 있어요)";
+    });
+    if (fileInput && fileName){
+      fileInput.addEventListener("change", function(){
+        const files = fileInput.files;
+        if (!files || files.length === 0){
+          fileName.textContent = "CSV/엑셀 파일을 선택해 주세요";
+          fileName.classList.remove("is-selected");
+          return;
+        }
+        if (files.length === 1){
+          fileName.textContent = files[0].name || "파일 1개 선택됨";
+          fileName.classList.add("is-selected");
+          return;
+        }
+        fileName.textContent = `${files.length}개 파일 선택됨`;
+        fileName.classList.add("is-selected");
+      });
+    }
+  })();
+</script>
 {% endblock %}
