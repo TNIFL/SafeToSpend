@@ -1,0 +1,150 @@
+{
+  "generated_at_utc": "2026-03-12T22:19:43",
+  "month_key": "2026-03",
+  "scanned_users": 97,
+  "official_guard_status": {
+    "valid": false,
+    "reason": "value_mismatch",
+    "message": "공식 기준 변경이 감지되어 숫자 표시를 잠시 중단했어요. 관리자 확인이 필요해요.",
+    "last_checked_at": "2026-03-07T09:23:55Z",
+    "mismatch_count": 8,
+    "network_error_count": 0
+  },
+  "nhis_ready_status": {
+    "ready": true,
+    "reason": "ok",
+    "message": "",
+    "snapshot_year": 2026,
+    "property_points_table_loaded": true
+  },
+  "snapshot_runtime_status": {
+    "snapshot_exists": true,
+    "is_stale": false,
+    "is_fallback_default": false,
+    "update_error": "",
+    "effective_year": 2026,
+    "fetched_at": "2026-03-03T04:06:40"
+  },
+  "accuracy_level_distribution": [
+    {
+      "key": "blocked",
+      "count": 61,
+      "percent": 62.89
+    },
+    {
+      "key": "limited",
+      "count": 28,
+      "percent": 28.87
+    },
+    {
+      "key": "high_confidence",
+      "count": 8,
+      "percent": 8.25
+    }
+  ],
+  "reason_distribution": [
+    {
+      "key": "missing_membership_type",
+      "count": 61,
+      "percent": 62.89
+    },
+    {
+      "key": "missing_non_salary_income",
+      "count": 26,
+      "percent": 26.8
+    },
+    {
+      "key": "ok",
+      "count": 8,
+      "percent": 8.25
+    },
+    {
+      "key": "insufficient_profile_inputs",
+      "count": 1,
+      "percent": 1.03
+    },
+    {
+      "key": "missing_property_tax_base",
+      "count": 1,
+      "percent": 1.03
+    }
+  ],
+  "blocked_root_cause_distribution": [
+    {
+      "key": "non_snapshot_reason:missing_membership_type",
+      "count": 61,
+      "percent": 62.89
+    },
+    {
+      "key": "non_snapshot_reason:missing_non_salary_income",
+      "count": 26,
+      "percent": 26.8
+    },
+    {
+      "key": "non_snapshot_reason:ok",
+      "count": 8,
+      "percent": 8.25
+    },
+    {
+      "key": "non_snapshot_reason:insufficient_profile_inputs",
+      "count": 1,
+      "percent": 1.03
+    },
+    {
+      "key": "non_snapshot_reason:missing_property_tax_base",
+      "count": 1,
+      "percent": 1.03
+    }
+  ],
+  "membership_and_input_presence": [
+    {
+      "key": "membership_type_present",
+      "count": 36,
+      "percent": 37.11
+    },
+    {
+      "key": "salary_monthly_krw_present",
+      "count": 9,
+      "percent": 9.28
+    },
+    {
+      "key": "annual_income_krw_present",
+      "count": 9,
+      "percent": 9.28
+    },
+    {
+      "key": "non_salary_annual_income_krw_present",
+      "count": 11,
+      "percent": 11.34
+    },
+    {
+      "key": "property_tax_base_total_krw_present",
+      "count": 35,
+      "percent": 36.08
+    },
+    {
+      "key": "financial_income_annual_krw_present",
+      "count": 0,
+      "percent": 0.0
+    }
+  ],
+  "member_type_distribution": [
+    {
+      "key": "unknown",
+      "count": 61,
+      "percent": 62.89
+    },
+    {
+      "key": "regional",
+      "count": 36,
+      "percent": 37.11
+    }
+  ],
+  "potential_if_snapshot_ready": {
+    "high_confidence_inputs_ready_count": 9,
+    "high_confidence_inputs_ready_percent": 9.28,
+    "exact_ready_inputs_ready_count": 0,
+    "exact_ready_inputs_ready_percent": 0.0
+  },
+  "errors": []
+}

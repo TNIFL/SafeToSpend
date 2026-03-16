@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-03-14T10:57:37+00:00",
+  "issues": [
+    {
+      "issue_key": "issue_1_calendar_tax_fixed",
+      "final_verdict": "부분 재현됨",
+      "tested_cases": 7,
+      "reproduced_ratio_percent": 42.86,
+      "note": "특정 조건에서만 재현"
+    },
+    {
+      "issue_key": "issue_2_review_detail_sparse",
+      "final_verdict": "부분 재현됨",
+      "tested_cases": 7,
+      "reproduced_ratio_percent": null,
+      "note": "UI 누락/원천데이터 부족 혼합 분포"
+    },
+    {
+      "issue_key": "issue_3_receipt_attach_kakao",
+      "final_verdict": "미재현",
+      "tested_cases": 5,
+      "reproduced_ratio_percent": 0.0,
+      "note": "실패/부분실패 비율은 sample_failure_distribution 참고"
+    },
+    {
+      "issue_key": "issue_4_toast_not_in_notice_center",
+      "final_verdict": "현재 설계상 분리됨",
+      "tested_cases": 7,
+      "reproduced_ratio_percent": null,
+      "note": "토스트와 알림센터 경로 분리 여부 코드 확인 기반"
+    },
+    {
+      "issue_key": "issue_5_bank_auto_sync_30m",
+      "final_verdict": "재현됨",
+      "tested_cases": 7,
+      "reproduced_ratio_percent": 100.0,
+      "note": "연동 계좌 보유 케이스 기준 재현 비율"
+    }
+  ],
+  "priority_suggestion": [
+    "issue_5_bank_auto_sync_30m",
+    "issue_1_calendar_tax_fixed",
+    "issue_4_toast_not_in_notice_center",
+    "issue_2_review_detail_sparse",
+    "issue_3_receipt_attach_kakao"
+  ]
+}

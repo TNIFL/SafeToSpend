@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}문의 관리 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:1080px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">문의 관리</div>
+      <div class="p">접수된 문의를 확인하고 답변을 남길 수 있어요.</div>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="row" style="gap:8px; flex-wrap:wrap;">
+      {% set current = status or 'all' %}
+      <a class="btn small {{ 'primary' if current=='all' else 'ghost' }}" href="{{ url_for('web_support.admin_inquiries', status='all') }}">전체</a>
+      <a class="btn small {{ 'primary' if current=='open' else 'ghost' }}" href="{{ url_for('web_support.admin_inquiries', status='open') }}">대기 중</a>
+      <a class="btn small {{ 'primary' if current=='answered' else 'ghost' }}" href="{{ url_for('web_support.admin_inquiries', status='answered') }}">답변 완료</a>
+      <a class="btn small {{ 'primary' if current=='closed' else 'ghost' }}" href="{{ url_for('web_support.admin_inquiries', status='closed') }}">종료</a>
+    </div>
+  </div>
+
+  <div class="card pad">
+    {% if feature_unavailable %}
+      <div class="small-note muted2" style="margin-bottom:10px;">문의 관리 기능 설정이 아직 완료되지 않았어요(개발용). 마이그레이션을 확인해 주세요.</div>
+    {% endif %}
+    {% if query_error %}
+      <div class="small-note muted2" style="margin-bottom:10px;">목록을 불러오는 중 문제가 있었어요. 잠시 후 다시 시도해 주세요.</div>
+    {% endif %}
+    {% if inquiries %}
+      <div class="vlist">
+        {% for row in inquiries %}
+          <a class="vitem" href="{{ url_for('web_support.admin_inquiry_detail', inquiry_id=row.id) }}" style="text-decoration:none;">
+            <div class="row" style="justify-content:space-between; align-items:flex-start; gap:10px;">
+              <div style="min-width:0;">
+                <div style="font-weight:900; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  {{ row.subject }}
+                </div>
+                <div class="small-note muted2" style="margin-top:4px;">
+                  {{ email_map.get(row.user_pk, '알 수 없음') }} · {{ row.created_at.strftime("%Y-%m-%d %H:%M") if row.created_at else "-" }}
+                </div>
+              </div>
+              {% set st = (row.status or 'open') %}
+              {% if st == 'answered' %}
+                <span class="badge good">{{ status_label(st) }}</span>
+              {% elif st == 'closed' %}
+                <span class="badge">{{ status_label(st) }}</span>
+              {% else %}
+                <span class="badge warn">{{ status_label(st) }}</span>
+              {% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="small-note muted2">표시할 문의가 없어요.</div>
+    {% endif %}
+
+    {% if has_prev or has_next %}
+      <div class="row" style="justify-content:flex-end; gap:8px; margin-top:12px;">
+        {% if has_prev %}
+          <a class="btn small ghost" href="{{ url_for('web_support.admin_inquiries', status=status, page=page-1) }}">이전</a>
+        {% endif %}
+        <span class="small-note muted2" style="align-self:center;">{{ page }}페이지</span>
+        {% if has_next %}
+          <a class="btn small ghost" href="{{ url_for('web_support.admin_inquiries', status=status, page=page+1) }}">다음</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

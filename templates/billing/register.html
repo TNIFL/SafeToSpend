@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}결제수단 관리 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:760px; padding-top:20px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">결제수단 관리</div>
+      <div class="p">카드 변경·재등록이 필요할 때만 사용하는 보조 화면이에요.</div>
+      <div class="small-note muted2">현재 플랜: {{ plan_label }}{% if sync_interval_minutes %} · 자동 동기화 {{ sync_interval_minutes }}분{% endif %}</div>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-top:12px;">
+    <div class="note" style="margin-bottom:12px;">
+      구독 시작은 요금제/마이페이지/계좌 화면의 버튼에서 바로 진행할 수 있어요.
+    </div>
+    {% if resume_token and pending_intent %}
+      <div class="note" style="margin-bottom:12px;">
+        결제 이어하기가 준비되어 있어요. 결제수단 등록 후 같은 화면에서 결제를 계속 진행할 수 있어요.
+      </div>
+    {% endif %}
+    <div class="panel-title">등록 전에 확인해 주세요</div>
+    <ul class="vlist" style="margin-top:10px;">
+      <li class="vitem">카드번호, CVC 같은 민감 결제정보는 서비스에 저장하지 않아요.</li>
+      <li class="vitem">등록 완료 전에는 요금제 권한이 바뀌지 않아요.</li>
+      <li class="vitem">토스 결제창에서 등록이 끝나면 자동으로 돌아와요.</li>
+    </ul>
+    <form method="post" action="{{ url_for('web_billing.register_start') }}" style="margin-top:14px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% if resume_token %}<input type="hidden" name="resume" value="{{ resume_token }}">{% endif %}
+      <button class="btn primary" type="submit">결제수단 등록 시작</button>
+      <a class="btn ghost" href="{{ url_for('web_bank.index') }}">계좌 연동으로 돌아가기</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,599 @@
+{% extends "base.html" %}
+{% block title %}세금 설정 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .tp-wrap{max-width:860px;margin:0 auto;padding:24px 16px 56px;}
+  .tp-title{margin:0;font-size:clamp(1.45rem, 2.2vw, 1.8rem);font-weight:950;letter-spacing:-.6px;line-height:1.2;}
+  .tp-sub{margin-top:6px;color:var(--muted);line-height:1.55;font-size:.95rem;max-width:860px;}
+  .tp-card{margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:var(--shadow-sm);}
+  .tp-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;}
+  .tp-step{
+    display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);font-size:.88rem;
+  }
+  .tp-step-link{text-decoration:none;color:inherit;}
+  .tp-step-link:hover{border-color:rgba(37,99,235,.28);background:rgba(37,99,235,.05);}
+  .tp-step-link:focus-visible{outline:2px solid rgba(37,99,235,.45);outline-offset:2px;}
+  .tp-step-num{
+    width:24px;height:24px;border-radius:999px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+    font-size:.78rem;font-weight:900;background:#fff;color:var(--muted);
+  }
+  .tp-step.active{border-color:rgba(37,99,235,.32);background:rgba(37,99,235,.06);}
+  .tp-step.active .tp-step-num{border-color:rgba(37,99,235,.36);color:#1d4ed8;}
+  .tp-step.done .tp-step-num{border-color:rgba(22,163,74,.30);background:rgba(22,163,74,.08);color:#166534;}
+  .tp-step.current{cursor:default;}
+  .tp-field{margin-top:12px;}
+  .tp-label{display:block;margin-bottom:7px;color:var(--muted-2);font-size:.9rem;font-weight:900;}
+  .tp-input{
+    width:100%;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text);outline:none;
+  }
+  .tp-input:focus{border-color:rgba(37,99,235,.42);box-shadow:0 0 0 4px rgba(37,99,235,.10);}
+  .tp-help{margin-top:6px;color:var(--muted);font-size:.84rem;line-height:1.5;}
+  .tp-checks{display:grid;gap:8px;}
+  .tp-collapsible{
+    overflow:hidden;
+    max-height:0;
+    opacity:0;
+    transform:translateY(-4px);
+    transition:max-height .24s ease, opacity .2s ease, transform .2s ease, margin-top .2s ease;
+    margin-top:0;
+  }
+  .tp-collapsible.show{
+    max-height:420px;
+    opacity:1;
+    transform:translateY(0);
+    margin-top:8px;
+  }
+  .tp-check{
+    display:flex;align-items:flex-start;gap:8px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);font-size:.9rem;
+  }
+  .tp-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .tp-actions{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .tp-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .tp-summary-item{padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);}
+  .tp-summary-k{font-size:.78rem;color:var(--muted);font-weight:850;}
+  .tp-summary-v{margin-top:4px;font-size:.92rem;font-weight:900;}
+  .tp-badge{
+    display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--line);font-size:.8rem;font-weight:900;
+    background:#fff;color:var(--muted);
+  }
+  .tp-badge.good{border-color:rgba(22,163,74,.28);background:rgba(22,163,74,.08);color:#166534;}
+  .tp-success{
+    margin-bottom:12px;padding:12px;border:1px solid rgba(22,163,74,.26);border-radius:12px;background:rgba(22,163,74,.06);
+  }
+  .tp-success-title{font-weight:900;color:#166534;}
+  .tp-success-desc{margin-top:6px;color:#166534;font-size:.9rem;line-height:1.55;}
+  .tp-section-title{
+    margin:0;
+    font-size:.95rem;
+    font-weight:900;
+    letter-spacing:-.2px;
+  }
+  .tp-optional-panel{
+    margin-top:14px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:var(--surface-2);
+    overflow:hidden;
+  }
+  .tp-optional-panel > summary{
+    list-style:none;
+    cursor:pointer;
+    padding:12px 14px;
+    font-size:.9rem;
+    font-weight:900;
+    color:var(--text);
+  }
+  .tp-optional-panel > summary::-webkit-details-marker{display:none;}
+  .tp-optional-panel[open] > summary{
+    border-bottom:1px solid var(--line);
+    background:rgba(37,99,235,.05);
+  }
+  .tp-optional-content{padding:12px 14px 14px;}
+  @media (max-width: 980px){
+    .tp-input{height:46px;}
+    .tp-summary-grid{grid-template-columns:1fr;}
+    .tp-step{font-size:.84rem;}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tp-wrap">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="tp-title">세금/기장 프로필</div>
+      <div class="tp-sub">중간에 나가도 저장된 단계부터 다시 이어서 입력할 수 있어요.</div>
+    </div>
+    <span class="tp-badge {{ 'good' if is_complete else '' }}">
+      {{ '완료됨' if is_complete else ('필수 ' ~ completion_meta.done_count ~ '/' ~ completion_meta.total_count) }}
+    </span>
+  </div>
+  <div class="tp-help" style="margin-top:8px;">
+    프로필 준비도 {{ completion_meta.percent }}%
+  </div>
+
+  <div class="tp-steps">
+    <a class="tp-step tp-step-link {% if step == 1 %}active current{% elif step > 1 %}done{% endif %}"
+       href="{{ url_for('web_profile.tax_profile', step=1, next=next_url, return_to_next=('1' if return_to_next else '0')) }}"
+       aria-label="1단계 필수 정보 4개로 이동">
+      <span class="tp-step-num">1</span>
+      <span>필수 정보 4개</span>
+    </a>
+    <a class="tp-step tp-step-link {% if step == 2 %}active current{% elif step > 2 %}done{% endif %}"
+       href="{{ url_for('web_profile.tax_profile', step=2, next=next_url, return_to_next=('1' if return_to_next else '0')) }}"
+       aria-label="2단계 선택 정보로 이동">
+      <span class="tp-step-num">2</span>
+      <span>선택 정보</span>
+    </a>
+    <a class="tp-step tp-step-link {% if step == 3 %}active current{% endif %}"
+       href="{{ url_for('web_profile.tax_profile', step=3, next=next_url, return_to_next=('1' if return_to_next else '0')) }}"
+       aria-label="3단계 요약 완료로 이동">
+      <span class="tp-step-num">3</span>
+      <span>요약/완료</span>
+    </a>
+  </div>
+
+  <section class="tp-card">
+    {% if saved and step == 3 %}
+      <div class="tp-success">
+        <div class="tp-success-title">저장이 완료되었습니다.</div>
+        <div class="tp-success-desc">입력하면 세금/증빙 정확도가 올라가요.</div>
+        <div style="margin-top:10px;">
+          <a class="btn primary" href="{{ move_next_url }}">정리하기로 이동</a>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if step == 1 %}
+      <form method="POST" action="{{ url_for('web_profile.tax_profile') }}">
+        <input type="hidden" name="step" value="1">
+        <input type="hidden" name="action" value="next">
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <input type="hidden" name="return_to_next" value="{{ '1' if return_to_next else '0' }}">
+
+        <div class="tp-field">
+          <label class="tp-label" for="industry_group">1) 업종</label>
+          <select class="tp-input" id="industry_group" name="industry_group" required>
+            {% for code, label in industry_options %}
+              <option value="{{ code }}" {% if profile.get('industry_group') == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="tp-help">업종에 따라 세금 계산 기준이 달라질 수 있어요.</div>
+        </div>
+
+        <div class="tp-field">
+          <label class="tp-label" for="tax_type">2) 과세 유형</label>
+          <select class="tp-input" id="tax_type" name="tax_type" required>
+            {% for code, label in tax_type_options %}
+              <option value="{{ code }}" {% if profile.get('tax_type') == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="tp-help">과세 유형은 신고 방식과 필요한 자료를 정하는 데 쓰여요.</div>
+        </div>
+
+        <div class="tp-field">
+          <label class="tp-label" for="prev_income_band">3) 전년도 수입 규모</label>
+          <select class="tp-input" id="prev_income_band" name="prev_income_band" required>
+            {% for code, label in prev_income_options %}
+              <option value="{{ code }}" {% if profile.get('prev_income_band') == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="tp-help">수입 규모는 세금 준비 우선순위를 맞추는 데 도움됩니다.</div>
+        </div>
+
+        <div class="tp-field">
+          <label class="tp-label" for="withholding_3_3">4) 원천징수(3.3%) 여부</label>
+          <select class="tp-input" id="withholding_3_3" name="withholding_3_3" required>
+            {% for code, label in withholding_options %}
+              <option value="{{ code }}" {% if profile.get('withholding_3_3') == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="tp-help">원천징수 여부에 따라 실제 납부 예상액이 달라져요.</div>
+        </div>
+
+        <input type="hidden" name="industry_text" value="{{ profile.get('industry_text') or '' }}">
+
+        <div class="tp-actions">
+          <button class="btn primary" type="submit">다음</button>
+        </div>
+      </form>
+    {% elif step == 2 %}
+      <form method="POST" action="{{ url_for('web_profile.tax_profile') }}">
+        <input type="hidden" name="step" value="2">
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <input type="hidden" name="return_to_next" value="{{ '1' if return_to_next else '0' }}">
+        <input type="hidden" name="recovery_source" value="{{ request.args.get('recovery_source') or 'tax_profile_stepwise' }}">
+        {% set high_missing = required_inputs.get('high_confidence_missing_fields') or [] %}
+        {% set exact_missing = required_inputs.get('exact_ready_missing_fields') or [] %}
+        <div class="tp-help" style="margin-top:0;">
+          기본 모드(필수): 총수입, 업무 관련 지출, 이미 떼인 세금, 이미 낸 세금, 소득 유형
+        </div>
+	        {% if tax_stepwise and tax_stepwise.next_field %}
+	          <div class="tp-card" id="tax-stepwise-card" style="margin-top:10px; border-style:dashed;">
+	            <div class="tp-label" style="margin-bottom:6px;">기본 입력 단계 저장 ({{ tax_stepwise.current_step_index }}/{{ tax_stepwise.total_steps }})</div>
+	            <div class="tp-help" style="margin-top:0;">가장 막는 1개 항목부터 저장해 입력 완료율을 높여요.</div>
+	            <div class="tp-help" style="margin-top:4px;">소득 유형 1문항 먼저 저장부터 시작할 수 있어요.</div>
+	            <div class="tp-row" style="margin-top:8px; flex-wrap:wrap;">
+              {% for s in tax_stepwise.status %}
+                <span class="tp-badge {% if s.done %}good{% endif %}">{{ s.label }}</span>
+              {% endfor %}
+	            </div>
+	            <input type="hidden" name="field" value="{{ tax_stepwise.next_field }}">
+	            <div class="tp-row" style="margin-top:8px;" data-stepwise-field="{{ tax_stepwise.next_field }}">
+	              {% if tax_stepwise.next_field == 'income_classification' %}
+	                <select class="tp-input" id="tax-stepwise-value" style="max-width:340px;" name="value">
+	                  <option value="business" {% if profile.get('income_classification') == 'business' %}selected{% endif %}>프리랜서/개인사업자 중심</option>
+	                  <option value="mixed" {% if profile.get('income_classification') == 'mixed' %}selected{% endif %}>근로소득도 있음</option>
+	                  <option value="salary" {% if profile.get('income_classification') == 'salary' %}selected{% endif %}>근로소득 중심</option>
+	                  <option value="other" {% if profile.get('income_classification') == 'other' %}selected{% endif %}>기타소득 포함</option>
+	                </select>
+	              {% else %}
+	                <input class="tp-input" id="tax-stepwise-value" style="max-width:340px;" type="number" min="0" step="1000" name="value" value="{{ tax_stepwise.next_value if tax_stepwise.next_value is not none else '' }}" placeholder="{{ tax_stepwise.next_label }} 입력">
+	              {% endif %}
+	              <button class="btn small primary" type="submit" formaction="{{ url_for('web_profile.tax_basic_step_save') }}" formmethod="post">{{ tax_stepwise.next_label }} 저장</button>
+	              {% if tax_stepwise.next_field in ('withheld_tax_annual_krw', 'prepaid_tax_annual_krw') %}
+	                <button class="btn small ghost" type="button" data-fill-stepwise-zero="1">0원 빠르게 입력</button>
+	              {% endif %}
+	            </div>
+	          </div>
+	        {% endif %}
+        {% if tax_input_draft and tax_input_draft.has_draft %}
+          <div class="tp-help" style="margin-top:6px;">
+            자동 초안을 불러왔어요. 초안은 참고용이며 <b>저장해야</b> high/exact 판정에 반영돼요.
+          </div>
+        {% endif %}
+	        {% if high_missing %}
+	          <div class="tp-help" style="margin-top:6px;color:#b45309;">
+            아직 미입력:
+            {% if 'income_classification' in high_missing %}소득 유형{% endif %}
+            {% if 'annual_gross_income_krw' in high_missing %}{% if 'income_classification' in high_missing %}, {% endif %}총수입{% endif %}
+            {% if 'annual_deductible_expense_krw' in high_missing %}{% if ('income_classification' in high_missing) or ('annual_gross_income_krw' in high_missing) %}, {% endif %}업무 관련 지출{% endif %}
+            {% if 'withheld_tax_annual_krw' in high_missing %}{% if ('income_classification' in high_missing) or ('annual_gross_income_krw' in high_missing) or ('annual_deductible_expense_krw' in high_missing) %}, {% endif %}이미 떼인 세금{% endif %}
+            {% if 'prepaid_tax_annual_krw' in high_missing %}{% if ('income_classification' in high_missing) or ('annual_gross_income_krw' in high_missing) or ('annual_deductible_expense_krw' in high_missing) or ('withheld_tax_annual_krw' in high_missing) %}, {% endif %}이미 낸 세금{% endif %}
+            {% if 'tax_basic_inputs_confirmed' in high_missing %}, 저장 확인{% endif %}
+	          </div>
+	        {% endif %}
+
+	        <div class="tp-card" id="tax-required-inputs" style="margin-top:10px;">
+	          <h3 class="tp-section-title">필수 입력 먼저</h3>
+	          <div class="tp-help" style="margin-top:6px;">아래 5개를 먼저 저장하면 high_confidence 기준 충족에 가까워져요.</div>
+
+	          <div class="tp-field">
+	          <label class="tp-label" for="annual_gross_income_krw">총수입(필수)</label>
+	          <input class="tp-input" id="annual_gross_income_krw" name="annual_gross_income_krw" type="number" min="0" step="1000" value="{{ prefill_basic.get('annual_gross_income_krw') if prefill_basic and prefill_basic.get('annual_gross_income_krw') is not none else '' }}" placeholder="예: 60000000">
+	          <div class="tp-help">올해 사업/프리랜서로 번 총수입을 입력해 주세요.</div>
+	          </div>
+
+	          <div class="tp-field">
+	          <label class="tp-label" for="annual_deductible_expense_krw">업무 관련 지출(필수)</label>
+	          <input class="tp-input" id="annual_deductible_expense_krw" name="annual_deductible_expense_krw" type="number" min="0" step="1000" value="{{ prefill_basic.get('annual_deductible_expense_krw') if prefill_basic and prefill_basic.get('annual_deductible_expense_krw') is not none else '' }}" placeholder="예: 15000000">
+	          <div class="tp-help">세금 계산에 반영할 업무 지출 합계를 입력해 주세요.</div>
+	          </div>
+
+	          <div class="tp-field">
+	          <label class="tp-label" for="income_classification">소득 유형(필수)</label>
+	          <select class="tp-input" id="income_classification" name="income_classification">
+	            {% for code, label in income_classification_options %}
+	              <option value="{{ code }}" {% if profile.get('income_classification') == code %}selected{% endif %}>{{ label }}</option>
+	            {% endfor %}
+	          </select>
+	          </div>
+
+	          <div class="tp-field">
+	          <label class="tp-label" for="withheld_tax_annual_krw">이미 떼인 세금(원천징수, 필수)</label>
+	          <input class="tp-input" id="withheld_tax_annual_krw" name="withheld_tax_annual_krw" type="number" min="0" step="1000" value="{{ prefill_basic.get('withheld_tax_annual_krw') if prefill_basic and prefill_basic.get('withheld_tax_annual_krw') is not none else '' }}" placeholder="예: 1200000">
+	          <div class="tp-row" style="margin-top:6px;">
+	            <div class="tp-help">없으면 0으로 입력해 주세요.</div>
+	            <button class="btn small ghost" type="button" data-fill-zero-target="withheld_tax_annual_krw">0원 빠르게 입력</button>
+	          </div>
+	          </div>
+
+	          <div class="tp-field">
+	          <label class="tp-label" for="prepaid_tax_annual_krw">이미 낸 세금(기납부, 필수)</label>
+	          <input class="tp-input" id="prepaid_tax_annual_krw" name="prepaid_tax_annual_krw" type="number" min="0" step="1000" value="{{ prefill_basic.get('prepaid_tax_annual_krw') if prefill_basic and prefill_basic.get('prepaid_tax_annual_krw') is not none else '' }}" placeholder="예: 300000">
+	          <div class="tp-row" style="margin-top:6px;">
+	            <div class="tp-help">없으면 0으로 입력해 주세요.</div>
+	            <button class="btn small ghost" type="button" data-fill-zero-target="prepaid_tax_annual_krw">0원 빠르게 입력</button>
+	          </div>
+	          </div>
+
+	          <div class="tp-field">
+	          <label class="tp-label" for="official_taxable_income_annual_krw">고급 입력(선택): 연 과세표준</label>
+	          <input class="tp-input" id="official_taxable_income_annual_krw" name="official_taxable_income_annual_krw" type="number" min="0" step="1000" value="{{ profile.get('official_taxable_income_annual_krw') if profile.get('official_taxable_income_annual_krw') is not none else (advanced_prefill_taxable_income_annual_krw if advanced_prefill_taxable_income_annual_krw is not none else '') }}" placeholder="예: 20000000">
+	          <div class="tp-help">정밀 모드로 exact_ready를 원할 때만 입력해 주세요.</div>
+          {% if profile.get('official_taxable_income_annual_krw') is none and advanced_prefill_taxable_income_annual_krw is not none %}
+            <div class="tp-help">총수입/업무지출 기준 초안입니다. 실제 과세표준을 확인한 뒤 체크해 저장해 주세요.</div>
+          {% endif %}
+          <label class="tp-check" style="margin-top:8px;">
+            <input type="checkbox" name="confirm_advanced_taxable_input" value="1" {% if profile.get('tax_advanced_input_confirmed') %}checked{% endif %}>
+            <span>연 과세표준 값을 확인했고 고급 입력으로 저장합니다.</span>
+          </label>
+	          {% if exact_missing and ('official_taxable_income_annual_krw' in exact_missing or 'tax_advanced_input_confirmed' in exact_missing) %}
+	            <div class="tp-help" style="margin-top:4px;color:#b45309;">exact_ready에는 고급 입력 확인이 추가로 필요해요.</div>
+	          {% endif %}
+	          </div>
+	        </div>
+
+	        {% set optional_focus_fields = ['industry_text', 'opening_date', 'other_income', 'high_cost_asset', 'labor_outsource', 'health_insurance_type', 'health_insurance_monthly_krw'] %}
+	        <details class="tp-optional-panel" {% if (request.args.get('focus') or '') in optional_focus_fields %}open{% endif %}>
+	          <summary>선택 입력(필요한 경우만)</summary>
+	          <div class="tp-optional-content">
+	            <div class="tp-help" style="margin-top:0;">아래 항목은 필수는 아니지만, 저장해두면 정리/검토 과정이 편해져요.</div>
+
+	            <div class="tp-field">
+	              <label class="tp-label" for="industry_text">업종 상세(선택)</label>
+	              <input class="tp-input" id="industry_text" name="industry_text" type="text" maxlength="120" placeholder="예: 앱 개발, 온라인 쇼핑몰" value="{{ profile.get('industry_text') or '' }}">
+	              <div class="tp-help">더 정확한 문구를 남겨두면 세무사 전달 시 설명에 도움이 됩니다.</div>
+	            </div>
+
+	            <div class="tp-field">
+	              <label class="tp-label" for="opening_date">개업일</label>
+	              <div class="tp-row">
+	                <input class="tp-input" style="max-width:280px;" id="opening_date" name="opening_date" type="date" value="{{ '' if profile.get('opening_date') == 'unknown' else (profile.get('opening_date') or '') }}">
+	                <label class="tp-check" style="margin:0; padding:10px 12px;">
+	                  <input type="checkbox" name="opening_date_unknown" value="1" {% if profile.get('opening_date') == 'unknown' %}checked{% endif %}>
+	                  <span>모름</span>
+	                </label>
+	              </div>
+	            </div>
+
+	            <div class="tp-field">
+	              <label class="tp-label" for="other_income">다른 소득 여부</label>
+	              <select class="tp-input" id="other_income" name="other_income">
+	                {% for code, label in yes_no_unknown_options %}
+	                  <option value="{{ code }}" {% if profile.get('other_income') == code %}selected{% endif %}>{{ label }}</option>
+	                {% endfor %}
+	              </select>
+	              <div class="tp-help">있다면 유형을 함께 체크해 주세요.</div>
+	              {% set show_other_income_types = (profile.get('other_income') == 'yes') %}
+	              <div id="other-income-types-wrap" class="tp-collapsible{% if show_other_income_types %} show{% endif %}" aria-hidden="{{ 'false' if show_other_income_types else 'true' }}">
+	                <div class="tp-checks">
+	                  {% for code, label in other_income_type_options %}
+	                    <label class="tp-check">
+	                      <input type="checkbox" name="other_income_types" value="{{ code }}" {% if code in selected_other_income_types %}checked{% endif %} {% if not show_other_income_types %}disabled{% endif %}>
+	                      <span>{{ label }}</span>
+	                    </label>
+	                  {% endfor %}
+	                </div>
+	              </div>
+	            </div>
+
+	            <div class="tp-field">
+	              <label class="tp-label" for="high_cost_asset">고가장비 취득 여부</label>
+	              <select class="tp-input" id="high_cost_asset" name="high_cost_asset">
+	                {% for code, label in yes_no_unknown_options %}
+	                  <option value="{{ code }}" {% if profile.get('high_cost_asset') == code %}selected{% endif %}>{{ label }}</option>
+	                {% endfor %}
+	              </select>
+	            </div>
+
+	            <div class="tp-field">
+	              <label class="tp-label" for="labor_outsource">인건비/외주 지급 여부</label>
+	              <select class="tp-input" id="labor_outsource" name="labor_outsource">
+	                {% for code, label in yes_no_unknown_options %}
+	                  <option value="{{ code }}" {% if profile.get('labor_outsource') == code %}selected{% endif %}>{{ label }}</option>
+	                {% endfor %}
+	              </select>
+	            </div>
+
+	            <div class="tp-field">
+	              <label class="tp-label" for="health_insurance_type">건강보험 가입유형</label>
+	              <select class="tp-input" id="health_insurance_type" name="health_insurance_type">
+	                {% for code, label in health_insurance_type_options %}
+	                  <option value="{{ code }}" {% if profile.get('health_insurance_type') == code %}selected{% endif %}>{{ label }}</option>
+	                {% endfor %}
+	              </select>
+	            </div>
+
+	            <div class="tp-field">
+	              <label class="tp-label" for="health_insurance_monthly_krw">현재 월 납부액(선택)</label>
+	              <input class="tp-input" id="health_insurance_monthly_krw" name="health_insurance_monthly_krw" type="number" min="0" step="1000" value="{{ profile.get('health_insurance_monthly_krw') if profile.get('health_insurance_monthly_krw') is not none else '' }}" placeholder="예: 150000">
+	            </div>
+	          </div>
+	        </details>
+
+	        <div class="tp-field">
+	          <div class="tp-help">필수 입력 5개를 다 채운 뒤 저장하면 다음 단계로 넘어가요.</div>
+	        </div>
+
+	        <div class="tp-actions">
+	          <a class="btn ghost" href="{{ url_for('web_profile.tax_profile', step=1, next=next_url, return_to_next=('1' if return_to_next else '0')) }}">이전</a>
+	          <button class="btn primary" type="submit" name="action" value="next">기본 입력 저장 후 다음 단계</button>
+	        </div>
+	      </form>
+    {% else %}
+      <div class="tp-help" style="margin-top:0;">아래 내용을 확인하고 완료하면 설정이 적용됩니다.</div>
+
+      <div class="tp-summary-grid" style="margin-top:10px;">
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">업종</div>
+          <div class="tp-summary-v">{{ summary.industry_group }}</div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">과세 유형</div>
+          <div class="tp-summary-v">{{ summary.tax_type }}</div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">전년도 수입 규모</div>
+          <div class="tp-summary-v">{{ summary.prev_income_band }}</div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">원천징수(3.3%) 여부</div>
+          <div class="tp-summary-v">{{ summary.withholding_3_3 }}</div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">개업일</div>
+          <div class="tp-summary-v">{{ summary.opening_date }}</div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">다른 소득 여부</div>
+          <div class="tp-summary-v">
+            {{ summary.other_income }}
+            {% if summary.other_income_types %}
+              · {{ summary.other_income_types|join(', ') }}
+            {% endif %}
+          </div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">고가장비 취득 여부</div>
+          <div class="tp-summary-v">{{ summary.high_cost_asset }}</div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">인건비/외주 지급 여부</div>
+          <div class="tp-summary-v">{{ summary.labor_outsource }}</div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">건강보험</div>
+          <div class="tp-summary-v">
+            {{ summary.health_insurance_type }}
+            {% if summary.health_insurance_monthly_krw is not none %}
+              · {{ "{:,}".format(summary.health_insurance_monthly_krw|int) }}원/월
+            {% endif %}
+          </div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">업종 상세(선택)</div>
+          <div class="tp-summary-v">{{ summary.industry_text or '-' }}</div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">연 과세표준(고급 입력)</div>
+          <div class="tp-summary-v">
+            {% if summary.official_taxable_income_annual_krw is not none %}
+              {{ "{:,}".format(summary.official_taxable_income_annual_krw|int) }}원
+            {% else %}
+              -
+            {% endif %}
+          </div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">총수입 / 업무 관련 지출</div>
+          <div class="tp-summary-v">
+            {% if summary.annual_gross_income_krw is not none %}
+              {{ "{:,}".format(summary.annual_gross_income_krw|int) }}원
+            {% else %}
+              -
+            {% endif %}
+            /
+            {% if summary.annual_deductible_expense_krw is not none %}
+              {{ "{:,}".format(summary.annual_deductible_expense_krw|int) }}원
+            {% else %}
+              -
+            {% endif %}
+          </div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">이미 떼인 세금 / 이미 낸 세금</div>
+          <div class="tp-summary-v">
+            원천징수
+            {% if summary.withheld_tax_annual_krw is not none %}
+              {{ "{:,}".format(summary.withheld_tax_annual_krw|int) }}원
+            {% else %}
+              -
+            {% endif %}
+            / 기납부
+            {% if summary.prepaid_tax_annual_krw is not none %}
+              {{ "{:,}".format(summary.prepaid_tax_annual_krw|int) }}원
+            {% else %}
+              -
+            {% endif %}
+          </div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">소득 유형</div>
+          <div class="tp-summary-v">{{ summary.income_classification }}</div>
+        </div>
+        <div class="tp-summary-item">
+          <div class="tp-summary-k">입력 확인 상태</div>
+          <div class="tp-summary-v">
+            기본 입력 {{ '완료' if summary.tax_basic_inputs_confirmed else '미완료' }}
+            / 고급 입력 {{ '완료' if summary.tax_advanced_input_confirmed else '미완료' }}
+          </div>
+        </div>
+      </div>
+
+      <form method="POST" action="{{ url_for('web_profile.tax_profile') }}">
+        <input type="hidden" name="step" value="3">
+        <input type="hidden" name="action" value="complete">
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <input type="hidden" name="return_to_next" value="{{ '1' if return_to_next else '0' }}">
+        <div class="tp-actions">
+          <a class="btn ghost" href="{{ url_for('web_profile.tax_profile', step=2, next=next_url, return_to_next=('1' if return_to_next else '0')) }}">이전</a>
+          <button class="btn primary" type="submit">입력 완료</button>
+        </div>
+      </form>
+    {% endif %}
+
+    <div class="tp-help" style="margin-top:12px;">민감한 개인식별정보(주민번호, 신분증 이미지, 홈택스 비밀번호)는 수집하지 않습니다.</div>
+  </section>
+</div>
+{% endblock %}
+
+{% block script_extra %}
+<script>
+  (function () {
+    const otherIncomeSelect = document.getElementById("other_income");
+    const typeWrap = document.getElementById("other-income-types-wrap");
+    if (otherIncomeSelect && typeWrap) {
+      const typeInputs = Array.from(typeWrap.querySelectorAll("input[type='checkbox']"));
+
+      const syncOtherIncomeTypes = () => {
+        const isShown = String(otherIncomeSelect.value || "").toLowerCase() === "yes";
+        typeWrap.classList.toggle("show", isShown);
+        typeWrap.setAttribute("aria-hidden", isShown ? "false" : "true");
+        typeInputs.forEach((input) => {
+          input.disabled = !isShown;
+        });
+      };
+
+      otherIncomeSelect.addEventListener("change", syncOtherIncomeTypes);
+      syncOtherIncomeTypes();
+    }
+
+    const setZeroButtons = Array.from(document.querySelectorAll("[data-fill-zero-target]"));
+    setZeroButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-fill-zero-target");
+        if (!targetId) return;
+        const input = document.getElementById(targetId);
+        if (!(input instanceof HTMLInputElement)) return;
+        input.value = "0";
+        input.focus();
+      });
+    });
+
+    const stepwiseZeroBtn = document.querySelector("[data-fill-stepwise-zero]");
+    if (stepwiseZeroBtn) {
+      stepwiseZeroBtn.addEventListener("click", () => {
+        const stepwiseInput = document.getElementById("tax-stepwise-value");
+        if (!(stepwiseInput instanceof HTMLInputElement || stepwiseInput instanceof HTMLSelectElement)) return;
+        if (stepwiseInput instanceof HTMLInputElement) {
+          stepwiseInput.value = "0";
+        } else {
+          stepwiseInput.value = "business";
+        }
+        stepwiseInput.focus();
+      });
+    }
+
+    const qs = new URLSearchParams(window.location.search);
+    const focusField = String(qs.get("focus") || "").trim();
+    const inlineSaved = String(qs.get("inline_saved") || "").trim();
+    const stepwiseCard = document.getElementById("tax-stepwise-card");
+    if (inlineSaved === "income_classification" && stepwiseCard) {
+      stepwiseCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    if (!focusField) return;
+    const focusEl = document.getElementById(focusField);
+    if (!focusEl) return;
+    const detailWrap = focusEl.closest("details");
+    if (detailWrap && !detailWrap.open) {
+      detailWrap.open = true;
+    }
+    focusEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (focusEl instanceof HTMLInputElement || focusEl instanceof HTMLSelectElement || focusEl instanceof HTMLTextAreaElement) {
+      focusEl.focus();
+    }
+  })();
+</script>
+{% endblock %}

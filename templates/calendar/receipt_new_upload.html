@@ -1,0 +1,1204 @@
+{% extends "base.html" %}
+{% block title %}영수증으로 거래 추가{% endblock %}
+
+{% block head_extra %}
+<style>
+  .receipt-dropzone{
+    margin-top: 8px;
+    border: 1px dashed rgba(37,99,235,.45);
+    border-radius: 12px;
+    padding: 14px;
+    background: rgba(37,99,235,.03);
+  }
+  .receipt-dropzone.is-dragover{
+    border-color: rgba(37,99,235,.75);
+    background: rgba(37,99,235,.09);
+  }
+  .receipt-dropzone input[type="file"]{
+    width: 100%;
+  }
+  .receipt-queue{
+    margin-top: 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    background: #fff;
+  }
+  .receipt-queue-list{
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .receipt-q-item{
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px;
+    background: var(--surface-2);
+    display: grid;
+    gap: 8px;
+  }
+  .receipt-q-top{
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .receipt-q-name{
+    font-weight: 800;
+    color: var(--text);
+  }
+  .receipt-q-meta{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .receipt-q-actions{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .receipt-queue-progress{
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+  }
+  .receipt-queue-progress-head{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .receipt-queue-more{
+    margin-top: 8px;
+  }
+  .receipt-queue-hint-actions{
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .receipt-while-waiting{
+    margin-top: 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    background: var(--surface-2);
+  }
+  .receipt-inline-loading{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .84rem;
+    color: var(--muted-2);
+  }
+  .receipt-inline-loading[hidden]{display:none !important;}
+  .receipt-spinner{
+    width: 13px;
+    height: 13px;
+    border: 2px solid rgba(37,99,235,.22);
+    border-top-color: #2563eb;
+    border-radius: 999px;
+    animation: receipt-spin .8s linear infinite;
+  }
+  @keyframes receipt-spin{
+    to{transform:rotate(360deg);}
+  }
+  .receipt-wait-actions{
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">영수증으로 거래 추가</div>
+      <div class="p">{{ month_key }} · 기존 거래가 없어도 영수증만으로 지출을 등록할 수 있어요.</div>
+      <div class="small-note muted2" style="margin-top:4px;">거래 없이 새 지출 추가 흐름으로 바로 이어집니다.</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=limit) }}">정리하기로 돌아가기</a>
+    </div>
+  </div>
+
+  <section class="card pad" style="max-width:860px;">
+    <div class="cardTitle">
+      <span>영수증 업로드</span>
+      <span class="badge primary">1/2 단계</span>
+    </div>
+    <div class="small-note muted2" style="margin-top:8px;">여러 장 업로드는 같은 화면에서 안정적으로 1장씩 순차 처리해요.</div>
+
+    <form id="receipt-upload-form" method="post" action="{{ url_for('web_calendar.receipt_new_upload') }}" enctype="multipart/form-data" class="form-grid" style="margin-top:14px;" data-upload-max-files="{{ upload_max_files or 10 }}" data-upload-max-bytes="{{ upload_max_bytes or (20*1024*1024) }}" data-batch-upload-url="{{ url_for('web_calendar.receipt_new_batch_upload') }}" data-initial-batch-id="{{ initial_batch_id or 0 }}" data-initial-batch-status-url="{{ initial_batch_status_url or '' }}" data-batch-page-base-url="{{ url_for('web_calendar.receipt_new_upload_page', month=month_key, focus=focus, q=q, limit=limit) }}" data-batch-process-once-base="{{ url_for('web_calendar.receipt_batch_process_once', batch_id=0) }}" data-batch-stop-base="{{ url_for('web_calendar.receipt_batch_stop', batch_id=0) }}" data-review-required-url="{{ url_for('web_calendar.review', month=month_key, lane='required', focus='receipt_required', q='', limit=30) }}" data-review-classify-url="{{ url_for('web_calendar.review', month=month_key, lane='review', focus='expense_confirm', q='', limit=30) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="month" value="{{ month_key }}">
+      <input type="hidden" name="focus" value="{{ focus }}">
+      <input type="hidden" name="q" value="{{ q }}">
+      <input type="hidden" name="limit" value="{{ limit }}">
+
+      <div class="grid cols-2">
+        <label class="field" style="grid-column:1/-1;">
+          <span class="label">증빙 종류</span>
+          <select name="receipt_type">
+            <option value="paper">종이 영수증(사진)</option>
+            <option value="electronic">전자 영수증(텍스트/메일)</option>
+            <option value="tax_invoice">세금계산서</option>
+            <option value="cash_receipt">현금영수증</option>
+            <option value="other">기타</option>
+          </select>
+        </label>
+
+        <label class="field" style="grid-column:1/-1;">
+          <span class="label">사진/PDF 업로드(여러 장 가능, 최대 {{ upload_max_files or 10 }}장)</span>
+          <div id="receipt-dropzone" class="receipt-dropzone">
+            <input id="receipt-files" type="file" name="files" accept="image/*,application/pdf" multiple>
+            <div class="small-note muted2" style="margin-top:8px;">여기에 파일을 끌어놓아도 돼요. 파일은 1장씩 순차 처리됩니다.</div>
+            <div class="small-note muted2" style="margin-top:4px;">지원 형식: 이미지/PDF · 파일당 최대 {{ ((upload_max_bytes or (20*1024*1024)) // (1024*1024))|int }}MB</div>
+            <div id="receipt-selected-hint" class="small-note" style="margin-top:4px;"></div>
+            <div id="receipt-upload-error" class="small-note" style="margin-top:4px;color:#b91c1c;display:none;"></div>
+          </div>
+        </label>
+
+        <label class="field" style="grid-column:1/-1;">
+          <span class="label">전자 영수증 텍스트 붙여넣기(선택)</span>
+          <textarea name="receipt_text" rows="7" placeholder="결제완료 메일/주문내역/영수증 텍스트를 붙여넣어도 돼요"></textarea>
+        </label>
+      </div>
+
+      <div class="card pad" style="background:var(--surface-2); box-shadow:none;">
+        <div style="font-weight:900;">다음 단계에서 자동 인식 결과를 확인한 뒤 저장합니다.</div>
+        <div class="small-note muted2" style="margin-top:6px;">2장 이상 선택하면 이 화면에서 파일별 처리 상태를 보여주고, 완료 파일만 개별 확인할 수 있어요.</div>
+      </div>
+
+      <div id="receipt-queue" class="receipt-queue" style="display:none;">
+        <div class="cardTitle">
+          <span>순차 처리 진행</span>
+          <div class="row" style="gap:8px;">
+            <span id="receipt-queue-summary" class="badge">대기</span>
+            <button id="receipt-queue-stop" type="button" class="btn small ghost" style="display:none;">처리 멈추기</button>
+            <button id="receipt-queue-retry-failed" type="button" class="btn small ghost" style="display:none;">실패 항목 일괄 재시도</button>
+            <button id="receipt-queue-clear" type="button" class="btn small ghost">목록 비우기</button>
+          </div>
+        </div>
+        <div id="receipt-queue-bulk-feedback" class="small-note muted2" style="display:none; margin-top:8px;"></div>
+        <div class="receipt-queue-progress">
+          <div class="receipt-queue-progress-head">
+            <div class="row" style="gap:8px;align-items:center;">
+              <div id="receipt-queue-progress-text" class="small-note muted2">영수증 처리 중 (0/0)</div>
+              <span id="receipt-queue-mini-loading" class="receipt-inline-loading" hidden>
+                <span class="receipt-spinner" aria-hidden="true"></span>
+                처리 중
+              </span>
+            </div>
+            <a id="receipt-queue-open-link" class="btn small ghost" href="{{ url_for('web_calendar.receipt_new_upload_page', month=month_key, focus=focus, q=q, limit=limit) }}" style="display:none;">영수증 처리함 보기</a>
+          </div>
+          <div class="progress"><div id="receipt-queue-progress-bar" style="width:0%"></div></div>
+          <div id="receipt-queue-hint" class="small-note muted2">처리 중인 동안 아래 2분 할 일을 먼저 진행해도 좋아요.</div>
+          <div id="receipt-queue-hint-actions" class="receipt-queue-hint-actions" style="display:none;">
+            <button id="receipt-queue-hint-resume" type="button" class="btn small ghost">지금 처리 재개</button>
+            <a id="receipt-queue-hint-open" class="btn small ghost" href="{{ url_for('web_calendar.receipt_new_upload_page', month=month_key, focus=focus, q=q, limit=limit) }}">영수증 처리함 보기</a>
+            <button id="receipt-queue-hint-reupload" type="button" class="btn small ghost">다시 업로드</button>
+          </div>
+        </div>
+        <div id="receipt-queue-complete" class="flash success" style="display:none; margin-top:10px;">
+          <div class="row" style="justify-content:space-between; gap:8px;">
+            <div id="receipt-queue-complete-text">영수증 처리 완료 · 확인 필요 0건</div>
+            <a id="receipt-queue-complete-link" class="btn small" href="{{ url_for('web_calendar.review', month=month_key, lane='required', focus='receipt_required', q='', limit=30) }}">지금 확인하기</a>
+          </div>
+        </div>
+        <div id="receipt-queue-list" class="receipt-queue-list"></div>
+        <div id="receipt-queue-more" class="receipt-queue-more small-note muted2" style="display:none;"></div>
+      </div>
+
+      <div class="receipt-while-waiting">
+        <div style="font-weight:900;">기다리는 동안 2분 할 일</div>
+        <div class="small-note muted2" style="margin-top:6px;">영수증 처리는 백그라운드에서 계속 진행돼요. 먼저 급한 것부터 끝내세요.</div>
+        <div class="receipt-wait-actions">
+          <a class="btn small" href="{{ url_for('web_calendar.review', month=month_key, lane='required', focus='receipt_required', q='', limit=30) }}">필수 증빙부터 처리하기</a>
+          <a class="btn small ghost" href="{{ url_for('web_calendar.review', month=month_key, lane='review', focus='expense_confirm', q='', limit=30) }}">분류가 필요한 거래 처리하기</a>
+          <a class="btn small ghost" href="{{ url_for('web_profile.tax_profile', next=url_for('web_calendar.review', month=month_key, lane='required', focus='receipt_required', q='', limit=30)) }}">내 정보 보완하기</a>
+        </div>
+      </div>
+
+      <div class="row" style="gap:8px; flex-wrap:wrap;">
+        <button class="btn primary" type="submit">업로드 · 자동 인식</button>
+        <span id="receipt-upload-mini-loading" class="receipt-inline-loading" hidden>
+          <span class="receipt-spinner" aria-hidden="true"></span>
+          업로드 중
+        </span>
+        <a class="btn ghost" href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=limit) }}">취소</a>
+      </div>
+    </form>
+  </section>
+</div>
+
+<script>
+(() => {
+  const form = document.getElementById("receipt-upload-form");
+  if (!form) return;
+
+  const fileInput = document.getElementById("receipt-files");
+  const dropzone = document.getElementById("receipt-dropzone");
+  const selectedHint = document.getElementById("receipt-selected-hint");
+  const uploadError = document.getElementById("receipt-upload-error");
+  const receiptText = form.querySelector('textarea[name="receipt_text"]');
+  const queueWrap = document.getElementById("receipt-queue");
+  const queueList = document.getElementById("receipt-queue-list");
+  const queueSummary = document.getElementById("receipt-queue-summary");
+  const queueStop = document.getElementById("receipt-queue-stop");
+  const queueRetryFailed = document.getElementById("receipt-queue-retry-failed");
+  const queueBulkFeedback = document.getElementById("receipt-queue-bulk-feedback");
+  const queueClear = document.getElementById("receipt-queue-clear");
+  const queueProgressText = document.getElementById("receipt-queue-progress-text");
+  const queueMiniLoading = document.getElementById("receipt-queue-mini-loading");
+  const queueProgressBar = document.getElementById("receipt-queue-progress-bar");
+  const queueHint = document.getElementById("receipt-queue-hint");
+  const queueHintActions = document.getElementById("receipt-queue-hint-actions");
+  const queueHintResume = document.getElementById("receipt-queue-hint-resume");
+  const queueHintOpen = document.getElementById("receipt-queue-hint-open");
+  const queueHintReupload = document.getElementById("receipt-queue-hint-reupload");
+  const queueOpenLink = document.getElementById("receipt-queue-open-link");
+  const queueComplete = document.getElementById("receipt-queue-complete");
+  const queueCompleteText = document.getElementById("receipt-queue-complete-text");
+  const queueCompleteLink = document.getElementById("receipt-queue-complete-link");
+  const queueMore = document.getElementById("receipt-queue-more");
+  const submitButton = form.querySelector('button[type="submit"]');
+  const uploadMiniLoading = document.getElementById("receipt-upload-mini-loading");
+
+  const maxFiles = Number(form.dataset.uploadMaxFiles || 10);
+  const maxBytes = Number(form.dataset.uploadMaxBytes || (20 * 1024 * 1024));
+  const csrfToken = "{{ csrf_token }}";
+  const batchUploadUrl = form.dataset.batchUploadUrl || "";
+  const batchPageBaseUrl = form.dataset.batchPageBaseUrl || window.location.pathname;
+  const batchProcessOnceBase = form.dataset.batchProcessOnceBase || "";
+  const batchStopBase = form.dataset.batchStopBase || "";
+  const reviewRequiredUrl = form.dataset.reviewRequiredUrl || "{{ url_for('web_calendar.review', month=month_key, lane='required', focus='receipt_required', q='', limit=30) }}";
+  const reviewClassifyUrl = form.dataset.reviewClassifyUrl || "{{ url_for('web_calendar.review', month=month_key, lane='review', focus='expense_confirm', q='', limit=30) }}";
+  const initialBatchId = Number(form.dataset.initialBatchId || 0);
+  const initialBatchStatusUrl = form.dataset.initialBatchStatusUrl || "";
+  const allowedExt = new Set(["pdf", "png", "jpg", "jpeg", "webp", "gif", "heic", "heif"]);
+
+  let selectedFiles = [];
+  let queueItems = [];
+  let running = false;
+  let activeBatchId = 0;
+  let activeStatusUrl = "";
+  let pollTimer = null;
+  let pollInFlight = false;
+  let pollIntervalMs = 3500;
+  let pollFailCount = 0;
+  let lastPollError = "";
+  let finishedNoticeBatchId = 0;
+  let autoResumeInFlight = false;
+  let autoResumeLastTs = 0;
+  const storageKey = `receipt-new-queue:${form.elements.month.value || ""}:${form.elements.focus.value || ""}`;
+
+  const STATUS_META = {
+    uploaded: { label: "대기", cls: "" },
+    processing: { label: "분석 중", cls: "warn" },
+    done: { label: "완료", cls: "good" },
+    failed: { label: "실패", cls: "bad" },
+  };
+  const ERROR_META = {
+    format: { label: "형식 오류", cls: "warn" },
+    missing_file: { label: "파일 누락", cls: "warn" },
+    duplicate: { label: "중복 의심", cls: "warn" },
+    temporary: { label: "일시 오류", cls: "warn" },
+    parse: { label: "인식 실패", cls: "warn" },
+    paused: { label: "중단됨", cls: "warn" },
+    unknown: { label: "처리 실패", cls: "warn" },
+  };
+  const ERROR_TIP = {
+    format: "JPG/PNG/PDF 파일만 지원해요. 형식을 바꿔 다시 올려주세요.",
+    missing_file: "파일을 다시 선택해 업로드하면 바로 이어서 진행할 수 있어요.",
+    duplicate: "이미 등록된 영수증일 수 있어요. 중복이면 기존 항목을, 신규면 결과 확인으로 진행하세요.",
+    temporary: "잠시 후 재시도하면 대부분 해결돼요.",
+    parse: "사진을 더 밝고 선명하게 찍으면 인식 성공률이 올라가요.",
+    paused: "중단된 항목은 재시도를 누르면 다시 처리할 수 있어요.",
+    unknown: "다시 업로드하거나 직접 입력으로 계속할 수 있어요.",
+  };
+  const POLL_BASE_MS = 3000;
+  const POLL_DELAYED_MS = 5000;
+  const POLL_MAX_MS = 15000;
+  const AUTO_RESUME_COOLDOWN_MS = 2000;
+  const QUEUE_COLLAPSED_COUNT = 5;
+  let showAllQueueItems = false;
+
+  const toArray = (files) => Array.from(files || []);
+  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (ch) => (
+    ch === "&" ? "&amp;" :
+    ch === "<" ? "&lt;" :
+    ch === ">" ? "&gt;" :
+    ch === '"' ? "&quot;" : "&#39;"
+  ));
+  const fmtBytes = (n) => {
+    if (!Number.isFinite(n) || n <= 0) return "0B";
+    if (n < 1024) return `${n}B`;
+    if (n < 1024 * 1024) return `${Math.round(n / 1024)}KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)}MB`;
+  };
+
+  function jsonPostHeaders() {
+    const headers = { "Accept": "application/json" };
+    if (csrfToken) {
+      headers["X-CSRF-Token"] = csrfToken;
+    }
+    return headers;
+  }
+
+  function buildBatchPageUrl(batchId) {
+    if (!batchId) return batchPageBaseUrl;
+    const u = new URL(batchPageBaseUrl, window.location.origin);
+    u.searchParams.set("batch_id", String(batchId));
+    return `${u.pathname}${u.search}`;
+  }
+
+  function buildProcessOnceUrl(batchId) {
+    if (!batchProcessOnceBase || !batchId) return "";
+    const marker = "/batch/0/process-once";
+    if (batchProcessOnceBase.includes(marker)) {
+      return batchProcessOnceBase.replace(marker, `/batch/${batchId}/process-once`);
+    }
+    return batchProcessOnceBase.replace("/0", `/${batchId}`);
+  }
+
+  function buildStopUrl(batchId) {
+    if (!batchStopBase || !batchId) return "";
+    const marker = "/batch/0/stop";
+    if (batchStopBase.includes(marker)) {
+      return batchStopBase.replace(marker, `/batch/${batchId}/stop`);
+    }
+    return batchStopBase.replace("/0", `/${batchId}`);
+  }
+
+  function hideCompleteBanner() {
+    if (queueComplete) queueComplete.style.display = "none";
+  }
+
+  function showBulkFeedback(message, isError = false) {
+    if (!queueBulkFeedback) return;
+    if (!message) {
+      queueBulkFeedback.style.display = "none";
+      queueBulkFeedback.textContent = "";
+      queueBulkFeedback.style.color = "";
+      return;
+    }
+    queueBulkFeedback.textContent = message;
+    queueBulkFeedback.style.display = "";
+    queueBulkFeedback.style.color = isError ? "#b91c1c" : "";
+  }
+
+  function setSelectedFiles(files) {
+    selectedFiles = toArray(files);
+    if (uploadError) {
+      uploadError.style.display = "none";
+      uploadError.textContent = "";
+    }
+    if (selectedFiles.length) {
+      selectedHint.textContent = `${selectedFiles.length}개 선택됨`;
+      selectedHint.className = "small-note muted2";
+      if (selectedFiles.length > maxFiles) {
+        showUploadError(`한 번에 최대 ${maxFiles}장까지 업로드할 수 있어요.`);
+      }
+    } else {
+      selectedHint.textContent = "";
+    }
+  }
+
+  function validateFiles(files) {
+    if (!files.length) return { ok: false, message: "파일을 먼저 선택해주세요." };
+    if (files.length > maxFiles) {
+      return { ok: false, message: `한 번에 최대 ${maxFiles}장까지 업로드할 수 있어요.` };
+    }
+    for (const f of files) {
+      const ext = (f.name.split(".").pop() || "").toLowerCase();
+      const mime = (f.type || "").toLowerCase();
+      const mimeAllowed = mime.startsWith("image/") || mime === "application/pdf";
+      const extAllowed = ext ? allowedExt.has(ext) : false;
+      if (!(extAllowed || mimeAllowed)) {
+        return { ok: false, message: `${f.name}: 지원하지 않는 파일 형식이에요.` };
+      }
+      if (f.size > maxBytes) {
+        return {
+          ok: false,
+          message: `${f.name}: 파일이 너무 커요. (최대 ${Math.floor(maxBytes / (1024 * 1024))}MB)`,
+        };
+      }
+    }
+    return { ok: true, message: "" };
+  }
+
+  function showUploadError(message) {
+    if (!uploadError) return;
+    uploadError.textContent = message || "";
+    uploadError.style.display = message ? "" : "none";
+  }
+
+  function statusBadge(statusKey) {
+    const meta = STATUS_META[statusKey] || STATUS_META.uploaded;
+    const cls = meta.cls ? `badge ${meta.cls}` : "badge";
+    return `<span class="${cls}">${meta.label}</span>`;
+  }
+
+  function errorBadge(errorCode) {
+    const meta = ERROR_META[errorCode] || ERROR_META.unknown;
+    const cls = meta.cls ? `badge ${meta.cls}` : "badge";
+    return `<span class="${cls}">${meta.label}</span>`;
+  }
+
+  function showQueueHintActions(opts = {}) {
+    const open = Boolean(opts.open);
+    const reupload = Boolean(opts.reupload);
+    const resume = Boolean(opts.resume);
+    if (queueHintActions) {
+      queueHintActions.style.display = (open || reupload || resume) ? "" : "none";
+    }
+    if (queueHintResume) {
+      queueHintResume.style.display = resume ? "" : "none";
+      queueHintResume.disabled = running || !activeBatchId;
+    }
+    if (queueHintOpen) {
+      queueHintOpen.style.display = open ? "" : "none";
+      if (open && activeBatchId > 0) {
+        queueHintOpen.href = buildBatchPageUrl(activeBatchId);
+      }
+    }
+    if (queueHintReupload) {
+      queueHintReupload.style.display = reupload ? "" : "none";
+    }
+  }
+
+  function renderSummary() {
+    const total = queueItems.length;
+    const done = queueItems.filter((x) => x.status === "done").length;
+    const failed = queueItems.filter((x) => x.status === "failed").length;
+    const active = queueItems.filter((x) => x.status === "uploaded" || x.status === "processing").length;
+    const failedRetryables = queueItems.filter((x) => x.status === "failed" && x.retryUrl).length;
+    const resolved = done + failed;
+
+    if (!total) {
+      showAllQueueItems = false;
+      queueSummary.textContent = "대기";
+      queueSummary.className = "badge";
+      if (queueProgressBar) queueProgressBar.style.width = "0%";
+      if (queueProgressText) queueProgressText.textContent = "영수증 처리 중 (0/0)";
+      if (queueHint) queueHint.textContent = "처리 중인 동안 아래 2분 할 일을 먼저 진행해도 좋아요.";
+      showQueueHintActions();
+      if (queueStop) queueStop.style.display = "none";
+      if (queueRetryFailed) queueRetryFailed.style.display = "none";
+      if (queueOpenLink) queueOpenLink.style.display = "none";
+      if (queueMore) queueMore.style.display = "none";
+      if (queueMiniLoading) queueMiniLoading.hidden = true;
+      showBulkFeedback("");
+      return;
+    }
+
+    queueSummary.textContent = `완료 ${done}/${total}${failed ? ` · 실패 ${failed}` : ""}${active ? " · 진행 중" : ""}`;
+    queueSummary.className = active > 0 ? "badge primary" : (failed > 0 ? "badge warn" : "badge good");
+
+    const pct = Math.max(0, Math.min(100, Math.round((resolved / total) * 100)));
+    if (queueProgressBar) queueProgressBar.style.width = `${pct}%`;
+    if (queueProgressText) {
+      queueProgressText.textContent = active > 0
+        ? `영수증 처리 중 (${resolved}/${total})`
+        : `영수증 처리 완료 (${resolved}/${total})`;
+    }
+    if (queueMiniLoading) {
+      queueMiniLoading.hidden = !(active > 0);
+    }
+    if (queueHint) {
+      if (active > 0) {
+        queueHint.textContent = "처리 중인 동안 아래 2분 할 일을 먼저 진행해도 좋아요.";
+        showQueueHintActions({ open: true });
+      } else if (failed > 0) {
+        queueHint.textContent = "실패한 항목은 재시도하거나 다시 업로드해 계속할 수 있어요.";
+        showQueueHintActions({ open: true, reupload: true });
+      } else {
+        queueHint.textContent = "완료된 항목을 열어 저장하면 정리하기 목록에 반영돼요.";
+        showQueueHintActions({ open: true });
+      }
+    }
+    if (queueOpenLink && activeBatchId > 0) {
+      queueOpenLink.style.display = "";
+      queueOpenLink.href = buildBatchPageUrl(activeBatchId);
+    }
+    if (queueRetryFailed) {
+      queueRetryFailed.style.display = failedRetryables > 1 ? "" : "none";
+      queueRetryFailed.disabled = running || failedRetryables <= 0;
+    }
+    if (queueStop) {
+      queueStop.style.display = active > 0 ? "" : "none";
+      queueStop.disabled = running || active <= 0;
+    }
+  }
+
+  function renderQueue() {
+    if (!queueItems.length) {
+      queueWrap.style.display = "none";
+      queueList.innerHTML = "";
+      hideCompleteBanner();
+      renderSummary();
+      persistQueueState();
+      return;
+    }
+    queueWrap.style.display = "";
+    const sortedItems = [...queueItems].sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+    const visibleItems = showAllQueueItems ? sortedItems : sortedItems.slice(0, QUEUE_COLLAPSED_COUNT);
+    queueList.innerHTML = visibleItems.map((item) => {
+      const fileName = item.file ? item.file.name : (item.name || "이름 없는 파일");
+      const fileSize = item.file ? item.file.size : Number(item.size || 0);
+      const duplicate = item.duplicate ? `<span class="badge warn">중복 의심</span>` : "";
+      const errorCodeBadge = (item.status === "failed" && item.errorCode)
+        ? errorBadge(item.errorCode)
+        : "";
+      const hintText = item.note || item.error_message || "";
+      const shortHint = hintText.length > 180 ? `${hintText.slice(0, 180)}…` : hintText;
+      const hint = shortHint ? `<div class="small-note muted2">${escapeHtml(shortHint)}</div>` : "";
+      const failTipText = (item.status === "failed") ? (ERROR_TIP[item.errorCode || "unknown"] || ERROR_TIP.unknown) : "";
+      const failTip = failTipText ? `<div class="small-note">가이드: ${escapeHtml(failTipText)}</div>` : "";
+      const blockedMsg = (item.status === "failed" && (!item.retryUrl) && item.retryBlockedMessage)
+        ? `<div class="small-note" style="color:#b45309;">재시도 안내: ${escapeHtml(item.retryBlockedMessage)}</div>`
+        : "";
+      const openLabel = item.status === "failed" ? "직접 입력으로 계속" : "결과 확인";
+      const safeConfirmUrl = escapeHtml(item.confirmUrl || "");
+      const openLink = item.confirmUrl
+        ? `<a class="btn small" href="${safeConfirmUrl}">${openLabel}</a>`
+        : "";
+      const safeItemId = escapeHtml(String(item.id || ""));
+      const retryBtn = (item.status === "failed" && item.retryUrl)
+        ? `<button type="button" class="btn small ghost receipt-retry" data-id="${safeItemId}" ${running ? "disabled" : ""}>재시도</button>`
+        : "";
+      const reuploadBtn = (item.status === "failed" && item.requiresReupload)
+        ? `<button type="button" class="btn small ghost receipt-reupload" data-id="${safeItemId}" ${running ? "disabled" : ""}>다시 업로드</button>`
+        : "";
+      const safeFileName = escapeHtml(fileName);
+      return `
+        <article class="receipt-q-item">
+          <div class="receipt-q-top">
+            <div class="receipt-q-name">${safeFileName} <span class="small-note muted2">(${fmtBytes(fileSize)})</span></div>
+            <div class="receipt-q-meta">
+              ${statusBadge(item.status)}
+              ${errorCodeBadge}
+              ${duplicate}
+            </div>
+          </div>
+          ${hint}
+          ${failTip}
+          ${blockedMsg}
+          <div class="receipt-q-actions">
+            ${retryBtn}
+            ${reuploadBtn}
+            ${openLink}
+          </div>
+        </article>
+      `;
+    }).join("");
+    if (queueMore) {
+      if (queueItems.length > QUEUE_COLLAPSED_COUNT) {
+        queueMore.style.display = "";
+        if (showAllQueueItems) {
+          queueMore.innerHTML = `<button id="receipt-queue-toggle-view" type="button" class="btn small ghost">최근 ${QUEUE_COLLAPSED_COUNT}건만 보기</button>
+            <span class="small-note muted2" style="margin-left:6px;">전체 ${queueItems.length}건 표시 중</span>`;
+        } else {
+          queueMore.innerHTML = `<button id="receipt-queue-toggle-view" type="button" class="btn small ghost">전체 ${queueItems.length}건 보기</button>
+            <span class="small-note muted2" style="margin-left:6px;">최근 ${visibleItems.length}건만 표시 중</span>`;
+        }
+      } else {
+        queueMore.style.display = "none";
+        queueMore.innerHTML = "";
+      }
+    }
+    renderSummary();
+    persistQueueState();
+  }
+
+  function persistQueueState() {
+    try {
+      if (!queueItems.length) {
+        sessionStorage.removeItem(storageKey);
+        return;
+      }
+      const compact = queueItems.map((item) => ({
+        id: item.id,
+        name: item.file ? item.file.name : (item.name || ""),
+        size: item.file ? item.file.size : Number(item.size || 0),
+        status: item.status || "uploaded",
+        note: item.note || "",
+        error_message: item.error_message || "",
+        errorCode: item.errorCode || "",
+        confirmUrl: item.confirmUrl || "",
+        retryUrl: item.retryUrl || "",
+        retryBlockedMessage: item.retryBlockedMessage || "",
+        requiresReupload: Boolean(item.requiresReupload),
+        duplicate: Boolean(item.duplicate),
+      }));
+      sessionStorage.setItem(storageKey, JSON.stringify({
+        savedAt: Date.now(),
+        batchId: Number(activeBatchId || 0),
+        statusUrl: activeStatusUrl || "",
+        items: compact,
+      }));
+    } catch (_) {
+      // 저장 실패는 무시(브라우저 제한)
+    }
+  }
+
+  function restoreQueueState() {
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const savedAt = Number(parsed?.savedAt || 0);
+      const items = Array.isArray(parsed?.items) ? parsed.items : [];
+      if (!items.length) return;
+      const now = Date.now();
+      const ttlMs = 1000 * 60 * 30; // 30분
+      if (savedAt && (now - savedAt > ttlMs)) {
+        sessionStorage.removeItem(storageKey);
+        return;
+      }
+      activeBatchId = Number(parsed?.batchId || 0);
+      activeStatusUrl = (parsed?.statusUrl || "");
+      queueItems = items.map((item, idx) => ({
+        id: item.id || `restored-${Date.now()}-${idx}`,
+        name: item.name || "이름 없는 파일",
+        size: Number(item.size || 0),
+        status: item.status || "uploaded",
+        note: item.note || ((item.status === "failed") ? "재시도하려면 파일을 다시 선택해주세요." : ""),
+        error_message: item.error_message || "",
+        errorCode: item.errorCode || "",
+        confirmUrl: item.confirmUrl || "",
+        retryUrl: item.retryUrl || "",
+        retryBlockedMessage: item.retryBlockedMessage || "",
+        requiresReupload: Boolean(item.requiresReupload),
+        duplicate: Boolean(item.duplicate),
+        sha256: "",
+        file: null,
+      }));
+      renderQueue();
+    } catch (_) {
+      // 파싱 실패는 무시
+    }
+  }
+
+  function applyBatchPayload(payload) {
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    if (payload?.batch_id) {
+      activeBatchId = Number(payload.batch_id || 0);
+    }
+      queueItems = items.map((item) => ({
+        id: item.id,
+        name: item.name || "이름 없는 파일",
+        size: Number(item.size || 0),
+        status: item.status || "uploaded",
+      note: item.error_message ? item.error_message : "",
+      error_message: item.error_message || "",
+      errorCode: item.error_code || "",
+        confirmUrl: item.confirm_url || "",
+        retryUrl: item.retry_url || "",
+        retryBlockedMessage: item.retry_blocked_message || "",
+        requiresReupload: Boolean(item.requires_reupload),
+        duplicate: Boolean(item.duplicate),
+        file: null,
+      }));
+    renderQueue();
+  }
+
+  function showCompleteBanner(payload) {
+    if (!queueComplete || !queueCompleteText || !queueCompleteLink) return;
+    const doneCount = Number(payload?.done_count || 0);
+    const failedCount = Number(payload?.failed_count || 0);
+    const needCheck = Math.max(0, doneCount + failedCount);
+    queueCompleteText.textContent = `영수증 처리 완료 · 확인 필요 ${needCheck}건`;
+    queueCompleteLink.href = failedCount > 0
+      ? buildBatchPageUrl(activeBatchId)
+      : reviewRequiredUrl;
+    queueCompleteLink.textContent = failedCount > 0 ? "실패 항목 확인하기" : "지금 확인하기";
+    queueComplete.style.display = "";
+  }
+
+  async function pollBatchStatus() {
+    if (!activeStatusUrl || pollInFlight) return;
+    pollInFlight = true;
+    try {
+      const res = await fetch(activeStatusUrl, { headers: { "Accept": "application/json" } });
+      const payload = await res.json().catch(() => ({ ok: false, message: "응답을 읽지 못했어요." }));
+      if (!res.ok || !payload.ok) {
+        if (res.status === 404 || res.status === 503) {
+          stopPolling();
+        }
+        throw new Error(payload.message || "상태 조회에 실패했어요.");
+      }
+      pollFailCount = 0;
+      lastPollError = "";
+      applyBatchPayload(payload);
+      const queuedCount = Number(payload.queued_count || 0);
+      const processingCount = Number(payload.processing_count || 0);
+      const desiredInterval = (payload.needs_worker_check || payload.is_delayed) ? POLL_DELAYED_MS : POLL_BASE_MS;
+      if (!payload.is_finished && desiredInterval !== pollIntervalMs) {
+        pollIntervalMs = desiredInterval;
+        restartPollingInterval();
+      }
+      if (!payload.is_finished && queuedCount > 0 && processingCount === 0) {
+        if (queueHint) {
+          queueHint.textContent = "대기 항목을 순차 처리하는 중이에요. 완료된 항목부터 바로 확인할 수 있어요.";
+        }
+        const nowTs = Date.now();
+        if (!autoResumeInFlight && (nowTs - autoResumeLastTs) >= AUTO_RESUME_COOLDOWN_MS) {
+          autoResumeLastTs = nowTs;
+          requestProcessOnce({ silent: true, auto: true }).catch(() => {});
+        }
+      }
+      if (!payload.is_finished && payload.is_delayed && queueHint) {
+        queueHint.textContent = payload.delay_message || "처리가 잠시 지연되고 있어요. 다른 작업을 먼저 진행해도 괜찮아요.";
+        showQueueHintActions({ open: true });
+      }
+      if (!payload.is_finished && payload.needs_worker_check && queueHint) {
+        queueHint.textContent = payload.delay_message || "처리가 오래 멈춰 있어요. 자동 재개를 시도하고 있어요.";
+        showQueueHintActions({ open: true, reupload: true, resume: true });
+        const nowTs = Date.now();
+        if (!autoResumeInFlight && (nowTs - autoResumeLastTs) >= AUTO_RESUME_COOLDOWN_MS) {
+          autoResumeLastTs = nowTs;
+          requestProcessOnce({ silent: true, auto: true }).catch(() => {});
+        }
+      }
+      if (payload.is_finished) {
+        if (activeBatchId > 0 && finishedNoticeBatchId !== activeBatchId) {
+          finishedNoticeBatchId = activeBatchId;
+          showCompleteBanner(payload);
+        }
+        stopPolling();
+      }
+    } catch (err) {
+      pollFailCount += 1;
+      const message = (err && err.message) ? err.message : "진행 상태를 확인하지 못했어요.";
+      if (message !== lastPollError) {
+        showUploadError(message);
+        lastPollError = message;
+      }
+      if (pollFailCount >= 3) {
+        if (queueHint) {
+          queueHint.textContent = "상태 확인이 잠시 지연되고 있어요. 잠시 후 새로고침해도 돼요.";
+        }
+        showQueueHintActions({ open: true });
+        stopPolling();
+      } else {
+        const next = Math.min(POLL_MAX_MS, pollIntervalMs + 2500);
+        if (next !== pollIntervalMs) {
+          pollIntervalMs = next;
+          restartPollingInterval();
+        }
+      }
+    } finally {
+      pollInFlight = false;
+    }
+  }
+
+  function stopPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+    pollInFlight = false;
+  }
+
+  function restartPollingInterval() {
+    if (!activeStatusUrl) return;
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+    pollTimer = setInterval(pollBatchStatus, pollIntervalMs);
+  }
+
+  function startPolling() {
+    stopPolling();
+    if (!activeStatusUrl) return;
+    pollIntervalMs = POLL_BASE_MS;
+    pollFailCount = 0;
+    lastPollError = "";
+    pollBatchStatus();
+    restartPollingInterval();
+  }
+
+  async function requestProcessOnce({ silent = false, auto = false } = {}) {
+    if (!activeBatchId) return false;
+    const processOnceUrl = buildProcessOnceUrl(activeBatchId);
+    if (!processOnceUrl) {
+      if (!silent) showUploadError("처리 재개 주소를 찾지 못했어요.");
+      return false;
+    }
+    if (autoResumeInFlight) return false;
+
+    autoResumeInFlight = true;
+    if (!auto) {
+      running = true;
+      if (submitButton) submitButton.disabled = true;
+      if (queueHintResume) queueHintResume.disabled = true;
+      if (queueStop) queueStop.disabled = true;
+    }
+
+    try {
+      const maxItems = auto ? 5 : 1;
+      const res = await fetch(`${processOnceUrl}?format=json&max_items=${maxItems}`, {
+        method: "POST",
+        headers: jsonPostHeaders(),
+      });
+      const payload = await res.json().catch(() => ({ ok: false, message: "응답을 읽지 못했어요." }));
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.message || "처리 재개에 실패했어요.");
+      }
+      if (payload.processed) {
+        const processedCount = Number(payload.processed_count || 0) || 1;
+        if (!silent) {
+          showBulkFeedback(`대기 항목 ${processedCount}건 처리를 재개했어요.`);
+        }
+        if (queueHint) {
+          queueHint.textContent = `처리를 재개했어요. (${processedCount}건) 잠시 후 상태를 다시 확인해 주세요.`;
+        }
+      } else if (!silent) {
+        showBulkFeedback("재개할 대기 항목이 없어요.");
+      }
+      startPolling();
+      return Boolean(payload.processed);
+    } catch (err) {
+      if (!silent) {
+        showUploadError((err && err.message) ? err.message : "처리 재개에 실패했어요.");
+      }
+      return false;
+    } finally {
+      autoResumeInFlight = false;
+      if (!auto) {
+        running = false;
+        if (submitButton) submitButton.disabled = false;
+        if (queueHintResume) queueHintResume.disabled = false;
+        if (queueStop) queueStop.disabled = false;
+        renderQueue();
+      }
+    }
+  }
+
+  async function runBatchUpload(files) {
+    if (!batchUploadUrl) {
+      showUploadError("배치 업로드 주소를 찾지 못했어요.");
+      return;
+    }
+    running = true;
+    if (submitButton) submitButton.disabled = true;
+    if (uploadMiniLoading) uploadMiniLoading.hidden = false;
+    showUploadError("");
+
+    try {
+      const fd = new FormData();
+      fd.append("month", form.elements.month.value);
+      fd.append("focus", form.elements.focus.value);
+      fd.append("q", form.elements.q.value);
+      fd.append("limit", form.elements.limit.value);
+      fd.append("receipt_type", (form.elements.receipt_type.value || "paper"));
+      files.forEach((f) => fd.append("files", f, f.name));
+
+      const res = await fetch(`${batchUploadUrl}?format=json`, {
+        method: "POST",
+        headers: jsonPostHeaders(),
+        body: fd,
+      });
+      const payload = await res.json().catch(() => ({ ok: false, message: "응답을 읽지 못했어요." }));
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.message || "업로드에 실패했어요.");
+      }
+      activeBatchId = Number(payload.batch_id || 0);
+      activeStatusUrl = payload.status_url || "";
+      finishedNoticeBatchId = 0;
+      hideCompleteBanner();
+      showBulkFeedback("");
+      applyBatchPayload(payload);
+      if (activeBatchId > 0) {
+        const u = new URL(window.location.href);
+        u.searchParams.set("batch_id", String(activeBatchId));
+        window.history.replaceState({}, "", u.toString());
+      }
+      startPolling();
+    } catch (err) {
+      showUploadError((err && err.message) ? err.message : "업로드에 실패했어요.");
+    } finally {
+      running = false;
+      if (submitButton) submitButton.disabled = false;
+      if (uploadMiniLoading) uploadMiniLoading.hidden = true;
+      renderQueue();
+    }
+  }
+
+  fileInput?.addEventListener("change", (e) => {
+    setSelectedFiles(e.target.files);
+  });
+
+  if (dropzone && fileInput) {
+    ["dragenter", "dragover"].forEach((evName) => {
+      dropzone.addEventListener(evName, (e) => {
+        e.preventDefault();
+        dropzone.classList.add("is-dragover");
+      });
+    });
+    ["dragleave", "drop"].forEach((evName) => {
+      dropzone.addEventListener(evName, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("is-dragover");
+      });
+    });
+    dropzone.addEventListener("drop", (e) => {
+      const dropped = toArray(e.dataTransfer?.files || []);
+      if (!dropped.length) return;
+      setSelectedFiles(dropped);
+      try {
+        const dt = new DataTransfer();
+        selectedFiles.forEach((f) => dt.items.add(f));
+        fileInput.files = dt.files;
+      } catch (_) {
+        // 일부 브라우저에서는 files 재할당이 막혀서 내부 선택 목록만 사용
+      }
+    });
+  }
+
+  queueList?.addEventListener("click", async (e) => {
+    const reuploadBtn = e.target.closest(".receipt-reupload");
+    if (reuploadBtn && !running) {
+      showUploadError("실패한 파일은 다시 선택해서 올려주세요.");
+      if (dropzone) {
+        dropzone.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      if (fileInput) {
+        try {
+          fileInput.focus();
+          fileInput.click();
+        } catch (_) {
+          // 브라우저 제한 시 포커스만 유지
+        }
+      }
+      return;
+    }
+
+    const btn = e.target.closest(".receipt-retry");
+    if (!btn || running) return;
+    const id = btn.getAttribute("data-id");
+    if (!id) return;
+    const target = queueItems.find((x) => String(x.id) === String(id));
+    if (!target || !target.retryUrl) return;
+    running = true;
+    if (submitButton) submitButton.disabled = true;
+    try {
+      const res = await fetch(`${target.retryUrl}?format=json`, {
+        method: "POST",
+        headers: jsonPostHeaders(),
+      });
+      const payload = await res.json().catch(() => ({ ok: false, message: "응답을 읽지 못했어요." }));
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.message || "재시도 요청에 실패했어요.");
+      }
+      target.status = "uploaded";
+      target.note = "";
+      target.error_message = "";
+      target.confirmUrl = "";
+      renderQueue();
+      startPolling();
+    } catch (err) {
+      showUploadError((err && err.message) ? err.message : "재시도 요청에 실패했어요.");
+    }
+    running = false;
+    if (submitButton) submitButton.disabled = false;
+    renderQueue();
+  });
+
+  queueHintReupload?.addEventListener("click", () => {
+    showUploadError("다시 올릴 파일을 선택해주세요.");
+    if (dropzone) {
+      dropzone.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    if (fileInput) {
+      try {
+        fileInput.focus();
+        fileInput.click();
+      } catch (_) {}
+    }
+  });
+
+  queueHintResume?.addEventListener("click", async () => {
+    if (running || !activeBatchId) return;
+    await requestProcessOnce({ silent: false, auto: false });
+  });
+
+  queueStop?.addEventListener("click", async () => {
+    if (running || !activeBatchId) return;
+    const stopUrl = buildStopUrl(activeBatchId);
+    if (!stopUrl) {
+      showUploadError("중단 요청 주소를 찾지 못했어요.");
+      return;
+    }
+
+    running = true;
+    if (submitButton) submitButton.disabled = true;
+    queueStop.disabled = true;
+
+    try {
+      const res = await fetch(`${stopUrl}?format=json`, {
+        method: "POST",
+        headers: jsonPostHeaders(),
+      });
+      const payload = await res.json().catch(() => ({ ok: false, message: "응답을 읽지 못했어요." }));
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.message || "중단 요청에 실패했어요.");
+      }
+      showUploadError("");
+      showBulkFeedback(payload.message || "대기 항목을 중단했어요.");
+      if (queueHint) {
+        queueHint.textContent = payload.message || "대기 항목을 중단했어요.";
+      }
+      await pollBatchStatus();
+    } catch (err) {
+      showUploadError((err && err.message) ? err.message : "중단 요청에 실패했어요.");
+    } finally {
+      running = false;
+      if (submitButton) submitButton.disabled = false;
+      queueStop.disabled = false;
+      renderQueue();
+    }
+  });
+
+  queueRetryFailed?.addEventListener("click", async () => {
+    if (running) return;
+    const targets = queueItems.filter((x) => x.status === "failed" && x.retryUrl);
+    if (!targets.length) {
+      showUploadError("재시도할 실패 항목이 없어요.");
+      return;
+    }
+
+    running = true;
+    if (submitButton) submitButton.disabled = true;
+    queueRetryFailed.disabled = true;
+
+    let requested = 0;
+    let requestFailed = 0;
+    for (const target of targets) {
+      try {
+        const res = await fetch(`${target.retryUrl}?format=json`, {
+          method: "POST",
+          headers: jsonPostHeaders(),
+        });
+        const payload = await res.json().catch(() => ({ ok: false }));
+        if (!res.ok || !payload.ok) {
+          requestFailed += 1;
+          continue;
+        }
+        target.status = "uploaded";
+        target.note = "";
+        target.error_message = "";
+        target.errorCode = "";
+        target.confirmUrl = "";
+        requested += 1;
+      } catch (_) {
+        requestFailed += 1;
+      }
+    }
+
+    if (requested > 0) {
+      showUploadError("");
+      showBulkFeedback(`실패 항목 ${requested}건 재시도를 시작했어요.`);
+      if (queueHint) {
+        queueHint.textContent = `실패 항목 ${requested}건 재시도를 시작했어요.`;
+      }
+      startPolling();
+    }
+    if (requestFailed > 0) {
+      showUploadError(`일부 항목(${requestFailed}건)은 재시도 요청에 실패했어요.`);
+      showBulkFeedback(`일괄 재시도 요청: 성공 ${requested}건 · 실패 ${requestFailed}건`, true);
+    } else if (requested > 0) {
+      showBulkFeedback(`일괄 재시도 요청: 성공 ${requested}건`);
+    }
+
+    running = false;
+    if (submitButton) submitButton.disabled = false;
+    renderQueue();
+  });
+
+  queueMore?.addEventListener("click", (e) => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const btn = target.closest("#receipt-queue-toggle-view");
+    if (!btn) return;
+    showAllQueueItems = !showAllQueueItems;
+    renderQueue();
+  });
+
+  queueClear?.addEventListener("click", () => {
+    if (running) return;
+    stopPolling();
+    activeBatchId = 0;
+    activeStatusUrl = "";
+    showAllQueueItems = false;
+    queueItems = [];
+    selectedFiles = [];
+    finishedNoticeBatchId = 0;
+    hideCompleteBanner();
+    showBulkFeedback("");
+    showUploadError("");
+    if (selectedHint) selectedHint.textContent = "";
+    if (fileInput) fileInput.value = "";
+    sessionStorage.removeItem(storageKey);
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete("batch_id");
+      window.history.replaceState({}, "", u.toString());
+    } catch (_) {}
+    renderQueue();
+  });
+
+  form.addEventListener("submit", async (e) => {
+    if (running) {
+      e.preventDefault();
+      return;
+    }
+
+    const nativeFiles = toArray(fileInput?.files || []);
+    const files = selectedFiles.length ? selectedFiles : nativeFiles;
+    const hasText = Boolean((receiptText?.value || "").trim());
+    // DnD 일부 브라우저에서 fileInput.files 재할당이 막히면 selectedFiles만 존재할 수 있음
+    const mustQueueForDroppedSingle = selectedFiles.length > 0 && nativeFiles.length === 0;
+    const shouldQueue = files.length >= 2 || mustQueueForDroppedSingle;
+    if (!shouldQueue) {
+      return;
+    }
+
+    const valid = validateFiles(files);
+    if (!valid.ok) {
+      e.preventDefault();
+      showUploadError(valid.message);
+      return;
+    }
+
+    e.preventDefault();
+    showUploadError("");
+    if (hasText) {
+      receiptText.value = "";
+    }
+    await runBatchUpload(files);
+  });
+
+  restoreQueueState();
+  if (!queueItems.length && initialBatchId > 0 && initialBatchStatusUrl) {
+    activeBatchId = initialBatchId;
+    activeStatusUrl = initialBatchStatusUrl;
+    finishedNoticeBatchId = 0;
+    startPolling();
+  } else if (activeBatchId > 0 && activeStatusUrl) {
+    finishedNoticeBatchId = 0;
+    startPolling();
+  }
+})();
+</script>
+{% endblock %}

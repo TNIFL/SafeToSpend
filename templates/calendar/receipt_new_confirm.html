@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}영수증 확인{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">자동 인식 확인</div>
+      <div class="p">{{ month_key }} · 저장 전에 한 번만 확인해 주세요.</div>
+    </div>
+    <div class="actions">
+      <button
+        type="button"
+        class="btn ghost"
+        onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href='{{ url_for('web_calendar.receipt_new_upload_page', month=month_key, focus=focus, q=q, limit=limit) }}'; }"
+      >
+        이전
+      </button>
+      <a class="btn ghost" href="{{ url_for('web_calendar.receipt_new_upload_page', month=month_key, focus=focus, q=q, limit=limit) }}">다시 업로드</a>
+    </div>
+  </div>
+
+  <div class="card pad" style="max-width:940px; margin-bottom:12px;">
+    <div class="cardTitle">
+      <span>인식 결과</span>
+      <span class="badge primary">2/2 단계</span>
+    </div>
+    <div class="row" style="gap:10px; flex-wrap:wrap; margin-top:10px;">
+      <span class="badge">파일: {{ original_filename }}</span>
+      <span class="badge">종류: {{ receipt_type }}</span>
+      {% if draft_ok %}
+        <span class="badge good">자동 인식 완료</span>
+      {% else %}
+        <span class="badge warn">자동 인식 실패</span>
+      {% endif %}
+    </div>
+    {% if duplicate_suspected %}
+      <div style="margin-top:10px; padding:9px 10px; border-radius:10px; border:1px solid #fed7aa; background:rgba(255,247,237,0.9); color:#9a3412;">
+        <b>중복 확인 필요</b>
+        <span class="small-note" style="color:#9a3412;">· {{ duplicate_hint or "같은 영수증이 이미 처리 중이거나 등록되어 있을 수 있어요. 기존 거래와 중복인지 확인해 주세요." }}</span>
+      </div>
+    {% endif %}
+    {% if draft_error %}
+      <div class="small-note muted2" style="margin-top:8px;">{{ draft_error }}</div>
+    {% endif %}
+    <div class="small-note muted2" style="margin-top:8px;">자동 인식이 틀리면 수정한 값으로 저장하면 됩니다.</div>
+  </div>
+
+  <form method="post" action="{{ url_for('web_calendar.receipt_new_save') }}" class="form-grid" style="max-width:940px;">
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="hidden" name="month" value="{{ month_key }}">
+    <input type="hidden" name="focus" value="{{ focus }}">
+    <input type="hidden" name="q" value="{{ q }}">
+    <input type="hidden" name="limit" value="{{ limit }}">
+
+    <section class="card pad">
+      <div class="cardTitle">
+        <span>영수증 정보</span>
+      </div>
+      <div class="grid cols-2" style="margin-top:12px;">
+        <label class="field">
+          <span class="label">가맹점</span>
+          <input name="merchant" value="{{ view.get('merchant','') }}">
+        </label>
+        <label class="field">
+          <span class="label">결제일시</span>
+          <input name="paid_at" type="datetime-local" value="{{ (view.get('paid_at','')|replace(' ', 'T')) }}">
+        </label>
+        <label class="field">
+          <span class="label">총액(원)</span>
+          <input name="total_krw" value="{{ view.get('total_krw','') }}">
+        </label>
+      </div>
+    </section>
+
+    <section class="card pad">
+      <div class="cardTitle">
+        <span>업무/개인 선택</span>
+      </div>
+
+      <label class="row" style="gap:10px; margin-top:12px; margin-bottom:8px; align-items:flex-start;">
+        <input type="radio" name="expense_kind" value="business" checked>
+        <div><b>업무</b><div class="muted2">업무경비로 반영(증빙 필수)</div></div>
+      </label>
+      <label class="row" style="gap:10px; margin-bottom:8px; align-items:flex-start;">
+        <input type="radio" name="expense_kind" value="personal">
+        <div><b>개인</b><div class="muted2">세금/패키지 반영 안 함</div></div>
+      </label>
+      <label class="row" style="gap:10px; align-items:flex-start;">
+        <input type="radio" name="expense_kind" value="mixed">
+        <div><b>혼합</b><div class="muted2">일단 첨부로 남기고 나중에 확정</div></div>
+      </label>
+
+      <div class="row" style="gap:8px; margin-top:14px; flex-wrap:wrap;">
+        <button class="btn primary" type="submit">완료 · 거래 추가</button>
+        <a class="btn ghost" href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=limit) }}">취소</a>
+      </div>
+    </section>
+  </form>
+</div>
+{% endblock %}

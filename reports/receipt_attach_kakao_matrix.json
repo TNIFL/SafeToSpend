@@ -1,0 +1,1993 @@
+{
+  "generated_at": "2026-03-14T12:55:25+00:00",
+  "matrix_source": "reports/real_data_issue_revalidation_matrix.json",
+  "sample_pool": [
+    {
+      "sample_id": "kakao_electronic_receipt_full",
+      "sample_type": "전자영수증형",
+      "text": "[카카오톡]\n전자영수증\n상호: 테스트상점\n결제금액: 12,300원\n결제일시: 2026-03-14 12:30\n결제수단: 신용카드\n승인번호: A12345",
+      "expected_difficulty": "low",
+      "normalized_text": "[카카오톡]\n전자영수증\n상호: 테스트상점\n결제금액: 12,300원\n결제일시: 2026-03-14 12:30\n결제수단: 신용카드\n승인번호: A12345",
+      "field_presence": {
+        "merchant_or_counterparty": true,
+        "amount": true,
+        "time_or_date": true,
+        "approval_no": true,
+        "card_or_bank": true,
+        "account_hint": false
+      }
+    },
+    {
+      "sample_id": "kakao_transfer_confirm_full",
+      "sample_type": "거래내역 확인형",
+      "text": "[카카오톡]\n거래내역 확인\n받는분: 테스트수취인\n금액: 54,000원\n거래일시: 2026-03-13 09:14\n거래유형: 계좌이체",
+      "expected_difficulty": "low",
+      "normalized_text": "[카카오톡]\n거래내역 확인\n받는분: 테스트수취인\n금액: 54,000원\n거래일시: 2026-03-13 09:14\n거래유형: 계좌이체",
+      "field_presence": {
+        "merchant_or_counterparty": true,
+        "amount": true,
+        "time_or_date": true,
+        "approval_no": false,
+        "card_or_bank": false,
+        "account_hint": true
+      }
+    },
+    {
+      "sample_id": "kakao_card_approval_alert",
+      "sample_type": "카드 승인 알림형",
+      "text": "[카카오톡]\n[카드승인]\n사용처 테스트마트\n승인금액 32,500원\n승인시각 2026/03/12 18:01\n승인번호 887711",
+      "expected_difficulty": "medium",
+      "normalized_text": "[카카오톡]\n[카드승인]\n사용처 테스트마트\n승인금액 32,500원\n승인시각 2026/03/12 18:01\n승인번호 887711",
+      "field_presence": {
+        "merchant_or_counterparty": false,
+        "amount": true,
+        "time_or_date": true,
+        "approval_no": true,
+        "card_or_bank": true,
+        "account_hint": false
+      }
+    },
+    {
+      "sample_id": "kakao_deposit_alert",
+      "sample_type": "입금 알림형",
+      "text": "[카카오뱅크]\n입금 120,000원\n입금자 테스트입금자\n잔액 1,234,567원\n2026-03-11 08:55",
+      "expected_difficulty": "medium",
+      "normalized_text": "[카카오뱅크]\n입금 120,000원\n입금자 테스트입금자\n잔액 1,234,567원\n2026-03-11 08:55",
+      "field_presence": {
+        "merchant_or_counterparty": false,
+        "amount": true,
+        "time_or_date": true,
+        "approval_no": false,
+        "card_or_bank": true,
+        "account_hint": true
+      }
+    },
+    {
+      "sample_id": "kakao_short_summary",
+      "sample_type": "짧은 요약형",
+      "text": "카카오톡 결제 8,900원 2026-03-10",
+      "expected_difficulty": "medium",
+      "normalized_text": "카카오톡 결제 8,900원 2026-03-10",
+      "field_presence": {
+        "merchant_or_counterparty": false,
+        "amount": true,
+        "time_or_date": true,
+        "approval_no": false,
+        "card_or_bank": false,
+        "account_hint": false
+      }
+    },
+    {
+      "sample_id": "kakao_missing_fields",
+      "sample_type": "필드 일부 누락형",
+      "text": "[카카오톡]\n결제확인\n금액: 17,000원\n일시: 2026-03-09 13:44",
+      "expected_difficulty": "medium",
+      "normalized_text": "[카카오톡]\n결제확인\n금액: 17,000원\n일시: 2026-03-09 13:44",
+      "field_presence": {
+        "merchant_or_counterparty": false,
+        "amount": true,
+        "time_or_date": true,
+        "approval_no": false,
+        "card_or_bank": false,
+        "account_hint": false
+      }
+    },
+    {
+      "sample_id": "kakao_multiline_noise",
+      "sample_type": "변형/잡음 포함형",
+      "text": "[카카오톡]\n결제 안내 >>>\n### 상점명: 테스트카페 ###\n총액=4,700원\n일시=2026-03-08 07:41\n추가문구: 광고성 안내 포함",
+      "expected_difficulty": "high",
+      "normalized_text": "[카카오톡]\n결제 안내 >>>\n### 상점명: 테스트카페 ###\n총액=4,700원\n일시=2026-03-08 07:41\n추가문구: 광고성 안내 포함",
+      "field_presence": {
+        "merchant_or_counterparty": false,
+        "amount": true,
+        "time_or_date": true,
+        "approval_no": false,
+        "card_or_bank": false,
+        "account_hint": false
+      }
+    },
+    {
+      "sample_id": "kakao_partial_broken",
+      "sample_type": "누락/변형형",
+      "text": "전자영수증\n금액?? 23100\n승인 2026.03.07\n상호 미기재",
+      "expected_difficulty": "high",
+      "normalized_text": "전자영수증\n금액?? 23100\n승인 2026.03.07\n상호 미기재",
+      "field_presence": {
+        "merchant_or_counterparty": true,
+        "amount": false,
+        "time_or_date": true,
+        "approval_no": true,
+        "card_or_bank": false,
+        "account_hint": false
+      }
+    }
+  ],
+  "case_selection": {
+    "all_cases": [
+      {
+        "case_id": "CASE_A",
+        "title": "월별 거래량 편차 큼",
+        "email": "qa_issue_case_a_20260314_105238_ac267428@example.test",
+        "available": true,
+        "user_pk": 344,
+        "receipt_attach_ready_count": 0,
+        "months": [
+          "2026-01",
+          "2026-02",
+          "2026-03"
+        ]
+      },
+      {
+        "case_id": "CASE_B",
+        "title": "계좌 2개 이상 연동",
+        "email": "qa_issue_case_b_20260314_105238_b5a1c544@example.test",
+        "available": true,
+        "user_pk": 345,
+        "receipt_attach_ready_count": 270,
+        "months": [
+          "2025-12",
+          "2026-01",
+          "2026-02",
+          "2026-03"
+        ]
+      },
+      {
+        "case_id": "CASE_C",
+        "title": "memo/counterparty 풍부",
+        "email": "qa_issue_case_c_20260314_105238_a78eb754@example.test",
+        "available": true,
+        "user_pk": 346,
+        "receipt_attach_ready_count": 123,
+        "months": [
+          "2026-01",
+          "2026-02"
+        ]
+      },
+      {
+        "case_id": "CASE_D",
+        "title": "detail 필드 빈약",
+        "email": "qa_issue_case_d_20260314_105238_ac689961@example.test",
+        "available": true,
+        "user_pk": 347,
+        "receipt_attach_ready_count": 123,
+        "months": [
+          "2026-01",
+          "2026-02"
+        ]
+      },
+      {
+        "case_id": "CASE_E",
+        "title": "receipt_attach 검증 가능",
+        "email": "qa_issue_case_e_20260314_105238_847c7794@example.test",
+        "available": true,
+        "user_pk": 348,
+        "receipt_attach_ready_count": 240,
+        "months": [
+          "2025-12",
+          "2026-01",
+          "2026-02",
+          "2026-03"
+        ]
+      },
+      {
+        "case_id": "CASE_F",
+        "title": "거래량 많음",
+        "email": "qa_issue_case_f_20260314_105238_183f6736@example.test",
+        "available": true,
+        "user_pk": 349,
+        "receipt_attach_ready_count": 0,
+        "months": [
+          "2026-01",
+          "2026-02"
+        ]
+      },
+      {
+        "case_id": "CASE_G",
+        "title": "거래량 적음",
+        "email": "qa_issue_case_g_20260314_105238_777e01ca@example.test",
+        "available": true,
+        "user_pk": 350,
+        "receipt_attach_ready_count": 6,
+        "months": [
+          "2026-02"
+        ]
+      }
+    ],
+    "candidate_cases": [
+      {
+        "case_id": "CASE_B",
+        "user_pk": 345,
+        "tx_id": 3863,
+        "month_key": "2026-02"
+      },
+      {
+        "case_id": "CASE_C",
+        "user_pk": 346,
+        "tx_id": 4211,
+        "month_key": "2026-02"
+      },
+      {
+        "case_id": "CASE_D",
+        "user_pk": 347,
+        "tx_id": 4357,
+        "month_key": "2026-02"
+      },
+      {
+        "case_id": "CASE_E",
+        "user_pk": 348,
+        "tx_id": 4550,
+        "month_key": "2026-02"
+      },
+      {
+        "case_id": "CASE_G",
+        "user_pk": 350,
+        "tx_id": 5019,
+        "month_key": "2026-02"
+      }
+    ],
+    "skipped_cases": [
+      {
+        "case_id": "CASE_A",
+        "status": "skipped",
+        "reason": "no_receipt_attach_candidate"
+      },
+      {
+        "case_id": "CASE_F",
+        "status": "skipped",
+        "reason": "no_receipt_attach_candidate"
+      }
+    ]
+  },
+  "execution_summary": {
+    "samples_count": 8,
+    "candidate_case_count": 5,
+    "runs_total": 40,
+    "expected_min_runs_for_6x3": 18,
+    "met_minimum_runs": true,
+    "verdict_distribution": {
+      "success": 40,
+      "partial": 0,
+      "fail": 0
+    },
+    "stage_fail_distribution": {
+      "submit_failure": 0,
+      "server_route_not_entered": 0,
+      "parser_no_result": 0,
+      "state_transition_missing": 0,
+      "evidence_state_unchanged": 0,
+      "ui_feedback_missing": 0
+    }
+  },
+  "sample_summary": {
+    "kakao_electronic_receipt_full": {
+      "success": 5,
+      "partial": 0,
+      "fail": 0
+    },
+    "kakao_transfer_confirm_full": {
+      "success": 5,
+      "partial": 0,
+      "fail": 0
+    },
+    "kakao_card_approval_alert": {
+      "success": 5,
+      "partial": 0,
+      "fail": 0
+    },
+    "kakao_deposit_alert": {
+      "success": 5,
+      "partial": 0,
+      "fail": 0
+    },
+    "kakao_short_summary": {
+      "success": 5,
+      "partial": 0,
+      "fail": 0
+    },
+    "kakao_missing_fields": {
+      "success": 5,
+      "partial": 0,
+      "fail": 0
+    },
+    "kakao_multiline_noise": {
+      "success": 5,
+      "partial": 0,
+      "fail": 0
+    },
+    "kakao_partial_broken": {
+      "success": 5,
+      "partial": 0,
+      "fail": 0
+    }
+  },
+  "case_summary": {
+    "CASE_B": {
+      "success": 8,
+      "partial": 0,
+      "fail": 0
+    },
+    "CASE_C": {
+      "success": 8,
+      "partial": 0,
+      "fail": 0
+    },
+    "CASE_D": {
+      "success": 8,
+      "partial": 0,
+      "fail": 0
+    },
+    "CASE_E": {
+      "success": 8,
+      "partial": 0,
+      "fail": 0
+    },
+    "CASE_G": {
+      "success": 8,
+      "partial": 0,
+      "fail": 0
+    }
+  },
+  "runs": [
+    {
+      "case_id": "CASE_B",
+      "user_pk": 345,
+      "tx_id": 3863,
+      "month_key": "2026-02",
+      "sample_id": "kakao_electronic_receipt_full",
+      "sample_type": "전자영수증형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/3863/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/3863/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u345/2026-02/tx3863/ee265e22b4bf47529f5a3e19ae5bfa42_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_B",
+      "user_pk": 345,
+      "tx_id": 3863,
+      "month_key": "2026-02",
+      "sample_id": "kakao_transfer_confirm_full",
+      "sample_type": "거래내역 확인형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/3863/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/3863/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u345/2026-02/tx3863/6658abf917be47b7a9cec83f45ba2589_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_B",
+      "user_pk": 345,
+      "tx_id": 3863,
+      "month_key": "2026-02",
+      "sample_id": "kakao_card_approval_alert",
+      "sample_type": "카드 승인 알림형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/3863/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/3863/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u345/2026-02/tx3863/f5aef39566ad4b109b24d216ccbe70c6_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_B",
+      "user_pk": 345,
+      "tx_id": 3863,
+      "month_key": "2026-02",
+      "sample_id": "kakao_deposit_alert",
+      "sample_type": "입금 알림형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/3863/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/3863/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u345/2026-02/tx3863/8e1bf3fde32147a0936efec707b41183_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_B",
+      "user_pk": 345,
+      "tx_id": 3863,
+      "month_key": "2026-02",
+      "sample_id": "kakao_short_summary",
+      "sample_type": "짧은 요약형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/3863/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/3863/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u345/2026-02/tx3863/76c52202736f4057981ecd009dce7646_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_B",
+      "user_pk": 345,
+      "tx_id": 3863,
+      "month_key": "2026-02",
+      "sample_id": "kakao_missing_fields",
+      "sample_type": "필드 일부 누락형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/3863/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/3863/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u345/2026-02/tx3863/1526a9a632074ca98b188a43d87c1781_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_B",
+      "user_pk": 345,
+      "tx_id": 3863,
+      "month_key": "2026-02",
+      "sample_id": "kakao_multiline_noise",
+      "sample_type": "변형/잡음 포함형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/3863/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/3863/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u345/2026-02/tx3863/fdab2e0ff9844729ab59de30ebb541d3_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_B",
+      "user_pk": 345,
+      "tx_id": 3863,
+      "month_key": "2026-02",
+      "sample_id": "kakao_partial_broken",
+      "sample_type": "누락/변형형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/3863/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/3863/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u345/2026-02/tx3863/ecb3b8f4f7c4464781e0830c04430e1f_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_C",
+      "user_pk": 346,
+      "tx_id": 4211,
+      "month_key": "2026-02",
+      "sample_id": "kakao_electronic_receipt_full",
+      "sample_type": "전자영수증형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4211/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4211/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u346/2026-02/tx4211/8ad34a0eb32b4980b5facac06b15156b_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_C",
+      "user_pk": 346,
+      "tx_id": 4211,
+      "month_key": "2026-02",
+      "sample_id": "kakao_transfer_confirm_full",
+      "sample_type": "거래내역 확인형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4211/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4211/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u346/2026-02/tx4211/34a49cf843bd45ff8f976180ffcee890_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_C",
+      "user_pk": 346,
+      "tx_id": 4211,
+      "month_key": "2026-02",
+      "sample_id": "kakao_card_approval_alert",
+      "sample_type": "카드 승인 알림형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4211/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4211/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u346/2026-02/tx4211/7c1bf5acffc940d3bbc89a705ed0e601_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_C",
+      "user_pk": 346,
+      "tx_id": 4211,
+      "month_key": "2026-02",
+      "sample_id": "kakao_deposit_alert",
+      "sample_type": "입금 알림형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4211/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4211/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u346/2026-02/tx4211/5916223e81ce43dd9785708b661b7f95_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_C",
+      "user_pk": 346,
+      "tx_id": 4211,
+      "month_key": "2026-02",
+      "sample_id": "kakao_short_summary",
+      "sample_type": "짧은 요약형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4211/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4211/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u346/2026-02/tx4211/fa0d02b78244428295ceae561ae8c94a_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_C",
+      "user_pk": 346,
+      "tx_id": 4211,
+      "month_key": "2026-02",
+      "sample_id": "kakao_missing_fields",
+      "sample_type": "필드 일부 누락형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4211/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4211/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u346/2026-02/tx4211/fadc70f81c0340229bebb658caf9173c_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_C",
+      "user_pk": 346,
+      "tx_id": 4211,
+      "month_key": "2026-02",
+      "sample_id": "kakao_multiline_noise",
+      "sample_type": "변형/잡음 포함형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4211/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4211/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u346/2026-02/tx4211/ce1ad0c6021b405abf046bd6ddaa294f_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_C",
+      "user_pk": 346,
+      "tx_id": 4211,
+      "month_key": "2026-02",
+      "sample_id": "kakao_partial_broken",
+      "sample_type": "누락/변형형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4211/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4211/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u346/2026-02/tx4211/7ed41d747aff4ec780d41460a1209d30_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_D",
+      "user_pk": 347,
+      "tx_id": 4357,
+      "month_key": "2026-02",
+      "sample_id": "kakao_electronic_receipt_full",
+      "sample_type": "전자영수증형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4357/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4357/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u347/2026-02/tx4357/0ffc0c0f77be409ca9dabcd28b3ae1f9_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_D",
+      "user_pk": 347,
+      "tx_id": 4357,
+      "month_key": "2026-02",
+      "sample_id": "kakao_transfer_confirm_full",
+      "sample_type": "거래내역 확인형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4357/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4357/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u347/2026-02/tx4357/7abe35d794a6407488f1ca7923b1a3e1_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_D",
+      "user_pk": 347,
+      "tx_id": 4357,
+      "month_key": "2026-02",
+      "sample_id": "kakao_card_approval_alert",
+      "sample_type": "카드 승인 알림형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4357/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4357/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u347/2026-02/tx4357/0bb53179089e468ebbb3573fd5c8f3f7_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_D",
+      "user_pk": 347,
+      "tx_id": 4357,
+      "month_key": "2026-02",
+      "sample_id": "kakao_deposit_alert",
+      "sample_type": "입금 알림형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4357/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4357/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u347/2026-02/tx4357/3c948bf03a2f48d69286b2edeaa54a5a_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_D",
+      "user_pk": 347,
+      "tx_id": 4357,
+      "month_key": "2026-02",
+      "sample_id": "kakao_short_summary",
+      "sample_type": "짧은 요약형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4357/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4357/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u347/2026-02/tx4357/7516534fb14f4d4a948888380cb859be_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_D",
+      "user_pk": 347,
+      "tx_id": 4357,
+      "month_key": "2026-02",
+      "sample_id": "kakao_missing_fields",
+      "sample_type": "필드 일부 누락형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4357/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4357/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u347/2026-02/tx4357/c2cae4179ec64f1ab388d8fa13c589ac_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_D",
+      "user_pk": 347,
+      "tx_id": 4357,
+      "month_key": "2026-02",
+      "sample_id": "kakao_multiline_noise",
+      "sample_type": "변형/잡음 포함형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4357/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4357/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u347/2026-02/tx4357/3bd2b4bf4d1b4d259fb8bcdda55cbb9e_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_D",
+      "user_pk": 347,
+      "tx_id": 4357,
+      "month_key": "2026-02",
+      "sample_id": "kakao_partial_broken",
+      "sample_type": "누락/변형형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4357/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4357/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u347/2026-02/tx4357/a209597126784854b78fb6b6d244af5f_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_E",
+      "user_pk": 348,
+      "tx_id": 4550,
+      "month_key": "2026-02",
+      "sample_id": "kakao_electronic_receipt_full",
+      "sample_type": "전자영수증형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4550/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4550/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u348/2026-02/tx4550/afc645c6a74f4ace9879dd3388fca985_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_E",
+      "user_pk": 348,
+      "tx_id": 4550,
+      "month_key": "2026-02",
+      "sample_id": "kakao_transfer_confirm_full",
+      "sample_type": "거래내역 확인형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4550/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4550/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u348/2026-02/tx4550/41f5b00767bb44108b54a47b94572f9d_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_E",
+      "user_pk": 348,
+      "tx_id": 4550,
+      "month_key": "2026-02",
+      "sample_id": "kakao_card_approval_alert",
+      "sample_type": "카드 승인 알림형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4550/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4550/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u348/2026-02/tx4550/aee77a758d7a4a3e9f347889e5ffccda_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_E",
+      "user_pk": 348,
+      "tx_id": 4550,
+      "month_key": "2026-02",
+      "sample_id": "kakao_deposit_alert",
+      "sample_type": "입금 알림형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4550/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4550/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u348/2026-02/tx4550/ba3b937a892b4a978ade34a7c46706bb_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_E",
+      "user_pk": 348,
+      "tx_id": 4550,
+      "month_key": "2026-02",
+      "sample_id": "kakao_short_summary",
+      "sample_type": "짧은 요약형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4550/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4550/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u348/2026-02/tx4550/46d8d6c872a346789a05aaae328965f5_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_E",
+      "user_pk": 348,
+      "tx_id": 4550,
+      "month_key": "2026-02",
+      "sample_id": "kakao_missing_fields",
+      "sample_type": "필드 일부 누락형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4550/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4550/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u348/2026-02/tx4550/0a0d8a9a9d894e90baefab8bf1fafbf6_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_E",
+      "user_pk": 348,
+      "tx_id": 4550,
+      "month_key": "2026-02",
+      "sample_id": "kakao_multiline_noise",
+      "sample_type": "변형/잡음 포함형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4550/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4550/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u348/2026-02/tx4550/3784107dc2f24b90899126f1889e8489_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_E",
+      "user_pk": 348,
+      "tx_id": 4550,
+      "month_key": "2026-02",
+      "sample_id": "kakao_partial_broken",
+      "sample_type": "누락/변형형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/4550/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/4550/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u348/2026-02/tx4550/21b379e921bc42b1b61b3fabebbb6ab5_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_G",
+      "user_pk": 350,
+      "tx_id": 5019,
+      "month_key": "2026-02",
+      "sample_id": "kakao_electronic_receipt_full",
+      "sample_type": "전자영수증형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/5019/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/5019/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u350/2026-02/tx5019/26e2ea13fa544ce8a5c288a4ca0aff28_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_G",
+      "user_pk": 350,
+      "tx_id": 5019,
+      "month_key": "2026-02",
+      "sample_id": "kakao_transfer_confirm_full",
+      "sample_type": "거래내역 확인형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/5019/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/5019/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u350/2026-02/tx5019/373368f1550e487da20c936905147054_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_G",
+      "user_pk": 350,
+      "tx_id": 5019,
+      "month_key": "2026-02",
+      "sample_id": "kakao_card_approval_alert",
+      "sample_type": "카드 승인 알림형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/5019/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/5019/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u350/2026-02/tx5019/ae61f2ffaa9e4849a9eef34668818e99_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_G",
+      "user_pk": 350,
+      "tx_id": 5019,
+      "month_key": "2026-02",
+      "sample_id": "kakao_deposit_alert",
+      "sample_type": "입금 알림형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/5019/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/5019/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u350/2026-02/tx5019/955cf77c110f413fb8df48db1b25217b_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_G",
+      "user_pk": 350,
+      "tx_id": 5019,
+      "month_key": "2026-02",
+      "sample_id": "kakao_short_summary",
+      "sample_type": "짧은 요약형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/5019/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/5019/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u350/2026-02/tx5019/1933667e69f242eeb43aa05892bee2a8_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_G",
+      "user_pk": 350,
+      "tx_id": 5019,
+      "month_key": "2026-02",
+      "sample_id": "kakao_missing_fields",
+      "sample_type": "필드 일부 누락형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/5019/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/5019/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u350/2026-02/tx5019/645b9a8d6c2a421f860acc94da83b9e1_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_G",
+      "user_pk": 350,
+      "tx_id": 5019,
+      "month_key": "2026-02",
+      "sample_id": "kakao_multiline_noise",
+      "sample_type": "변형/잡음 포함형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/5019/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/5019/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u350/2026-02/tx5019/b39a589068b44251b781fd20017da149_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    },
+    {
+      "case_id": "CASE_G",
+      "user_pk": 350,
+      "tx_id": 5019,
+      "month_key": "2026-02",
+      "sample_id": "kakao_partial_broken",
+      "sample_type": "누락/변형형",
+      "http": {
+        "initial_status_code": 302,
+        "final_status_code": 200,
+        "redirect_chain": [
+          "/dashboard/review/evidence/5019/confirm?month=2026-02&focus=receipt_attach&q=&limit=30&partial=1"
+        ],
+        "final_path": "/dashboard/review/evidence/5019/confirm"
+      },
+      "stages": {
+        "submit_success": true,
+        "server_route_entered": true,
+        "parser_processed": true,
+        "parser_status": "ok",
+        "step_transition": true,
+        "evidence_state_changed": true,
+        "ui_feedback": true
+      },
+      "evidence_after": {
+        "status": "attached",
+        "file_key": "u350/2026-02/tx5019/c41c7571ac9b43c597ea034e80494daf_e-receipt.txt",
+        "note_prefix": "receipt_meta:{\"receipt_type\": \"electronic\", \"capture_mode\": \"text\"}"
+      },
+      "ui_feedback": {
+        "has_step_success": true,
+        "has_parser_badge": true,
+        "has_success_badge": true,
+        "has_parser_fail_badge": false,
+        "flash_messages": [],
+        "feedback_type": "step_or_parser_badge",
+        "feedback_present": true
+      },
+      "failed_stages": [],
+      "verdict": "success"
+    }
+  ]
+}

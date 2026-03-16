@@ -1,0 +1,37 @@
+{
+  "last_run_at": "2026-03-07T09:23:55Z",
+  "started_at": "2026-03-07T09:23:55Z",
+  "ok": false,
+  "duration_ms": 70,
+  "step_results": [
+    {
+      "name": "refresh_nhis_rates",
+      "ok": false,
+      "error": "NhisRatesFetchError",
+      "duration_ms": 15
+    },
+    {
+      "name": "refresh_asset_datasets",
+      "ok": false,
+      "error": "AssetDatasetFetchError",
+      "duration_ms": 1
+    },
+    {
+      "name": "verify_official_refs",
+      "ok": false,
+      "exit_code": 1,
+      "duration_ms": 3
+    }
+  ],
+  "errors": [
+    "refresh_nhis_rates:NhisRatesFetchError",
+    "refresh_asset_datasets:AssetDatasetFetchError",
+    "verify_official_refs:FAILED"
+  ],
+  "nhis_snapshot_id": null,
+  "asset_snapshot_ids": {
+    "vehicle": null,
+    "home": null
+  },
+  "manifest_hash": "8aeeb110ed364c18c18878cb6620864df332a194ee4dc909c7762ea927be248d"
+}

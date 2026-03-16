@@ -1,0 +1,31 @@
+{% set _tone = tone if tone in ['info', 'warn'] else 'info' %}
+{% set _icon = icon if icon else '✅' %}
+{% set _more_text = more_text if more_text else '자세히' %}
+{% set _sticky = true if sticky is defined and sticky else false %}
+<div
+  class="card pad guidance-strip"
+  role="note"
+  style="
+    margin-bottom:12px;
+    padding:10px 12px;
+    {% if _sticky %}position:sticky;top:78px;z-index:40;{% endif %}
+    border-color:{% if _tone == 'warn' %}rgba(245,158,11,.28){% else %}rgba(37,99,235,.18){% endif %};
+    background:{% if _tone == 'warn' %}rgba(245,158,11,.08){% else %}rgba(37,99,235,.05){% endif %};
+  "
+>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:flex-start;gap:8px;min-width:0;">
+      <span aria-hidden="true" style="font-size:.9rem;line-height:1.4;">{{ _icon }}</span>
+      <div style="min-width:0;">
+        <div style="font-size:.87rem;font-weight:900;color:#0f172a;line-height:1.35;">{{ title }}</div>
+        <div style="font-size:.82rem;color:#334155;line-height:1.35;">{{ message }}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <a class="btn small ghost" href="{{ cta_href }}">{{ cta_text }}</a>
+      {% if more_href %}
+        <a class="small-note muted2" href="{{ more_href }}" style="font-weight:900;white-space:nowrap;">{{ _more_text }}</a>
+      {% endif %}
+    </div>
+  </div>
+</div>

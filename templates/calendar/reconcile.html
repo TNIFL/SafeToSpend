@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block title %}대사 리포트{% endblock %}
+
+{% block head_extra %}
+<style>
+  .reconcile-action-row{
+    margin-top:8px;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+  }
+  .reconcile-action-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:84px;
+    white-space:nowrap;
+    flex:0 0 auto;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container has-side-guide-layout">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">대사 리포트</div>
+      <div class="p">{{ month_key }} · 어디를 고치면 월 마감이 빨라지는지 한눈에 확인해요.</div>
+    </div>
+    <div class="page-actions">
+      <div class="month-switch">
+        <a class="btn small ghost" href="{{ url_for('web_calendar.reconcile', month=prev_month, account=account_filter_value) }}">◀</a>
+        <span class="badge primary">{{ month_key }}</span>
+        <a class="btn small ghost" href="{{ url_for('web_calendar.reconcile', month=next_month, account=account_filter_value) }}">▶</a>
+      </div>
+      <a class="btn ghost" href="{{ url_for('web_calendar.review', month=month_key, account=account_filter_value) }}">정리하기</a>
+      <a class="btn primary" href="{{ url_for('web_package.page', month=month_key, account=account_filter_value) }}">패키지 보기</a>
+    </div>
+  </div>
+
+  <form class="card pad" style="margin-bottom:12px;" method="get" action="{{ url_for('web_calendar.reconcile') }}">
+    <input type="hidden" name="month" value="{{ month_key }}">
+    <div class="row" style="gap:10px; align-items:end; flex-wrap:wrap;">
+      <label class="field" style="min-width:220px; margin:0;">
+        <span class="label">계좌 선택</span>
+        <select name="account" onchange="this.form.submit()">
+          <option value="all" {% if account_filter_value == 'all' %}selected{% endif %}>전체</option>
+          <option value="unassigned" {% if account_filter_value == 'unassigned' %}selected{% endif %}>미지정</option>
+          {% for acc in account_options %}
+            <option value="{{ acc.id }}" {% if account_filter_value == (acc.id|string) %}selected{% endif %}>{{ acc.display_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <span class="badge">현재 기준: {{ account_filter_name }}</span>
+    </div>
+  </form>
+
+  {% set guide_title = "대사 리포트 사용법" %}
+  {% set guide_lines = [
+    "누락·미분류·중복 의심 순서로 차례대로 확인하세요.",
+    "각 카드의 이동 버튼으로 바로 수정 화면으로 이동하세요.",
+    "정리 후 다시 열어 남은 건수가 줄었는지 확인하세요."
+  ] %}
+  {% set guide_hint = "거래가 없으면 먼저 내역 가져오기부터 진행해 주세요." %}
+  {% set guide_cta_text = "대사 리포트 가이드" %}
+  {% set guide_cta_href = url_for('web_dashboard.guide', month=month_key, from='reconcile') ~ '#reconcile' %}
+  {% set guide_more_href = url_for('web_dashboard.guide', month=month_key, from='reconcile') ~ '#messages' %}
+  {% include "components/usage_side_guide.html" %}
+
+  {% if not has_transactions %}
+    <div class="card pad">
+      <div class="h2">이번 달 거래 데이터가 아직 없어요</div>
+      <div class="p" style="margin-top:6px;">파일을 가져오면 대사 리포트가 자동으로 채워집니다.</div>
+      <div style="margin-top:10px;">
+        <a class="btn primary" href="{{ import_url }}">내역 가져오기</a>
+      </div>
+    </div>
+  {% else %}
+    <div class="grid cols-2" style="margin-bottom:12px;">
+      <div class="card pad">
+        <div class="cardTitle">
+          <span>월 합계</span>
+          <span class="badge">{{ tx_total }}건</span>
+        </div>
+        <div class="metrics" style="margin-top:12px;">
+          <div class="metric">
+            <div class="label">수입 합계</div>
+            <div class="value">{{ "{:,}".format(income_total) }}원</div>
+          </div>
+          <div class="metric">
+            <div class="label">업무 경비</div>
+            <div class="value">{{ "{:,}".format(expense_business_total) }}원</div>
+          </div>
+          <div class="metric">
+            <div class="label">개인 지출</div>
+            <div class="value">{{ "{:,}".format(expense_personal_total) }}원</div>
+          </div>
+          <div class="metric">
+            <div class="label">수입 제외(비수입)</div>
+            <div class="value">{{ "{:,}".format(non_income_total) }}원</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card pad">
+        <div class="cardTitle">
+          <span>증빙 필수 누락</span>
+          {% if missing_required_count > 0 %}
+            <span class="badge bad">{{ missing_required_count }}건</span>
+          {% else %}
+            <span class="badge good">0건</span>
+          {% endif %}
+        </div>
+        <div class="p" style="margin-top:10px;">누락 금액: <b>{{ "{:,}".format(missing_required_amount) }}원</b></div>
+        <div class="small-note muted2" style="margin-top:6px;">필수 누락부터 처리하면 패키지 통과 속도가 빨라집니다.</div>
+        <div style="margin-top:10px;">
+          <a class="btn small {% if missing_required_count > 0 %}primary{% else %}ghost{% endif %}" href="{{ required_url }}">정리하기로 이동</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-bottom:12px;">
+      <div class="card pad">
+        <div class="cardTitle">
+          <span>미분류/혼합</span>
+          <span class="badge warn">
+            {{ income_unknown_count + expense_unknown_count + mixed_count }}건
+          </span>
+        </div>
+        <div class="small-note muted2" style="margin-top:8px;">
+          수입 미분류 {{ income_unknown_count }} · 지출 미분류 {{ expense_unknown_count }} · 혼합 {{ mixed_count }}
+        </div>
+
+        {% if review_rows %}
+          <div class="vlist" style="margin-top:10px;">
+            {% for row in review_rows %}
+              <div class="vitem" style="padding:10px;">
+                <div class="row" style="justify-content:space-between; gap:8px; align-items:flex-start;">
+                  <div>
+                    <div><b>{{ row.counterparty }}</b> <span class="muted2">· {{ row.occurred_at.strftime('%m-%d %H:%M') }}</span></div>
+                    <div class="muted2" style="margin-top:4px;">{{ row.state_text }} · {{ row.reason_text }}</div>
+                    {% if row.account_badge %}
+                      <div style="margin-top:6px;">
+                        <span class="badge" style="border-color: {{ row.account_badge.color_hex }}55; color: {{ row.account_badge.color_hex }};">
+                          ● {{ row.account_badge.name }}
+                        </span>
+                      </div>
+                    {% endif %}
+                  </div>
+                  <div style="text-align:right;">
+                    <div class="badge">{{ "{:,}".format(row.amount_krw) }}원</div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="small-note muted2" style="margin-top:10px;">지금은 미분류/혼합 항목이 없어요.</div>
+        {% endif %}
+
+        <div style="margin-top:10px;">
+          <a class="btn small ghost" href="{{ review_url }}">정리하기로 이동</a>
+        </div>
+      </div>
+
+      <div class="card pad">
+        <div class="cardTitle">
+          <span>중복 의심 거래</span>
+          {% if duplicate_rows %}
+            <span class="badge warn">{{ duplicate_rows|length }}건</span>
+          {% else %}
+            <span class="badge good">0건</span>
+          {% endif %}
+        </div>
+        <div class="small-note muted2" style="margin-top:8px;">금액/날짜/거래처가 비슷한 거래를 자동으로 찾아 보여줍니다.</div>
+
+        {% if duplicate_rows %}
+          <div class="vlist" style="margin-top:10px;">
+            {% for d in duplicate_rows %}
+              <div class="vitem" style="padding:10px;">
+                <div><b>{{ d.counterparty or '알 수 없음' }}</b> · {{ d.date_kst }}</div>
+                <div class="muted2" style="margin-top:4px;">{{ "{:,}".format(d.amount_krw or 0) }}원 · {{ d.why or '유사 거래 확인 필요' }}</div>
+                {% if d.account_badge_a or d.account_badge_b %}
+                  <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
+                    {% if d.account_badge_a %}
+                      <span class="badge" style="border-color: {{ d.account_badge_a.color_hex }}55; color: {{ d.account_badge_a.color_hex }};">
+                        ● {{ d.account_badge_a.name }}
+                      </span>
+                    {% endif %}
+                    {% if d.account_badge_b and (d.account_badge_b.name != (d.account_badge_a.name if d.account_badge_a else '') or d.account_badge_b.color_hex != (d.account_badge_a.color_hex if d.account_badge_a else '')) %}
+                      <span class="badge" style="border-color: {{ d.account_badge_b.color_hex }}55; color: {{ d.account_badge_b.color_hex }};">
+                        ● {{ d.account_badge_b.name }}
+                      </span>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="small-note muted2" style="margin-top:10px;">지금은 중복 의심 거래가 없어요.</div>
+        {% endif %}
+
+        <div style="margin-top:10px;">
+          <a class="btn small ghost" href="{{ duplicate_url }}">정리하기로 이동</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-bottom:12px;">
+      <div class="card pad">
+        <div class="cardTitle">
+          <span>비정상적으로 큰 거래</span>
+          {% if outlier_rows %}
+            <span class="badge warn">{{ outlier_rows|length }}건</span>
+          {% else %}
+            <span class="badge good">0건</span>
+          {% endif %}
+        </div>
+        <div class="small-note muted2" style="margin-top:8px;">최근 평균 대비 크게 튄 거래를 표시합니다. 실수/누락 여부만 빠르게 확인하세요.</div>
+
+        {% if outlier_rows %}
+          <div class="vlist" style="margin-top:10px;">
+            {% for o in outlier_rows %}
+              <div class="vitem" style="padding:10px;">
+                <div class="row" style="justify-content:space-between; gap:8px; align-items:flex-start;">
+                  <div>
+                    <div><b>{{ o.counterparty or '알 수 없음' }}</b> · {{ o.occurred_at.strftime('%m-%d %H:%M') if o.occurred_at else '' }}</div>
+                    <div class="muted2" style="margin-top:4px;">{{ o.reason }}</div>
+                    {% if o.account_badge %}
+                      <div style="margin-top:6px;">
+                        <span class="badge" style="border-color: {{ o.account_badge.color_hex }}55; color: {{ o.account_badge.color_hex }};">
+                          ● {{ o.account_badge.name }}
+                        </span>
+                      </div>
+                    {% endif %}
+                  </div>
+                  <div style="text-align:right;">
+                    <span class="badge">{{ "{:,}".format(o.amount_krw or 0) }}원</span>
+                  </div>
+                </div>
+                <div class="reconcile-action-row">
+                  <a class="btn small ghost reconcile-action-btn" href="{{ url_for('web_calendar.review', month=month_key, lane='review', focus=('income_confirm' if o.direction == 'in' else 'expense_confirm'), q=(o.counterparty or ''), limit=30, account=account_filter_value) }}">확인하기</a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="small-note muted2" style="margin-top:10px;">이번 달에는 큰 이상치가 보이지 않아요.</div>
+        {% endif %}
+      </div>
+
+      <div class="card pad">
+        <div class="cardTitle">
+          <span>누락 가능성 힌트</span>
+          {% if industry_hints %}
+            <span class="badge warn">{{ industry_hints|length }}개</span>
+          {% else %}
+            <span class="badge">없음</span>
+          {% endif %}
+        </div>
+        <div class="small-note muted2" style="margin-top:8px;">업종 기준으로 자주 쓰는 비용이 안 보이면 한 번 더 체크해 보세요.</div>
+
+        {% if industry_hints %}
+          <div class="vlist" style="margin-top:10px;">
+            {% for h in industry_hints %}
+              <div class="vitem" style="padding:10px;">
+                <div><b>{{ h.title }}</b></div>
+                <div class="muted2" style="margin-top:4px;">{{ h.message }}</div>
+                <div class="reconcile-action-row">
+                  <a class="btn small ghost reconcile-action-btn" href="{{ url_for('web_calendar.review', month=month_key, lane='review', focus='expense_confirm', q=(h.search_q or ''), limit=30, account=account_filter_value) }}">확인하기</a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="small-note muted2" style="margin-top:10px;">이번 달에는 추가 힌트가 없어요.</div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

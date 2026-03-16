@@ -1,0 +1,95 @@
+{
+  "generated_at_utc": "2026-03-12T21:09:53",
+  "month_key": "2026-03",
+  "scanned_users": 97,
+  "official_guard_status": {
+    "valid": false,
+    "reason": "value_mismatch",
+    "message": "공식 기준 변경이 감지되어 숫자 표시를 잠시 중단했어요. 관리자 확인이 필요해요.",
+    "last_checked_at": "2026-03-07T09:23:55Z",
+    "mismatch_count": 8,
+    "network_error_count": 0
+  },
+  "nhis_ready_status": {
+    "ready": false,
+    "reason": "value_mismatch",
+    "message": "공식 기준 변경이 감지되어 숫자 표시를 잠시 중단했어요. 관리자 확인이 필요해요.",
+    "snapshot_year": 0,
+    "property_points_table_loaded": false
+  },
+  "snapshot_runtime_status": {
+    "snapshot_exists": true,
+    "is_stale": false,
+    "is_fallback_default": false,
+    "update_error": "",
+    "effective_year": 2026,
+    "fetched_at": "2026-03-03T04:06:40"
+  },
+  "accuracy_level_distribution": [
+    {
+      "key": "blocked",
+      "count": 97,
+      "percent": 100.0
+    }
+  ],
+  "reason_distribution": [
+    {
+      "key": "missing_snapshot",
+      "count": 97,
+      "percent": 100.0
+    }
+  ],
+  "blocked_root_cause_distribution": [
+    {
+      "key": "official_guard_not_ready:value_mismatch",
+      "count": 97,
+      "percent": 100.0
+    }
+  ],
+  "membership_and_input_presence": [
+    {
+      "key": "membership_type_present",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "key": "salary_monthly_krw_present",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "key": "annual_income_krw_present",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "key": "non_salary_annual_income_krw_present",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "key": "property_tax_base_total_krw_present",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "key": "financial_income_annual_krw_present",
+      "count": 0,
+      "percent": 0.0
+    }
+  ],
+  "member_type_distribution": [
+    {
+      "key": "unknown",
+      "count": 97,
+      "percent": 100.0
+    }
+  ],
+  "potential_if_snapshot_ready": {
+    "high_confidence_inputs_ready_count": 0,
+    "high_confidence_inputs_ready_percent": 0.0,
+    "exact_ready_inputs_ready_count": 0,
+    "exact_ready_inputs_ready_percent": 0.0
+  },
+  "errors": []
+}

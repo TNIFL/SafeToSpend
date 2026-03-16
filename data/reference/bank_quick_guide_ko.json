@@ -1,0 +1,334 @@
+{
+  "updated_at": "2026-03-08T00:00:00Z",
+  "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account",
+  "banks": [
+    {
+      "bank_code": "0002",
+      "bank_name": "산업은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://www.kdb.co.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "KDB산업은행 기업인터넷뱅킹 접속 후 로그인",
+        "USB 1개 사용 시: 뱅킹관리 > 조회서비스 > 빠른조회 서비스 신청",
+        "USB 2개 이상 사용 시: 뱅킹관리 > 조회서비스 > 빠른조회 서비스(다중매체) 신청"
+      ],
+      "personal_steps": [
+        "KDB산업은행 개인인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0003",
+      "bank_name": "기업은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://www.ibk.co.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "IBK기업은행 기업인터넷뱅킹 접속 후 로그인",
+        "mybank > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "IBK기업은행 개인인터넷뱅킹 접속 후 로그인",
+        "mybank > 편의서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0004",
+      "bank_name": "국민은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://obank.kbstar.com",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "KB국민 기업인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "KB국민 개인인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0007",
+      "bank_name": "수협은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://www.suhyup-bank.com",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "수협은행 기업인터넷뱅킹 접속 후 로그인",
+        "서비스관리 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "수협은행 개인인터넷뱅킹 접속 후 로그인",
+        "서비스관리 > 조회서비스 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0011",
+      "bank_name": "농협은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://banking.nonghyup.com",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "NH농협 기업인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 편의서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "NH농협 개인인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 편의서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0020",
+      "bank_name": "우리은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://spib.wooribank.com",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "우리은행 기업인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "우리은행 개인인터넷뱅킹 또는 WON뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0023",
+      "bank_name": "SC제일은행",
+      "service_name": "스피드조회 서비스",
+      "homepage_url": "https://www.standardchartered.co.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "SC제일 기업 First Biz 또는 Straight2Bank 접속 후 로그인",
+        "서비스관리 > 조회서비스 신청 메뉴 이동",
+        "스피드조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "SC제일 개인인터넷뱅킹 접속 후 로그인",
+        "서비스관리 > 조회서비스 메뉴 이동",
+        "스피드조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0027",
+      "bank_name": "씨티은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://www.citibank.co.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "씨티은행 기업인터넷뱅킹 접속 후 로그인",
+        "조회서비스 > 빠른조회 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "씨티은행 개인인터넷뱅킹 접속 후 로그인",
+        "조회서비스 > 빠른조회 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0031",
+      "bank_name": "아이엠뱅크",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://www.imbank.co.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "아이엠뱅크 인터넷뱅킹 접속 후 로그인",
+        "고객센터 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "아이엠뱅크 인터넷뱅킹 접속 후 로그인",
+        "고객센터 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0032",
+      "bank_name": "부산은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://www.busanbank.co.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "BNK부산은행 기업인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "BNK부산은행 개인인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0034",
+      "bank_name": "광주은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://www.kjbank.com",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "광주은행 기업인터넷뱅킹 접속 후 로그인",
+        "서비스관리 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "광주은행 개인인터넷뱅킹 접속 후 로그인",
+        "서비스관리 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0035",
+      "bank_name": "제주은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://www.e-jejubank.com",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "제주은행 인터넷뱅킹 접속 후 로그인",
+        "편의서비스 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "제주은행 인터넷뱅킹 접속 후 로그인",
+        "편의서비스 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0037",
+      "bank_name": "전북은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://www.jbbank.co.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "전북은행 인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "전북은행 인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0039",
+      "bank_name": "경남은행",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://www.knbank.co.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "경남은행 인터넷뱅킹 접속 후 로그인",
+        "편의서비스 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "경남은행 인터넷뱅킹 접속 후 로그인",
+        "편의서비스 > 조회서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0045",
+      "bank_name": "새마을금고",
+      "service_name": "간편조회 서비스",
+      "homepage_url": "https://www.kfcc.co.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "가까운 새마을금고 영업점 방문",
+        "빠른조회(간편조회) 서비스 신청서 작성",
+        "신청 완료 후 홈페이지/앱에서 사용 등록 확인"
+      ],
+      "personal_steps": [
+        "새마을금고 홈페이지 또는 앱 접속 후 로그인",
+        "조회서비스/편의서비스 메뉴 이동",
+        "간편조회 서비스 신청 후 저장"
+      ],
+      "extra_note": "영업점 신청이 필요한 경우가 있어요. 영업점 안내를 먼저 확인해 주세요."
+    },
+    {
+      "bank_code": "0048",
+      "bank_name": "신협중앙회",
+      "service_name": "빠른조회 서비스",
+      "homepage_url": "https://openbank.cu.co.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "신협 기업인터넷뱅킹 접속 후 로그인",
+        "조회/편의서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "신협 개인인터넷뱅킹 접속 후 로그인",
+        "조회/편의서비스 신청 메뉴 이동",
+        "빠른조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0071",
+      "bank_name": "우체국",
+      "service_name": "조회전용 서비스",
+      "homepage_url": "https://www.epostbank.go.kr",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "우체국 인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회전용 서비스 신청 메뉴 이동",
+        "조회전용 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "우체국 인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회전용 서비스 신청 메뉴 이동",
+        "조회전용 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0081",
+      "bank_name": "하나은행",
+      "service_name": "즉시조회 서비스",
+      "homepage_url": "https://www.kebhana.com",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "하나은행 기업인터넷뱅킹 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 신청 메뉴 이동",
+        "즉시조회 서비스 신청 후 저장"
+      ],
+      "personal_steps": [
+        "하나은행 개인인터넷뱅킹 또는 하나원큐 접속 후 로그인",
+        "뱅킹관리 > 조회서비스 메뉴 이동",
+        "즉시조회 서비스 신청 후 저장"
+      ]
+    },
+    {
+      "bank_code": "0088",
+      "bank_name": "신한은행",
+      "service_name": "바로바로서비스",
+      "homepage_url": "https://bank.shinhan.com",
+      "intro_notice": "이 은행은 먼저 빠른조회 등록이 필요해요.",
+      "corporate_steps": [
+        "신한은행 기업인터넷뱅킹 접속 후 로그인",
+        "편의서비스 > 조회서비스 신청 메뉴 이동",
+        "바로바로서비스(또는 빠른서비스) 신청 후 저장"
+      ],
+      "personal_steps": [
+        "신한 SOL 또는 개인인터넷뱅킹 접속 후 로그인",
+        "편의서비스 > 조회서비스 신청 메뉴 이동",
+        "바로바로서비스(또는 빠른서비스) 신청 후 저장"
+      ],
+      "extra_note": "회원가입이 필요한 화면이 먼저 나오면 가입 완료 후 다시 신청해 주세요."
+    }
+  ],
+  "notes": [
+    "사용자 제공 은행별 빠른조회 신청 가이드를 기준으로 정규화한 데이터입니다."
+  ]
+}

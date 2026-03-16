@@ -1,0 +1,83 @@
+{
+  "allowed_domains": [
+    "nhis.or.kr",
+    "law.go.kr",
+    "mohw.go.kr",
+    "nts.go.kr"
+  ],
+  "targets": [
+    {
+      "key": "nhis_health_rate",
+      "url": "https://www.nhis.or.kr/lm/lmxsrv/law/lawLinkContentView.do?LINKCODE=c004400000&SEQ=28",
+      "patterns": [
+        "건강보험(?:료)?율",
+        "1만분의\\s*719",
+        "점수당\\s*금액"
+      ],
+      "keywords": [
+        "건강보험",
+        "보험료율",
+        "점수당",
+        "원"
+      ],
+      "timeout": 8
+    },
+    {
+      "key": "nhis_income_cycle",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lspttninfSeq=69493",
+      "patterns": [
+        "1\\s*월.*10\\s*월",
+        "11\\s*월.*12\\s*월"
+      ],
+      "keywords": [
+        "11월",
+        "12월",
+        "소득"
+      ],
+      "timeout": 8
+    },
+    {
+      "key": "mohw_ltc_rate",
+      "url": "https://www.mohw.go.kr/board.es?act=view&bid=0027&list_no=1487817&mid=a10503010200",
+      "patterns": [
+        "장기요양",
+        "13\\.14\\s*%",
+        "0\\.9448\\s*%"
+      ],
+      "keywords": [
+        "장기요양",
+        "%"
+      ],
+      "timeout": 8
+    },
+    {
+      "key": "nts_income_tax_table",
+      "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7873&mi=6594",
+      "patterns": [
+        "과세표준",
+        "누진공제",
+        "세율"
+      ],
+      "keywords": [
+        "과세표준",
+        "누진공제",
+        "세율"
+      ],
+      "timeout": 8
+    },
+    {
+      "key": "asset_vehicle_reference",
+      "url": "https://www.law.go.kr/법령/지방세법",
+      "patterns": [
+        "자동차",
+        "지방세"
+      ],
+      "keywords": [
+        "자동차",
+        "지방세",
+        "시가표준"
+      ],
+      "timeout": 8
+    }
+  ]
+}

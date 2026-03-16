@@ -1,0 +1,793 @@
+{% extends "base.html" %}
+{% block title %}계정 설정 | 쓸수있어{% endblock %}
+{% from "components/form_fields.html" import number_field, text_field %}
+
+{% block head_extra %}
+<style>
+  .account-wrap{max-width:1120px;margin:0 auto;padding:26px 16px 60px;}
+  .account-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;}
+  .account-title{margin:0;font-size:clamp(1.45rem, 2.2vw, 1.8rem);font-weight:950;letter-spacing:-.6px;line-height:1.2;}
+  .account-sub{margin-top:6px;color:var(--muted);line-height:1.55;font-size:.95rem;max-width:860px;}
+  .account-grid{display:grid;grid-template-columns:1.28fr .92fr;gap:14px;align-items:start;}
+  .account-col{display:grid;gap:14px;}
+  .acc-card{padding:16px;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:var(--shadow-sm);}
+  .acc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  .acc-title{margin:0;font-size:1.06rem;font-weight:900;letter-spacing:-.2px;}
+  .acc-desc{margin:4px 0 0;color:var(--muted);font-size:.92rem;line-height:1.6;}
+  .acc-kv{display:grid;grid-template-columns:112px 1fr;gap:8px 12px;margin-top:10px;font-size:.95rem;}
+  .acc-kv dt{color:var(--muted-2);font-weight:800;}
+  .acc-kv dd{margin:0;font-weight:850;}
+  .readonly{display:flex;align-items:center;min-height:42px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);font-weight:850;}
+  .acc-field{margin-top:10px;}
+  .acc-pref-grid{
+    margin-top:10px;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+  .acc-pref-item{
+    padding:10px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:var(--surface-2);
+  }
+  .acc-label{display:block;margin-bottom:7px;color:var(--muted-2);font-size:.88rem;font-weight:850;}
+  .acc-input{
+    width:100%;height:42px;padding:0 12px;border-radius:12px;border:1px solid var(--line);
+    background:#fff;color:var(--text);outline:none;
+  }
+  .acc-input:focus{border-color:rgba(37,99,235,.40);box-shadow:0 0 0 4px rgba(37,99,235,.10);}
+  .acc-help{margin-top:6px;color:var(--muted);font-size:.82rem;line-height:1.55;}
+  .acc-radio-list{display:grid;gap:8px;}
+  .acc-radio{
+    display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);
+    font-size:.95rem;
+  }
+  .acc-radio input{margin-top:2px;}
+  .acc-inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .acc-divider{height:1px;background:var(--line);margin:14px 0;}
+  .acc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .acc-link-grid{display:grid;gap:8px;margin-top:8px;}
+  .acc-link-item{
+    display:flex;justify-content:space-between;gap:10px;align-items:center;
+    padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);
+  }
+  .acc-link-title{font-weight:850;font-size:.93rem;}
+  .acc-link-sub{margin-top:3px;color:var(--muted);font-size:.82rem;line-height:1.5;}
+  .acc-chip{
+    display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;
+    border:1px solid var(--line);background:#fff;color:var(--muted);font-size:.78rem;font-weight:900;
+  }
+  .acc-link-list{display:grid;gap:8px;margin-top:8px;}
+  .acc-link-row{
+    display:flex;justify-content:space-between;gap:8px;align-items:center;
+    padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);
+  }
+  .acc-link-main{font-size:.9rem;font-weight:850;}
+  .acc-link-meta{margin-top:3px;color:var(--muted);font-size:.8rem;}
+  .acc-warn{
+    border:1px solid rgba(239,68,68,.24);background:rgba(239,68,68,.05);border-radius:14px;padding:12px;
+  }
+  .acc-warn-title{font-size:.95rem;font-weight:900;color:#991b1b;}
+  .acc-warn-desc{margin-top:6px;color:#7f1d1d;font-size:.86rem;line-height:1.6;}
+  .btn.danger{
+    background:#fff;border-color:rgba(239,68,68,.35);color:#b91c1c;box-shadow:none;
+  }
+  .btn.danger:hover{background:rgba(239,68,68,.06);}
+  .acc-bank-list{display:grid;gap:10px;margin-top:10px;}
+  .acc-bank-row{
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:var(--surface-2);
+  }
+  .acc-bank-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .acc-bank-title{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:.94rem;
+    font-weight:900;
+  }
+  .acc-bank-dot{
+    width:11px;
+    height:11px;
+    border-radius:999px;
+    flex:0 0 auto;
+    border:1px solid rgba(15,23,42,.22);
+  }
+  .acc-bank-form{
+    margin-top:10px;
+    display:grid;
+    gap:8px;
+    grid-template-columns:minmax(0,1fr) 140px auto;
+    align-items:end;
+  }
+  .acc-bank-actions{
+    margin-top:8px;
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+  .acc-bank-muted{
+    margin-top:6px;
+    color:var(--muted);
+    font-size:.82rem;
+    line-height:1.45;
+  }
+  .acc-advanced{
+    margin-top:10px;
+    border:1px dashed var(--line);
+    border-radius:12px;
+    padding:10px;
+    background:rgba(15,23,42,.02);
+  }
+  .acc-advanced summary{
+    cursor:pointer;
+    font-weight:900;
+    color:var(--text);
+  }
+  .acc-hidden-wrap{margin-top:10px;}
+  .acc-hidden-wrap details summary{
+    cursor:pointer;
+    font-weight:800;
+    color:var(--muted-2);
+  }
+  .acc-bank-grid2{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:8px;
+    margin-top:8px;
+  }
+  .acc-bank-grid2 .field{margin:0;}
+  @media (max-width: 980px){
+    .account-grid{grid-template-columns:1fr;}
+    .acc-pref-grid{grid-template-columns:1fr;}
+    .acc-bank-form{grid-template-columns:1fr;}
+    .acc-bank-actions{justify-content:flex-start;}
+    .acc-bank-grid2{grid-template-columns:1fr;}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set account_color_options = [
+  ('#DC2626', '빨강'),
+  ('#EA580C', '주황'),
+  ('#CA8A04', '노랑'),
+  ('#16A34A', '초록'),
+  ('#2563EB', '파랑'),
+  ('#1E3A8A', '남색'),
+  ('#7C3AED', '보라')
+] %}
+<div class="account-wrap">
+  <div class="account-head page-head">
+    <div class="page-head-main">
+      <div class="account-title">계정 설정</div>
+      <div class="account-sub">내 정보, 보안, 데이터 관리를 한 곳에서 설정할 수 있어요.</div>
+    </div>
+    <div class="acc-inline page-actions">
+      <a class="btn ghost" href="{{ url_for('web_overview.overview') }}">요약으로</a>
+      <a class="btn ghost" href="{{ url_for('web_calendar.month_calendar') }}">캘린더로</a>
+    </div>
+  </div>
+
+  <div class="account-grid">
+    <div class="account-col">
+      <section class="acc-card">
+        <div class="acc-head">
+          <div>
+            <h2 class="acc-title">내 계정</h2>
+            <p class="acc-desc">로그인 정보와 기본 계정 상태를 확인할 수 있어요.</p>
+          </div>
+        </div>
+
+        <dl class="acc-kv">
+          <dt>이메일</dt>
+          <dd>{{ user.email }}</dd>
+          <dt>가입일</dt>
+          <dd>{{ user.created_at.strftime('%Y.%m.%d') if user.created_at else '-' }}</dd>
+        </dl>
+
+        <div class="acc-actions">
+          <form method="POST" action="{{ url_for('web_auth.logout') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn ghost" type="submit">로그아웃</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="acc-card">
+        <div class="acc-head">
+          <div>
+            <h2 class="acc-title">기본 설정</h2>
+            <p class="acc-desc">상황에 맞게 추천 기준과 기본 계산값을 조정할 수 있어요.</p>
+          </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('web_profile.mypage') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="acc-pref-grid">
+            <div class="acc-pref-item">
+              <label class="acc-label" for="freelancer_type">프리랜서 유형</label>
+              <select class="acc-input" id="freelancer_type" name="freelancer_type" required>
+                <option value="" disabled {% if not meta.get('freelancer_type') %}selected{% endif %}>선택해 주세요</option>
+                {% for code, label in freelancer_types %}
+                  <option value="{{ code }}" {% if meta.get('freelancer_type') == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="acc-pref-item">
+              <label class="acc-label" for="monthly_income_band">월 소득 구간</label>
+              <select class="acc-input" id="monthly_income_band" name="monthly_income_band" required>
+                <option value="" disabled {% if not meta.get('monthly_income_band') %}selected{% endif %}>선택해 주세요</option>
+                {% for code, label in income_bands %}
+                  <option value="{{ code }}" {% if meta.get('monthly_income_band') == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="acc-pref-item">
+              <label class="acc-label" for="work_mode">현재 관리 방식</label>
+              <select class="acc-input" id="work_mode" name="work_mode" required>
+                <option value="" disabled {% if not meta.get('work_mode') %}selected{% endif %}>선택해 주세요</option>
+                {% for code, label in work_modes %}
+                  <option value="{{ code }}" {% if meta.get('work_mode') == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="acc-pref-item">
+              <label class="acc-label" for="primary_goal">가장 중요한 목표</label>
+              <select class="acc-input" id="primary_goal" name="primary_goal" required>
+                <option value="" disabled {% if not meta.get('primary_goal') %}selected{% endif %}>선택해 주세요</option>
+                {% for code, label in primary_goals %}
+                  <option value="{{ code }}" {% if meta.get('primary_goal') == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="acc-divider"></div>
+
+          <div class="acc-field">
+            <label class="acc-label" for="default_tax_rate">기본 세율 (0.05 ~ 0.40)</label>
+            <input
+              class="acc-input"
+              id="default_tax_rate"
+              name="default_tax_rate"
+              type="number"
+              step="0.01"
+              min="0.05"
+              max="0.40"
+              value="{{ '%.2f'|format(st.default_tax_rate or 0.15) }}"
+              required
+            >
+            <div class="acc-help">월별 세금 권장 적립액 계산에 사용됩니다.</div>
+          </div>
+
+          {{ number_field(
+            'nhi_monthly_krw',
+            '건강보험료 월 고지액(원)',
+            account_nhi_monthly_value or 0,
+            field_id='nhi_monthly_krw',
+            input_class='acc-input',
+            wrapper_class='acc-field',
+            label_class='acc-label',
+            help_class='acc-help',
+            min='0',
+            step='1000',
+            unit='원',
+            help='세금 설정에 입력한 건보료가 있으면 여기에도 자동으로 반영됩니다.'
+          ) }}
+
+          <div class="acc-field">
+            <label class="acc-label">리마인더</label>
+            <label class="acc-radio">
+              <input type="checkbox" name="month_end_reminder_enabled" value="1" {% if st.month_end_reminder_enabled %}checked{% endif %}>
+              <span>월말 정산 리마인더(인앱 배너) 받기</span>
+            </label>
+            <div class="acc-help">언제든 끌 수 있어요. 꺼두면 홈 상단 월말 배너를 숨깁니다.</div>
+          </div>
+
+          <div class="acc-actions">
+            <button class="btn primary" type="submit">기본 설정 저장</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div class="account-col">
+      <section class="acc-card" id="plan">
+        <div class="acc-head">
+          <div>
+            <h2 class="acc-title">이용 플랜</h2>
+            <p class="acc-desc">핵심 정리 기능은 모든 플랜에서 동일하게 사용할 수 있어요. 자동 연동과 다운로드 권한은 플랜별로 달라집니다.</p>
+          </div>
+          <span class="acc-chip" style="{% if current_plan == 'pro' %}border-color:rgba(16,185,129,.35); color:#047857;{% elif current_plan == 'basic' %}border-color:rgba(37,99,235,.30); color:#1d4ed8;{% endif %}">
+            {{ current_plan_label }}
+          </span>
+        </div>
+
+        <dl class="acc-kv" style="margin-top:2px;">
+          <dt>플랜 상태</dt>
+          <dd>
+            {% if plan_status == 'active' %}활성{% elif plan_status == 'inactive' %}비활성{% elif plan_status == 'canceled' %}해지{% elif plan_status == 'past_due' %}결제 필요{% else %}-{% endif %}
+          </dd>
+          <dt>연동 계좌</dt>
+          <dd>{{ linked_accounts_active_count }} / {{ max_linked_accounts }}개</dd>
+          <dt>자동 동기화</dt>
+          <dd>{% if sync_interval_minutes %}{{ sync_interval_minutes }}분 주기{% else %}자동 연동 없음{% endif %}</dd>
+          <dt>추가 계좌 슬롯</dt>
+          <dd>{{ extra_account_slots }}개</dd>
+        </dl>
+
+        <div class="acc-link-grid">
+          <div class="acc-link-item">
+            <div>
+              <div class="acc-link-title">무료에서 가능한 것</div>
+              <div class="acc-link-sub">CSV/엑셀 업로드, 정리하기, 추정치 확인, 패키지 미리보기</div>
+            </div>
+          </div>
+          <div class="acc-link-item">
+            <div>
+              <div class="acc-link-title">자동화 플랜에서 추가</div>
+              <div class="acc-link-sub">계좌 자동 연동, 동기화 주기 적용, 패키지 ZIP 다운로드</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="acc-actions">
+          {% if current_plan == 'free' %}
+            <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="operation_type" value="initial_subscription">
+              <input type="hidden" name="target_plan" value="basic">
+              <input type="hidden" name="next" value="{{ request.full_path }}">
+              <button class="btn primary" type="submit">베이직 시작하기</button>
+            </form>
+            <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="operation_type" value="initial_subscription">
+              <input type="hidden" name="target_plan" value="pro">
+              <input type="hidden" name="next" value="{{ request.full_path }}">
+              <button class="btn ghost" type="submit">프로 시작하기</button>
+            </form>
+          {% elif current_plan == 'basic' %}
+            <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="operation_type" value="upgrade">
+              <input type="hidden" name="target_plan" value="pro">
+              <input type="hidden" name="next" value="{{ request.full_path }}">
+              <button class="btn primary" type="submit">프로 업그레이드</button>
+            </form>
+            {% if plan_status == 'active' %}
+              <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="operation_type" value="addon_proration">
+                <input type="hidden" name="addon_quantity" value="1">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                <button class="btn ghost" type="submit">추가 계좌 1개 구매</button>
+              </form>
+            {% endif %}
+          {% else %}
+            {% if plan_status == 'active' %}
+              <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="operation_type" value="addon_proration">
+                <input type="hidden" name="addon_quantity" value="1">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                <button class="btn primary" type="submit">추가 계좌 1개 구매</button>
+              </form>
+            {% endif %}
+          {% endif %}
+          <a class="btn ghost" href="{{ url_for('web_bank.index') }}">연동 계좌 관리</a>
+          <a class="btn ghost" href="{{ url_for('web_package.page') }}">패키지 화면</a>
+        </div>
+        <div class="acc-help" style="margin-top:8px;">플랜 변경은 결제/운영 처리로만 변경할 수 있어요.</div>
+      </section>
+
+      <section class="acc-card" id="security">
+        <div class="acc-head">
+          <div>
+            <h2 class="acc-title">보안</h2>
+            <p class="acc-desc">비밀번호를 변경하면 보안을 위해 다시 로그인해야 해요.</p>
+          </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('web_profile.change_password') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          {{ text_field(
+            'current_password',
+            '현재 비밀번호',
+            '',
+            field_id='current_password',
+            input_type='password',
+            required=true,
+            autocomplete='current-password',
+            input_class='acc-input',
+            wrapper_class='acc-field',
+            label_class='acc-label'
+          ) }}
+
+          {{ text_field(
+            'new_password',
+            '새 비밀번호 (8자 이상)',
+            '',
+            field_id='new_password',
+            input_type='password',
+            required=true,
+            autocomplete='new-password',
+            input_class='acc-input',
+            wrapper_class='acc-field',
+            label_class='acc-label'
+          ) }}
+
+          {{ text_field(
+            'new_password_confirm',
+            '새 비밀번호 확인',
+            '',
+            field_id='new_password_confirm',
+            input_type='password',
+            required=true,
+            autocomplete='new-password',
+            input_class='acc-input',
+            wrapper_class='acc-field',
+            label_class='acc-label'
+          ) }}
+
+          <div class="acc-actions">
+            <button class="btn primary" type="submit">비밀번호 변경</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="acc-card">
+        <div class="acc-head">
+          <div>
+            <h2 class="acc-title">데이터</h2>
+            <p class="acc-desc">세무 제출 전에는 먼저 데이터를 내보내 두는 것을 권장해요.</p>
+          </div>
+        </div>
+
+        <div class="acc-link-grid">
+          <div class="acc-link-item">
+            <div>
+              <div class="acc-link-title">세무사 전달 패키지</div>
+              <div class="acc-link-sub">월별 점검 결과와 증빙을 ZIP으로 다운로드할 수 있어요.</div>
+            </div>
+            <a class="btn ghost small" href="{{ url_for('web_package.page') }}">열기</a>
+          </div>
+
+          <div class="acc-link-item">
+            <div>
+              <div class="acc-link-title">증빙 자료 전체 백업</div>
+              <div class="acc-link-sub">보관함의 첨부 파일을 한 번에 내려받을 수 있어요.</div>
+            </div>
+            <a class="btn ghost small" href="{{ url_for('web_vault.export_all') }}">다운로드</a>
+          </div>
+
+          <div class="acc-link-item">
+            <div>
+              <div class="acc-link-title">증빙 자료 보관함</div>
+              <div class="acc-link-sub">누락/첨부 상태를 점검하고 파일을 직접 관리해요.</div>
+            </div>
+            <a class="btn ghost small" href="{{ url_for('web_vault.index') }}">이동</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="acc-card" id="bank-management">
+        <div class="acc-head">
+          <div>
+            <h2 class="acc-title">계좌 관리</h2>
+            <p class="acc-desc">별칭·색상·표시 순서를 한 곳에서 관리해요. 숨김 처리한 계좌도 언제든 복구할 수 있어요.</p>
+          </div>
+          <span class="acc-chip">표시 {{ managed_visible_count }} · 숨김 {{ managed_hidden_count }}</span>
+        </div>
+
+        <div class="acc-actions">
+          <button class="btn ghost" type="button" id="btn-open-account-create-mypage">계좌 추가</button>
+          <a class="btn ghost" href="{{ url_for('web_calendar.month_calendar') }}">캘린더에서 확인</a>
+        </div>
+
+        {% set visible_accounts = managed_accounts | rejectattr('is_hidden') | list %}
+        {% if visible_accounts %}
+        <div class="acc-bank-list">
+          {% for acc in visible_accounts %}
+          <div class="acc-bank-row">
+            <div class="acc-bank-head">
+              <div class="acc-bank-title">
+                <span class="acc-bank-dot" style="background:{{ acc.color_hex or '#2563EB' }};"></span>
+                <span>{{ acc.display_name }}</span>
+              </div>
+              <div class="row" style="gap:6px;">
+                {% if acc.is_linked %}<span class="acc-chip">연동</span>{% endif %}
+                <span class="acc-chip">ID {{ acc.id }}</span>
+              </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('web_profile.account_bank_update') }}" class="acc-bank-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="account_id" value="{{ acc.id }}">
+              <label class="field">
+                <span class="label">계좌 별칭</span>
+                <input class="acc-input" type="text" name="alias" maxlength="64" value="{{ acc.alias or '' }}">
+              </label>
+              <label class="field">
+                <span class="label">색상</span>
+                <select class="acc-input" name="color_hex">
+                  {% for color_hex, color_label in account_color_options %}
+                    <option value="{{ color_hex }}" {% if (acc.color_hex or '').upper() == color_hex %}selected{% endif %}>{{ color_label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <button class="btn primary" type="submit">저장</button>
+            </form>
+
+            <div class="acc-bank-actions">
+              <form method="POST" action="{{ url_for('web_profile.account_bank_order') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="account_id" value="{{ acc.id }}">
+                <input type="hidden" name="direction" value="up">
+                <button class="btn ghost small" type="submit">위로</button>
+              </form>
+              <form method="POST" action="{{ url_for('web_profile.account_bank_order') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="account_id" value="{{ acc.id }}">
+                <input type="hidden" name="direction" value="down">
+                <button class="btn ghost small" type="submit">아래로</button>
+              </form>
+              <form method="POST" action="{{ url_for('web_profile.account_bank_visibility') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="account_id" value="{{ acc.id }}">
+                <input type="hidden" name="action" value="hide">
+                <button class="btn ghost small" type="submit">숨김</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="acc-help">현재 표시 중인 계좌가 없어요. 계좌를 추가하거나 숨김을 해제해 주세요.</div>
+        {% endif %}
+
+        {% if managed_hidden_count > 0 %}
+        <div class="acc-hidden-wrap">
+          <details>
+            <summary>숨김 계좌 {{ managed_hidden_count }}개 보기</summary>
+            <div class="acc-bank-list">
+              {% for acc in managed_accounts if acc.is_hidden %}
+              <div class="acc-bank-row">
+                <div class="acc-bank-head">
+                  <div class="acc-bank-title">
+                    <span class="acc-bank-dot" style="background:{{ acc.color_hex or '#64748B' }};"></span>
+                    <span>{{ acc.display_name }}</span>
+                  </div>
+                  <span class="acc-chip">숨김</span>
+                </div>
+                <div class="acc-bank-actions">
+                  <form method="POST" action="{{ url_for('web_profile.account_bank_visibility') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="account_id" value="{{ acc.id }}">
+                    <input type="hidden" name="action" value="show">
+                    <button class="btn ghost small" type="submit">다시 표시</button>
+                  </form>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </details>
+        </div>
+        {% endif %}
+
+        <details class="acc-advanced" id="bank-advanced">
+          <summary>고급: 계좌 병합</summary>
+          <div class="acc-bank-muted">중복된 계좌를 하나로 합칠 때만 사용해 주세요. 병합하면 거래와 연동 계좌가 선택한 기준 계좌로 이동합니다.</div>
+          <form method="POST" action="{{ url_for('web_profile.account_bank_merge') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="acc-bank-grid2">
+              <label class="field">
+                <span class="label">병합할 계좌</span>
+                <select class="acc-input" name="from_account_id" required>
+                  <option value="">선택</option>
+                  {% for acc in managed_accounts %}
+                    <option value="{{ acc.id }}">{{ acc.display_name }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="field">
+                <span class="label">기준 계좌</span>
+                <select class="acc-input" name="to_account_id" required>
+                  <option value="">선택</option>
+                  {% for acc in managed_accounts %}
+                    <option value="{{ acc.id }}">{{ acc.display_name }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+            </div>
+            <div class="acc-actions">
+              <button class="btn ghost" type="submit">병합 실행</button>
+            </div>
+          </form>
+          {% if merge_undo_available %}
+          <form method="POST" action="{{ url_for('web_profile.account_bank_merge_undo') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="undo_log_id" value="{{ merge_undo_log_id or '' }}">
+            <div class="acc-actions">
+              <button class="btn ghost" type="submit">마지막 병합 되돌리기</button>
+            </div>
+          </form>
+          {% endif %}
+        </details>
+      </section>
+
+      <section class="acc-card">
+        <div class="acc-head">
+          <div>
+            <h2 class="acc-title">연동 상태</h2>
+            <p class="acc-desc">연결된 계좌를 확인하고 연동 관리 화면으로 이동할 수 있어요.</p>
+          </div>
+          <span class="acc-chip">활성 {{ linked_accounts_active_count }} / 전체 {{ linked_accounts_count }}</span>
+        </div>
+
+        {% if linked_accounts_count > 0 %}
+        <div class="acc-link-list">
+          {% for link in linked_accounts %}
+          <div class="acc-link-row">
+            <div>
+              <div class="acc-link-main">
+                {{ link.alias or '별칭 없음' }} · {{ link.bank_code }} {{ link.account_number_masked }}
+              </div>
+              <div class="acc-link-meta">
+                {% if link.last_synced_at %}
+                  최근 동기화: {{ link.last_synced_at.strftime('%Y.%m.%d %H:%M') }}
+                {% else %}
+                  아직 동기화 기록이 없어요.
+                {% endif %}
+              </div>
+            </div>
+            <span class="acc-chip">{{ '활성' if link.is_active else '비활성' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="acc-help">현재 연결된 계좌가 없습니다.</div>
+        {% endif %}
+
+        <div class="acc-actions">
+          <a class="btn ghost" href="{{ url_for('web_bank.index') }}">연동 관리</a>
+        </div>
+      </section>
+
+      <section class="acc-card" id="danger-zone">
+        <div class="acc-head">
+          <div>
+            <h2 class="acc-title">계정 삭제</h2>
+            <p class="acc-desc">삭제 전 데이터 내보내기를 먼저 진행해 주세요.</p>
+          </div>
+        </div>
+
+        <div class="acc-warn">
+          <div class="acc-warn-title">되돌릴 수 없는 작업입니다.</div>
+          <div class="acc-warn-desc">계정을 삭제하면 거래, 증빙, 설정 데이터가 모두 삭제되며 복구할 수 없어요.</div>
+        </div>
+
+        <form method="POST" action="{{ url_for('web_profile.delete_account') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          {{ text_field(
+            'delete_current_password',
+            '현재 비밀번호',
+            '',
+            field_id='delete_current_password',
+            input_type='password',
+            required=true,
+            autocomplete='current-password',
+            input_class='acc-input',
+            wrapper_class='acc-field',
+            label_class='acc-label'
+          ) }}
+
+          {{ text_field(
+            'confirm_text',
+            '확인 문구 입력',
+            '',
+            field_id='confirm_text',
+            placeholder='삭제',
+            required=true,
+            input_class='acc-input',
+            wrapper_class='acc-field',
+            label_class='acc-label'
+          ) }}
+          <div class="acc-help">계속하려면 <b>삭제</b>를 정확히 입력해 주세요.</div>
+
+          <div class="acc-actions">
+            <button class="btn danger" type="submit">계정 삭제</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mypageAccountCreateModal" aria-hidden="true">
+  <div class="modal-backdrop" data-mypage-account-close></div>
+  <div class="modal-dialog card" style="max-width:540px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">계좌 추가</div>
+        <div class="modal-sub">별칭, 계좌번호(선택), 색상을 저장할 수 있어요.</div>
+      </div>
+      <button type="button" class="modal-x" data-mypage-account-close>✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('web_bank.account_create') }}" class="account-create-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="next" value="{{ url_for('web_profile.mypage') }}#bank-management">
+      <label class="field">
+        <span class="label">계좌 별명</span>
+        <input type="text" name="alias" maxlength="64" required placeholder="예: 생활비, 사업용">
+      </label>
+      <label class="field">
+        <span class="label">계좌번호(선택)</span>
+        <input type="text" name="account_number" maxlength="40" inputmode="numeric" placeholder="숫자만 입력 · 8~20자리">
+      </label>
+      <div class="field">
+        <span class="label">색상 선택</span>
+        <select name="color_hex" class="account-color-select">
+          {% for color_hex, color_label in account_color_options %}
+            {% set color_icon = '⚪' %}
+            {% if color_label == '빨강' %}{% set color_icon = '🔴' %}{% endif %}
+            {% if color_label == '주황' %}{% set color_icon = '🟠' %}{% endif %}
+            {% if color_label == '노랑' %}{% set color_icon = '🟡' %}{% endif %}
+            {% if color_label == '초록' %}{% set color_icon = '🟢' %}{% endif %}
+            {% if color_label == '파랑' %}{% set color_icon = '🔵' %}{% endif %}
+            {% if color_label == '남색' %}{% set color_icon = '🔷' %}{% endif %}
+            {% if color_label == '보라' %}{% set color_icon = '🟣' %}{% endif %}
+            <option value="{{ color_hex }}" {% if loop.first %}selected{% endif %}>{{ color_icon }} {{ color_label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <p class="account-create-help">계좌번호 원문은 저장하지 않고 마지막 4자리와 안전 식별값만 저장해요.</p>
+      <div class="row" style="gap:8px; justify-content:flex-end;">
+        <button class="btn ghost" type="button" data-mypage-account-close>취소</button>
+        <button class="btn primary" type="submit">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  const modal = document.getElementById('mypageAccountCreateModal');
+  const openBtn = document.getElementById('btn-open-account-create-mypage');
+  if(!modal || !openBtn){ return; }
+  const closeTargets = modal.querySelectorAll('[data-mypage-account-close]');
+  const closeModal = () => {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  };
+  const openModal = () => {
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+  };
+  openBtn.addEventListener('click', openModal);
+  closeTargets.forEach((el) => el.addEventListener('click', closeModal));
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('open')) {
+      closeModal();
+    }
+  });
+})();
+</script>
+{% endblock %}

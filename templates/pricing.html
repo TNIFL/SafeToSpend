@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}요금제 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .pricing-wrap{max-width:1080px;margin:0 auto;padding:26px 16px 60px;}
+  .pricing-hero{
+    padding:20px;border:1px solid var(--line);border-radius:20px;background:#fff;box-shadow:var(--shadow);
+    background:
+      radial-gradient(640px 260px at 8% -20%, rgba(37,99,235,.10), transparent 62%),
+      radial-gradient(420px 220px at 92% 12%, rgba(16,185,129,.08), transparent 58%),
+      #fff;
+  }
+  .pricing-kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;border:1px solid rgba(37,99,235,.24);background:rgba(37,99,235,.08);font-size:.84rem;font-weight:900;color:#1d4ed8;}
+  .pricing-title{margin-top:10px;font-size:clamp(1.5rem,2.5vw,1.9rem);line-height:1.2;font-weight:950;letter-spacing:-.6px;}
+  .pricing-sub{margin-top:8px;color:var(--muted);line-height:1.6;font-size:.96rem;max-width:840px;}
+  .pricing-strip{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);font-size:.92rem;color:var(--muted);}
+
+  .plan-grid{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .plan-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fff;position:relative;}
+  .plan-card.recommend{border-color:rgba(37,99,235,.36);box-shadow:0 12px 28px rgba(37,99,235,.14);}
+  .plan-badge{position:absolute;top:-10px;right:12px;padding:5px 9px;border-radius:999px;font-size:.78rem;font-weight:900;border:1px solid rgba(37,99,235,.24);background:rgba(37,99,235,.10);color:#1d4ed8;}
+  .plan-name{font-weight:950;letter-spacing:-.2px;}
+  .plan-title{font-size:.95rem;color:var(--muted);line-height:1.4;min-height:38px;}
+  .plan-price{font-size:1.45rem;font-weight:950;letter-spacing:-.4px;}
+  .plan-line{color:var(--muted-2);font-size:.89rem;line-height:1.45;}
+  .plan-list{margin:0;padding-left:16px;display:grid;gap:6px;color:var(--muted);font-size:.9rem;line-height:1.45;}
+  .plan-note{font-size:.86rem;color:var(--muted-2);line-height:1.45;}
+  .plan-cta{margin-top:2px;}
+
+  .pricing-extra{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;}
+  .pricing-extra .txt{color:var(--muted);line-height:1.55;}
+
+  .pricing-table-wrap{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;}
+  .pricing-head{font-size:1.2rem;font-weight:950;letter-spacing:-.3px;}
+  .pricing-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:.92rem;}
+  .pricing-table th,.pricing-table td{border-top:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top;}
+  .pricing-table th{font-weight:900;color:var(--text);background:var(--surface-2);}
+  .pricing-table td{color:var(--muted);}
+
+  .faq-wrap{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;}
+  .faq-grid{margin-top:10px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .faq-item{padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);}
+  .faq-item b{display:block;font-size:.95rem;line-height:1.35;}
+  .faq-item span{display:block;margin-top:6px;color:var(--muted);font-size:.9rem;line-height:1.5;}
+
+  .pricing-bottom-note{margin-top:12px;padding:12px 14px;border:1px solid rgba(37,99,235,.24);border-radius:12px;background:rgba(37,99,235,.06);color:#1d4ed8;font-weight:850;}
+
+  @media (max-width:980px){
+    .plan-grid,.faq-grid{grid-template-columns:1fr;}
+    .plan-title{min-height:0;}
+    .plan-cta .btn{width:100%;}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pricing-wrap">
+  <section class="pricing-hero">
+    <div class="pricing-kicker">플랜은 간단하게, 월말은 가볍게</div>
+    <div class="pricing-title">무료로 확인하고, 필요하면 자동 연동을 더하세요</div>
+    <div class="pricing-sub">
+      예상 세금·건보료 계산은 모든 플랜에서 동일합니다.<br>
+      플랜 차이는 자동 연동 수, 동기화 주기, 정리 편의성입니다.
+    </div>
+    <div class="pricing-strip">처음 연결한 계좌는 최근 3개월 내역 가져오기를 지원합니다.</div>
+  </section>
+
+  <section class="plan-grid" aria-label="요금 플랜">
+    <article class="plan-card">
+      <div class="plan-name">가볍게 시작하기</div>
+      <div class="plan-price">0원</div>
+      <div class="plan-title">먼저 내가 얼마나 남겨둬야 하는지 확인해보세요</div>
+      <ul class="plan-list">
+        <li>예상 세금 확인</li>
+        <li>예상 건보료 확인</li>
+        <li>세금 금고 권장액 확인</li>
+        <li>수입/지출 직접 입력</li>
+        <li>CSV·엑셀 업로드</li>
+        <li>기본 월별 요약</li>
+      </ul>
+      <div class="plan-line">계좌 자동 연동 없음</div>
+      <div class="plan-cta">
+        {% if session.get('user_id') %}
+          <a class="btn ghost full" href="{{ url_for('web_inbox.import_page') }}">무료로 시작하기</a>
+        {% else %}
+          <a class="btn ghost full" href="{{ url_for('web_auth.register', next=url_for('web_inbox.import_page')) }}">무료로 시작하기</a>
+        {% endif %}
+      </div>
+    </article>
+
+    <article class="plan-card recommend">
+      <span class="plan-badge">가장 많이 선택</span>
+      <div class="plan-name">혼자 일하는 프리랜서에게 가장 잘 맞는 플랜</div>
+      <div class="plan-price">월 6,900원</div>
+      <div class="plan-line">계좌 1개 자동 연동 · 4시간마다 자동 동기화</div>
+      <ul class="plan-list">
+        <li>예상 세금·건보료 계속 확인</li>
+        <li>세금 금고 권장액 자동 반영</li>
+        <li>계좌 1개 자동 연동</li>
+        <li>영수증 첨부</li>
+        <li>증빙 누락 확인</li>
+        <li>월말 정리 화면</li>
+        <li>세무사 전달용 파일 다운로드</li>
+      </ul>
+      <div class="plan-note">매달 직접 정리하던 시간을 줄이고, 필요한 것만 챙기세요.</div>
+      <div class="plan-cta">
+        {% if session.get('user_id') %}
+          {% if pricing_plan_code == 'free' %}
+            <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="operation_type" value="initial_subscription">
+              <input type="hidden" name="target_plan" value="basic">
+              <input type="hidden" name="next" value="{{ request.full_path }}">
+              <button class="btn primary full" type="submit">베이직 시작하기</button>
+            </form>
+          {% elif pricing_plan_code == 'basic' %}
+            <button class="btn ghost full" type="button" disabled>현재 베이직 이용 중</button>
+          {% else %}
+            <button class="btn ghost full" type="button" disabled>현재 프로 이용 중</button>
+          {% endif %}
+        {% else %}
+          <a class="btn primary full" href="{{ url_for('web_auth.login', next=url_for('web_main.pricing')) }}">베이직 시작하기</a>
+        {% endif %}
+      </div>
+    </article>
+
+    <article class="plan-card">
+      <div class="plan-name">계좌가 2개 이상이거나 더 자주 확인하고 싶은 분께</div>
+      <div class="plan-price">월 12,900원</div>
+      <div class="plan-line">계좌 2개 자동 연동 · 1시간마다 자동 동기화</div>
+      <ul class="plan-list">
+        <li>베이직의 모든 기능 포함</li>
+        <li>계좌 2개 자동 연동</li>
+        <li>더 자주 거래 반영</li>
+        <li>더 넉넉한 자동 처리</li>
+        <li>정리 효율이 더 높은 프로 기능</li>
+      </ul>
+      <div class="plan-note">계좌가 여러 개여도 더 자주, 더 편하게 관리하세요.</div>
+      <div class="plan-cta">
+        {% if session.get('user_id') %}
+          {% if pricing_plan_code == 'free' %}
+            <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="operation_type" value="initial_subscription">
+              <input type="hidden" name="target_plan" value="pro">
+              <input type="hidden" name="next" value="{{ request.full_path }}">
+              <button class="btn ghost full" type="submit">프로 시작하기</button>
+            </form>
+          {% elif pricing_plan_code == 'basic' %}
+            <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="operation_type" value="upgrade">
+              <input type="hidden" name="target_plan" value="pro">
+              <input type="hidden" name="next" value="{{ request.full_path }}">
+              <button class="btn ghost full" type="submit">프로 업그레이드</button>
+            </form>
+          {% else %}
+            <button class="btn ghost full" type="button" disabled>현재 프로 이용 중</button>
+          {% endif %}
+        {% else %}
+          <a class="btn ghost full" href="{{ url_for('web_auth.login', next=url_for('web_main.pricing')) }}">프로 시작하기</a>
+        {% endif %}
+      </div>
+    </article>
+  </section>
+
+  <section class="pricing-extra" aria-label="추가 계좌">
+    <div class="txt"><b>추가 계좌 1개당 +3,000원 / 월</b><br>계좌가 더 많다면 필요한 만큼만 추가하세요.</div>
+    {% if session.get('user_id') and pricing_plan_code in ['basic', 'pro'] and pricing_plan_status == 'active' %}
+      <form method="post" action="{{ url_for('web_billing.checkout_start') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="operation_type" value="addon_proration">
+        <input type="hidden" name="addon_quantity" value="1">
+        <input type="hidden" name="next" value="{{ request.full_path }}">
+        <button class="btn ghost" type="submit">추가 계좌 1개 구매</button>
+      </form>
+    {% endif %}
+  </section>
+
+  <section class="pricing-table-wrap" aria-label="플랜 비교">
+    <div class="pricing-head">한눈에 비교</div>
+    <table class="pricing-table">
+      <thead>
+        <tr>
+          <th>항목</th>
+          <th>무료</th>
+          <th>베이직</th>
+          <th>프로</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>예상 세금·건보료 계산</td>
+          <td>동일 제공</td>
+          <td>동일 제공</td>
+          <td>동일 제공</td>
+        </tr>
+        <tr>
+          <td>계좌 자동 연동</td>
+          <td>없음</td>
+          <td>1개</td>
+          <td>2개</td>
+        </tr>
+        <tr>
+          <td>자동 동기화 주기</td>
+          <td>해당 없음</td>
+          <td>4시간</td>
+          <td>1시간</td>
+        </tr>
+        <tr>
+          <td>CSV·엑셀 업로드</td>
+          <td>지원</td>
+          <td>지원</td>
+          <td>지원</td>
+        </tr>
+        <tr>
+          <td>증빙 누락/월말 정리/전달 파일</td>
+          <td>기본 확인</td>
+          <td>실사용 중심</td>
+          <td>더 자주 반영 + 여유 있는 자동 처리</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="faq-wrap" id="faq">
+    <div class="pricing-head">자주 묻는 질문</div>
+    <div class="faq-grid">
+      <article class="faq-item">
+        <b>Q. 플랜이 높을수록 세금 계산이 더 정확한가요?</b>
+        <span>A. 아니요. 예상 세금과 건보료 계산은 모든 플랜에서 동일하게 확인할 수 있어요. 상위 플랜은 자동 연동과 정리 편의성이 더 좋아집니다.</span>
+      </article>
+      <article class="faq-item">
+        <b>Q. 계좌를 연결하면 과거 내역도 가져올 수 있나요?</b>
+        <span>A. 네. 최근 3개월 내역까지 한 번에 가져올 수 있어요. 보통은 추가 비용이 들지만, 처음 연결한 계좌는 서비스에서 지원해드려요.</span>
+      </article>
+      <article class="faq-item">
+        <b>Q. 계좌가 더 많으면 어떻게 하나요?</b>
+        <span>A. 기본 포함 계좌 수를 넘는 경우, 계좌 1개당 월 3,000원으로 추가할 수 있어요.</span>
+      </article>
+      <article class="faq-item">
+        <b>Q. 어떤 플랜부터 자동 연동이 되나요?</b>
+        <span>A. 베이직부터 계좌 1개 자동 연동이 포함돼요. 프로는 계좌 2개까지 연결하고 더 자주 자동으로 반영할 수 있어요.</span>
+      </article>
+    </div>
+  </section>
+
+  <div class="pricing-bottom-note">
+    모든 플랜에서 예상 세금·건보료 계산은 동일합니다. 더 높은 플랜은 정확도가 아니라, 자동 연동과 정리 편의성이 더 좋아집니다.
+  </div>
+</div>
+{% endblock %}

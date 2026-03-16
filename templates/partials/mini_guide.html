@@ -1,0 +1,16 @@
+<details class="mini-guide" {% if guide_open %}open{% endif %}>
+  <summary>
+    <span class="mini-guide-title">{{ guide_title }}</span>
+    {% if guide_one_liner %}
+      <span class="mini-guide-one">{{ guide_one_liner }}</span>
+    {% endif %}
+  </summary>
+  <div class="mini-guide-body">
+    {% if guide_details_html %}
+      <div class="mini-guide-details">{{ guide_details_html }}</div>
+    {% endif %}
+    {% if guide_link_url %}
+      <a class="btn small ghost" href="{{ guide_link_url }}">{{ guide_link_text or "바로가기" }}</a>
+    {% endif %}
+  </div>
+</details>

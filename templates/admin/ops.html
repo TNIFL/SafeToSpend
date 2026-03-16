@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+{% block title %}운영 지표 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .ops-wrap{max-width:1200px;margin:0 auto;padding:24px 16px 48px;}
+  .ops-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  .ops-select{height:38px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--text);}
+  .ops-cards{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:10px;margin-top:12px;}
+  .ops-card{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff;}
+  .ops-k{font-size:.8rem;color:var(--muted);font-weight:900;}
+  .ops-v{margin-top:4px;font-size:1.25rem;font-weight:950;letter-spacing:-.35px;}
+  .ops-v-sm{margin-top:6px;font-size:.86rem;color:var(--muted-2);font-weight:800;line-height:1.45;}
+  .ops-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;}
+  .ops-panel{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff;}
+  .ops-panel h3{margin:0 0 8px;font-size:.94rem;font-weight:900;}
+  .ops-chart-wrap{position:relative;min-height:250px;}
+  .ops-chart-wrap canvas{width:100%;height:240px;border:1px solid var(--line);border-radius:12px;background:#fff;}
+  .ops-empty{display:none;position:absolute;inset:0;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:12px;color:var(--muted);font-size:.86rem;background:rgba(248,250,252,.75);}
+  .ops-empty.show{display:flex;}
+  .ops-note{margin-top:8px;font-size:.82rem;color:var(--muted);}
+  .ops-note.warn{color:#92400e;font-weight:800;}
+  .ops-alert-list{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .ops-alert-item{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff;}
+  .ops-alert-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .ops-alert-title{font-size:.86rem;font-weight:900;color:var(--text);}
+  .ops-alert-meta{font-size:.78rem;color:var(--muted);}
+  .ops-alert-body{margin-top:6px;font-size:.82rem;color:var(--text);}
+  .ops-alert-snippet{margin-top:6px;padding:6px 8px;border-radius:8px;background:rgba(148,163,184,.10);font-size:.76rem;color:var(--muted-2);line-height:1.4;}
+  .ops-fresh{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:10px;margin-top:12px;}
+  .ops-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:.74rem;font-weight:900;}
+  .ops-badge.ok{background:rgba(22,163,74,.10);color:#166534;border:1px solid rgba(22,163,74,.25);}
+  .ops-badge.warn{background:rgba(245,158,11,.12);color:#92400e;border:1px solid rgba(245,158,11,.26);}
+  @media (max-width:980px){
+    .ops-cards,.ops-fresh,.ops-grid,.ops-alert-list{grid-template-columns:1fr;}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ops-wrap">
+  <div class="ops-top">
+    <div>
+      <h1 style="margin:0;">운영 지표 대시보드</h1>
+      <div class="small-note muted2">파싱 실패율 / 이용자 수 / 연동 계좌 / 데이터 최신성 / 공식 기준 감시</div>
+    </div>
+    <div class="row" style="gap:8px;align-items:center;">
+      <label for="ops-days" class="small-note muted2">기간</label>
+      <select id="ops-days" class="ops-select" style="width:120px;">
+        <option value="7" {% if days == 7 %}selected{% endif %}>최근 7일</option>
+        <option value="30" {% if days == 30 %}selected{% endif %}>최근 30일</option>
+        <option value="90" {% if days == 90 %}selected{% endif %}>최근 90일</option>
+      </select>
+    </div>
+  </div>
+
+  {% if summary and summary.freshness and summary.freshness.official_registry and summary.freshness.official_registry.status != 'ok' %}
+    <div class="ops-note warn" style="margin-top:10px;">
+      공식 근거 불일치 상태예요. 건보료/세금 숫자 표시가 차단될 수 있어요.
+      {% if summary.freshness.official_registry.message %}
+        ({{ summary.freshness.official_registry.message }})
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <section class="ops-cards">
+    <article class="ops-card">
+      <div class="ops-k">오늘 DAU</div>
+      <div class="ops-v" id="ops-kpi-dau">0</div>
+    </article>
+    <article class="ops-card">
+      <div class="ops-k">총 사용자 수</div>
+      <div class="ops-v" id="ops-kpi-users">0</div>
+    </article>
+    <article class="ops-card">
+      <div class="ops-k">총 연동 계좌 수</div>
+      <div class="ops-v" id="ops-kpi-accounts-total">0</div>
+    </article>
+    <article class="ops-card">
+      <div class="ops-k">데이터 최신성</div>
+      <div class="ops-v" id="ops-kpi-fresh-status">정상</div>
+      <div class="ops-v-sm" id="ops-kpi-fresh-sub">경고 없음</div>
+    </article>
+    <article class="ops-card">
+      <div class="ops-k">최근 7일 매칭 실패율</div>
+      <div class="ops-v" id="ops-kpi-match-fail-rate">표본 부족</div>
+      <div class="ops-v-sm" id="ops-kpi-match-fail-sub">확정/거절 표본 10건 이상부터 표시</div>
+    </article>
+  </section>
+
+  <section class="ops-fresh" id="ops-freshness-wrap"></section>
+
+  <section class="ops-panel" id="ops-reference-alerts-panel" style="margin-top:12px;display:none;">
+    <h3 id="ops-reference-alerts-title">공식 페이지 변경/실패 상세</h3>
+    <div id="ops-reference-alerts-list" class="ops-alert-list"></div>
+  </section>
+
+  <section class="ops-grid">
+    <article class="ops-panel">
+      <h3>파싱 실패율(%)</h3>
+      <div class="ops-chart-wrap">
+        <canvas id="ops-chart-fail" aria-label="파싱 실패율 그래프"></canvas>
+        <div class="ops-empty" id="ops-empty-fail">아직 데이터가 없어요.</div>
+      </div>
+      <div class="ops-note">실패 / (성공+실패) 비율이에요.</div>
+    </article>
+
+    <article class="ops-panel">
+      <h3>이용자 수(DAU)</h3>
+      <div class="ops-chart-wrap">
+        <canvas id="ops-chart-dau" aria-label="DAU 그래프"></canvas>
+        <div class="ops-empty" id="ops-empty-dau">아직 데이터가 없어요.</div>
+      </div>
+      <div class="ops-note">가져오기/영수증/리뷰/버퍼/입력 저장 등의 활동 사용자 수예요.</div>
+    </article>
+
+    <article class="ops-panel">
+      <h3>연동 계좌 수(일별 신규)</h3>
+      <div class="ops-chart-wrap">
+        <canvas id="ops-chart-accounts" aria-label="연동 계좌 그래프"></canvas>
+        <div class="ops-empty" id="ops-empty-accounts">아직 데이터가 없어요.</div>
+      </div>
+      <div class="ops-note">해당 날짜에 새로 연동된 활성 계좌 수예요.</div>
+    </article>
+
+    <article class="ops-panel">
+      <h3>집계 상태</h3>
+      <div id="ops-summary" class="ops-note">데이터를 불러오는 중이에요.</div>
+    </article>
+  </section>
+</div>
+{% endblock %}
+
+{% block script_extra %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script>
+  (function () {
+    const initialPayload = {{ summary|tojson }};
+    const daysEl = document.getElementById("ops-days");
+
+    const chartState = {
+      fail: null,
+      dau: null,
+      accounts: null,
+    };
+
+    const fmtInt = (value) => Math.round(Number(value || 0)).toLocaleString("ko-KR");
+    const fmtPct = (ratio) => `${(Number(ratio || 0) * 100).toFixed(2)}%`;
+    const esc = (value) => String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll("\"", "&quot;")
+      .replaceAll("'", "&#39;");
+
+    const setText = (id, text) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = String(text || "");
+    };
+
+    const setEmpty = (key, show) => {
+      const emptyEl = document.getElementById(`ops-empty-${key}`);
+      const canvasEl = document.getElementById(`ops-chart-${key}`);
+      if (emptyEl) emptyEl.classList.toggle("show", Boolean(show));
+      if (canvasEl) canvasEl.style.visibility = show ? "hidden" : "visible";
+    };
+
+    const makeCommonOptions = (isPercent) => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const raw = Number((ctx && ctx.raw) || 0);
+              if (isPercent) return `실패율 ${fmtPct(raw)}`;
+              return `${fmtInt(raw)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxTicksLimit: 7,
+          },
+          grid: { color: "rgba(148,163,184,.25)" },
+        },
+        y: {
+          beginAtZero: true,
+          suggestedMax: isPercent ? 1 : undefined,
+          ticks: {
+            precision: isPercent ? 2 : 0,
+            callback: (v) => (isPercent ? `${Math.round(Number(v || 0) * 100)}%` : fmtInt(v)),
+          },
+          grid: { color: "rgba(148,163,184,.25)" },
+        },
+      },
+    });
+
+    const ensureChart = (key, chartType, color, isPercent) => {
+      if (chartState[key]) return chartState[key];
+      const canvas = document.getElementById(`ops-chart-${key}`);
+      if (!(canvas instanceof HTMLCanvasElement) || typeof Chart !== "function") return null;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      chartState[key] = new Chart(ctx, {
+        type: chartType,
+        data: {
+          labels: [],
+          datasets: [{
+            data: [],
+            borderColor: color,
+            backgroundColor: chartType === "bar" ? "rgba(37,99,235,.35)" : color,
+            borderWidth: 2,
+            pointRadius: chartType === "line" ? 2 : 0,
+            fill: false,
+            tension: 0.25,
+          }],
+        },
+        options: makeCommonOptions(isPercent),
+      });
+      return chartState[key];
+    };
+
+    const updateChart = (key, labels, values, hasData, chartType, color, isPercent) => {
+      setEmpty(key, !hasData);
+      if (!hasData) return;
+      const chart = ensureChart(key, chartType, color, isPercent);
+      if (!chart) return;
+      chart.data.labels = Array.isArray(labels) ? labels : [];
+      if (!Array.isArray(chart.data.datasets) || !chart.data.datasets[0]) return;
+      chart.data.datasets[0].data = Array.isArray(values) ? values : [];
+      chart.update();
+    };
+
+    const renderFreshness = (freshness) => {
+      const wrap = document.getElementById("ops-freshness-wrap");
+      if (!wrap) return;
+      wrap.innerHTML = "";
+
+      const cards = [
+        {
+          key: "nhis_snapshot",
+          title: "건보 스냅샷",
+          timeKey: "fetched_at",
+        },
+        {
+          key: "property_dataset",
+          title: "부동산 데이터셋",
+          timeKey: "updated_at",
+        },
+        {
+          key: "car_dataset",
+          title: "차량 데이터셋",
+          timeKey: "updated_at",
+        },
+        {
+          key: "reference_watch",
+          title: "공식 기준 감시",
+          timeKey: "checked_at",
+        },
+        {
+          key: "popbill_bank_guides",
+          title: "팝빌 은행 가이드",
+          timeKey: "checked_at",
+        },
+        {
+          key: "official_snapshot_refresh",
+          title: "공식 스냅샷 갱신",
+          timeKey: "checked_at",
+        },
+        {
+          key: "official_registry",
+          title: "공식 기준 검증",
+          timeKey: "checked_at",
+        },
+      ];
+
+      let warnCount = 0;
+      cards.forEach((meta) => {
+        const item = (freshness && typeof freshness === "object") ? (freshness[meta.key] || {}) : {};
+        const status = String(item.status || "warn");
+        if (status !== "ok") warnCount += 1;
+        const warnReason = String(item.warn_reason || "");
+        const updated = String(item[meta.timeKey] || "-");
+
+        let reasonText = "";
+        if (warnReason === "missing") reasonText = "갱신 이력이 없어요.";
+        else if (warnReason === "stale") {
+          if (meta.key === "reference_watch") {
+            reasonText = "최근 48시간 내 감시 실행이 없어요.";
+          } else if (meta.key === "official_snapshot_refresh") {
+            reasonText = "최근 48시간 내 스냅샷 갱신이 없어요.";
+          } else if (meta.key === "popbill_bank_guides") {
+            reasonText = "최근 7일 내 은행 가이드 갱신이 없어요.";
+          } else {
+            reasonText = "30일 이상 갱신되지 않았어요.";
+          }
+        }
+        else if (warnReason === "failure") {
+          if (meta.key === "reference_watch") {
+            reasonText = "공식 기준 감시 중 조회 실패가 있었어요.";
+          } else if (meta.key === "official_snapshot_refresh") {
+            reasonText = "공식 스냅샷 갱신이 실패했어요.";
+          } else if (meta.key === "popbill_bank_guides") {
+            reasonText = "팝빌 가이드 문서 수집이 실패했어요.";
+          } else {
+            reasonText = "최근 갱신 실패가 반복됐어요.";
+          }
+        }
+        else if (meta.key === "popbill_bank_guides" && warnReason === "structure_changed") {
+          reasonText = "팝빌 공식 문서 구조 변경이 감지됐어요.";
+        }
+        else if (meta.key === "popbill_bank_guides" && warnReason === "partial") {
+          reasonText = "일부 은행 안내를 기본 문구로 대체했어요.";
+        }
+        else if (warnReason === "changed") reasonText = "공식 페이지 핵심 구간이 변경됐어요.";
+        else if (meta.key === "official_registry" && String(item.message || "")) {
+          reasonText = String(item.message || "");
+        }
+
+        let extraText = "";
+        if (meta.key === "reference_watch") {
+          const checkedCount = Number(item.checked_count || 0);
+          const changedCount = Number(item.changed_count || 0);
+          const failingCount = Number(item.failing_count || 0);
+          extraText = `감시 ${fmtInt(checkedCount)}건 · 변경 ${fmtInt(changedCount)}건 · 실패 ${fmtInt(failingCount)}건`;
+        } else if (meta.key === "official_snapshot_refresh") {
+          const nhisSnapshotId = String(item.nhis_snapshot_id || "-");
+          const assetSnapshotId = String(item.asset_snapshot_id || "-");
+          const manifestHash = String(item.manifest_hash || "").slice(0, 12);
+          const hashText = manifestHash ? ` · hash ${manifestHash}` : "";
+          const lastError = String(item.last_error || "");
+          extraText = `NHIS ${nhisSnapshotId} · ASSET ${assetSnapshotId}${hashText}${lastError ? ` · err ${lastError}` : ""}`;
+        } else if (meta.key === "popbill_bank_guides") {
+          const parsedCount = fmtInt(item.parsed_bank_count || 0);
+          const totalCount = fmtInt(item.total_bank_count || 0);
+          const fallbackCount = fmtInt(item.fallback_bank_count || 0);
+          const fetchError = String(item.fetch_error || "");
+          extraText = `파싱 ${parsedCount}/${totalCount} · 기본안내 ${fallbackCount}${fetchError ? ` · err ${fetchError}` : ""}`;
+        }
+
+        const el = document.createElement("article");
+        el.className = "ops-card";
+        el.innerHTML = `
+          <div class="ops-k">${meta.title}</div>
+          <div style="margin-top:8px;"><span class="ops-badge ${status === "ok" ? "ok" : "warn"}">${status === "ok" ? "정상" : "경고"}</span></div>
+          <div class="ops-note" style="margin-top:8px;">마지막 갱신: ${updated}</div>
+          ${extraText ? `<div class="ops-note">${extraText}</div>` : ""}
+          ${reasonText ? `<div class="ops-note warn">${reasonText}</div>` : ""}
+        `;
+        wrap.appendChild(el);
+      });
+
+      const alertsPanel = document.getElementById("ops-reference-alerts-panel");
+      const alertsTitle = document.getElementById("ops-reference-alerts-title");
+      const alertsList = document.getElementById("ops-reference-alerts-list");
+      const refItem = (freshness && typeof freshness === "object") ? (freshness.reference_watch || {}) : {};
+      const alerts = Array.isArray(refItem.alerts) ? refItem.alerts : [];
+      const alertCount = Number(refItem.alert_count || alerts.length || 0);
+      if (alertsPanel && alertsTitle && alertsList) {
+        if (!alerts.length) {
+          alertsPanel.style.display = "none";
+          alertsList.innerHTML = "";
+        } else {
+          alertsPanel.style.display = "block";
+          alertsTitle.textContent = `공식 페이지 변경/실패 상세 (${fmtInt(alertCount)}건)`;
+          alertsList.innerHTML = alerts.map((row) => {
+            const key = esc(row.key || "-");
+            const statusText = row.failing ? "실패" : (row.changed ? "변경" : "주의");
+            const statusClass = row.failing || row.changed ? "warn" : "ok";
+            const reason = esc(row.failure_reason || "");
+            const patternHits = fmtInt(row.pattern_hit_count || 0);
+            const keywordHits = fmtInt(row.keyword_hit_count || 0);
+            const missingPatterns = Array.isArray(row.missing_patterns) ? row.missing_patterns.slice(0, 3).map(esc).join(", ") : "";
+            const missingKeywords = Array.isArray(row.missing_keywords) ? row.missing_keywords.slice(0, 3).map(esc).join(", ") : "";
+            const notes = Array.isArray(row.notes) ? row.notes.slice(0, 3).map(esc).join(" · ") : "";
+            const preview = esc(row.focus_preview || "");
+            const changedAt = esc(row.last_changed_at || row.checked_at || "");
+            return `
+              <article class="ops-alert-item">
+                <div class="ops-alert-head">
+                  <div class="ops-alert-title">${key}</div>
+                  <span class="ops-badge ${statusClass}">${statusText}</span>
+                </div>
+                <div class="ops-alert-meta">감지 시각: ${changedAt || "-"}</div>
+                <div class="ops-alert-body">
+                  <div>패턴 히트 ${patternHits} · 키워드 히트 ${keywordHits}</div>
+                  ${reason ? `<div class="ops-note warn">${reason}</div>` : ""}
+                  ${missingPatterns ? `<div class="ops-note warn">누락 패턴: ${missingPatterns}</div>` : ""}
+                  ${missingKeywords ? `<div class="ops-note warn">누락 키워드: ${missingKeywords}</div>` : ""}
+                  ${notes ? `<div class="ops-note">${notes}</div>` : ""}
+                  ${preview ? `<div class="ops-alert-snippet">${preview}</div>` : ""}
+                  <div class="ops-note">패치 초안: <code>PYTHONPATH=. .venv/bin/python scripts/suggest_parser_patch.py</code></div>
+                </div>
+              </article>
+            `;
+          }).join("");
+        }
+      }
+
+      setText("ops-kpi-fresh-status", warnCount > 0 ? "경고" : "정상");
+      setText("ops-kpi-fresh-sub", warnCount > 0 ? `${warnCount}개 항목 확인 필요` : "경고 없음");
+    };
+
+    const renderSummary = (payload) => {
+      const latest = (payload && payload.latest) ? payload.latest : {};
+      const summaryEl = document.getElementById("ops-summary");
+      if (!summaryEl) return;
+      const range = (payload && payload.range) ? payload.range : {};
+      const ok = Boolean(payload && payload.ok);
+      const message = String((payload && payload.message) || "");
+
+      const quickSample = Number(latest.quick_match_sample_7d || 0);
+      const quickFailRate = Number(latest.quick_match_fail_rate_7d || 0);
+      const quickRejected = Number(latest.quick_match_rejected_7d || 0);
+      const quickConfirmed = Number(latest.quick_match_confirmed_7d || 0);
+      const quickLine = quickSample >= 10
+        ? `최근 7일 추천 실패율: ${fmtPct(quickFailRate)} (거절 ${fmtInt(quickRejected)} / 확정 ${fmtInt(quickConfirmed)})`
+        : "최근 7일 추천 실패율: 표본 부족(확정/거절 10건 이상 필요)";
+
+      summaryEl.innerHTML = `
+        <div>기간: ${String(range.start || "-")} ~ ${String(range.end || "-")}</div>
+        <div>오늘 신규 연동 계좌: ${fmtInt(latest.accounts_linked_today || 0)}개</div>
+        <div>오늘 파싱 실패율: ${fmtPct(latest.parsing_fail_rate || 0)}</div>
+        <div>${quickLine}</div>
+        ${ok ? "" : `<div class="ops-note warn" style="margin-top:8px;">${message || "집계에 실패해 기본값으로 표시했어요."}</div>`}
+      `;
+    };
+
+    const render = (payload) => {
+      const latest = (payload && payload.latest) ? payload.latest : {};
+      const series = (payload && payload.series) ? payload.series : {};
+      const hasData = (payload && payload.has_data) ? payload.has_data : {};
+
+      setText("ops-kpi-dau", fmtInt(latest.dau || 0));
+      setText("ops-kpi-users", fmtInt(latest.total_users || 0));
+      setText("ops-kpi-accounts-total", fmtInt(latest.accounts_total || 0));
+      const matchSample = Number(latest.quick_match_sample_7d || 0);
+      const matchRejected = Number(latest.quick_match_rejected_7d || 0);
+      const matchConfirmed = Number(latest.quick_match_confirmed_7d || 0);
+      if (matchSample >= 10) {
+        setText("ops-kpi-match-fail-rate", fmtPct(latest.quick_match_fail_rate_7d || 0));
+        setText("ops-kpi-match-fail-sub", `거절 ${fmtInt(matchRejected)} / 확정 ${fmtInt(matchConfirmed)} (표본 ${fmtInt(matchSample)})`);
+      } else {
+        setText("ops-kpi-match-fail-rate", "표본 부족");
+        setText("ops-kpi-match-fail-sub", `거절 ${fmtInt(matchRejected)} / 확정 ${fmtInt(matchConfirmed)} (표본 ${fmtInt(matchSample)})`);
+      }
+
+      const labels = Array.isArray(series.labels) ? series.labels : [];
+      updateChart("fail", labels, (series.parsing_fail_rate || []), Boolean(hasData.parsing_fail_rate), "line", "#ef4444", true);
+      updateChart("dau", labels, (series.dau || []), Boolean(hasData.dau), "line", "#2563eb", false);
+      updateChart("accounts", labels, (series.accounts_linked || []), Boolean(hasData.accounts_linked), "bar", "#16a34a", false);
+
+      renderFreshness(payload ? payload.freshness : {});
+      renderSummary(payload || {});
+    };
+
+    const load = async () => {
+      const days = String((daysEl && daysEl.value) || "30");
+      try {
+        const res = await fetch(`/admin/api/ops/summary?days=${encodeURIComponent(days)}`, {
+          credentials: "same-origin",
+        });
+        const payload = await res.json();
+        if (!res.ok) {
+          render({
+            ok: false,
+            message: String(payload && payload.message ? payload.message : "운영 지표를 불러오지 못했어요."),
+            latest: (payload && payload.latest) || {},
+            series: (payload && payload.series) || {},
+            freshness: (payload && payload.freshness) || {},
+            has_data: (payload && payload.has_data) || {},
+            range: (payload && payload.range) || {},
+          });
+          return;
+        }
+        render(payload || {});
+      } catch (_) {
+        render({
+          ok: false,
+          message: "운영 지표를 불러오지 못했어요.",
+          latest: (initialPayload && initialPayload.latest) || {},
+          series: (initialPayload && initialPayload.series) || {},
+          freshness: (initialPayload && initialPayload.freshness) || {},
+          has_data: (initialPayload && initialPayload.has_data) || {},
+          range: (initialPayload && initialPayload.range) || {},
+        });
+      }
+    };
+
+    if (daysEl) {
+      daysEl.addEventListener("change", load);
+    }
+
+    render(initialPayload || {});
+    load();
+  })();
+</script>
+{% endblock %}

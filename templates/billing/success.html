@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}결제수단 등록 완료 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:760px; padding-top:20px;">
+  <div class="card pad">
+    <div class="h2">결제수단 등록이 완료되었어요.</div>
+    <div class="small-note muted2" style="margin-top:8px;">
+      등록 시도 번호: {{ order_id }}
+    </div>
+    <div class="note" style="margin-top:12px;">결제수단 관리는 보조 기능이고, 구독 시작은 요금제/마이페이지에서 바로 진행돼요.</div>
+    <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+      {% if resume_token and is_logged_in %}
+        <a class="btn primary" href="{{ url_for('web_billing.checkout_processing_page', intent=resume_token) }}">자동 진행이 안 되면 결제 이어서 진행</a>
+      {% endif %}
+      {% if is_logged_in %}
+        <a class="btn {% if resume_token %}ghost{% else %}primary{% endif %}" href="{{ url_for('web_main.pricing') }}">요금제 화면으로 이동</a>
+        <a class="btn ghost" href="{{ url_for('web_billing.register_page') }}">결제수단 관리로 이동</a>
+      {% else %}
+        <a class="btn primary" href="{{ url_for('web_auth.login') }}">로그인하고 계속하기</a>
+        <a class="btn ghost" href="{{ url_for('web_main.pricing') }}">요금 안내 보기</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

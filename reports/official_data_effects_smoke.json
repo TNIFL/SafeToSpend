@@ -1,0 +1,10 @@
+{
+  "official_data_applied": true,
+  "before_tax_due": 159500,
+  "after_tax_due": 59500,
+  "delta": -100000,
+  "official_reference_date": "2026-03-01",
+  "nhis_official_status": "공식 자료 기준 확인",
+  "nhis_official_reference_date": "2026-03-02",
+  "nhis_display_amount_krw": 130000
+}

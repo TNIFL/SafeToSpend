@@ -1,0 +1,168 @@
+{
+  "checked_at": "2026-03-07T09:23:55Z",
+  "valid": false,
+  "reason": "value_mismatch",
+  "registry_version": "official-refs-2026.03.07",
+  "registry_hash": "0c3f2aaa5610d916208e0adc6dd55280c24a9a531e01b19e26a9432967bec8b3",
+  "mismatch_count": 8,
+  "network_error_count": 0,
+  "targets": {
+    "nhis_rate_and_point_value": {
+      "url": "https://www.nhis.or.kr/lm/lmxsrv/law/lawLinkContentView.do?LINKCODE=c004400000&SEQ=28",
+      "sha256": "",
+      "status_code": null,
+      "ok": false,
+      "changed": false,
+      "failure_reason": "offline_snapshot_missing",
+      "snapshot_path": "data/official_snapshots/nhis/nhis_enforcement_decree_article44.html"
+    },
+    "nhis_annex4_property_points": {
+      "url": "https://www.law.go.kr/LSW/flDownload.do?bylClsCd=110201&flSeq=160135095&gubun=",
+      "sha256": "",
+      "status_code": null,
+      "ok": false,
+      "changed": false,
+      "failure_reason": "offline_snapshot_missing",
+      "snapshot_path": "data/official_snapshots/nhis/nhis_enforcement_decree_annex4_latest.pdf"
+    },
+    "nhis_annex8_rent_formula": {
+      "url": "https://www.law.go.kr/LSW/flDownload.do?bylClsCd=110201&flSeq=160135099&gubun=",
+      "sha256": "",
+      "status_code": null,
+      "ok": false,
+      "changed": false,
+      "failure_reason": "offline_snapshot_missing",
+      "snapshot_path": "data/official_snapshots/nhis/nhis_enforcement_rule_annex8_latest.pdf"
+    },
+    "nhis_financial_income_threshold": {
+      "url": "https://www.nhis.or.kr/lm/lmxsrv/law/joHistoryContent.do?DATE_END=20240513&DATE_START=20240801&SEQ=29&SEQ_CONTENTS=4114846",
+      "sha256": "",
+      "status_code": null,
+      "ok": false,
+      "changed": false,
+      "failure_reason": "offline_snapshot_missing",
+      "snapshot_path": "data/official_snapshots/nhis/nhis_enforcement_rule_article44.html"
+    },
+    "nhis_floor_ceiling": {
+      "url": "https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2100000270472&chrClsCd=010201",
+      "sha256": "",
+      "status_code": null,
+      "ok": false,
+      "changed": false,
+      "failure_reason": "offline_snapshot_missing",
+      "snapshot_path": "data/official_snapshots/nhis/nhis_floor_ceiling_notice.html"
+    },
+    "mohw_ltc_ratio": {
+      "url": "https://www.mohw.go.kr/board.es?act=view&bid=0027&list_no=1487817&mid=a10503010200",
+      "sha256": "",
+      "status_code": null,
+      "ok": false,
+      "changed": false,
+      "failure_reason": "offline_snapshot_missing",
+      "snapshot_path": "data/official_snapshots/mohw/ltc_rate_2026_release.html"
+    },
+    "tax_income_rate_table": {
+      "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7873&mi=6594",
+      "sha256": "",
+      "status_code": null,
+      "ok": false,
+      "changed": false,
+      "failure_reason": "offline_snapshot_missing",
+      "snapshot_path": "data/official_snapshots/tax/nts_income_tax_table.html"
+    },
+    "tax_local_income_ratio": {
+      "url": "https://www.law.go.kr/%EB%B2%95%EB%A0%B9/%EC%A7%80%EB%B0%A9%EC%84%B8%EB%B2%95",
+      "sha256": "",
+      "status_code": null,
+      "ok": false,
+      "changed": false,
+      "failure_reason": "offline_snapshot_missing",
+      "snapshot_path": "data/official_snapshots/tax/local_tax_act.html"
+    }
+  },
+  "refresh": {
+    "last_run_at": "2026-03-07T09:23:55Z",
+    "ok": false,
+    "duration_ms": 70,
+    "errors": [
+      "refresh_nhis_rates:NhisRatesFetchError",
+      "refresh_asset_datasets:AssetDatasetFetchError",
+      "verify_official_refs:FAILED"
+    ],
+    "step_results": [
+      {
+        "name": "refresh_nhis_rates",
+        "ok": false,
+        "error": "NhisRatesFetchError",
+        "duration_ms": 15
+      },
+      {
+        "name": "refresh_asset_datasets",
+        "ok": false,
+        "error": "AssetDatasetFetchError",
+        "duration_ms": 1
+      },
+      {
+        "name": "verify_official_refs",
+        "ok": false,
+        "exit_code": 1,
+        "duration_ms": 3
+      }
+    ],
+    "active_snapshots": {
+      "nhis": {
+        "id": null,
+        "effective_year": null,
+        "fetched_at": null,
+        "content_hash": "",
+        "error": "OperationalError"
+      },
+      "assets": {
+        "vehicle": {
+          "id": null,
+          "dataset_key": "vehicle",
+          "version_year": null,
+          "fetched_at": null,
+          "content_hash": "",
+          "error": "OperationalError"
+        },
+        "home": {
+          "id": null,
+          "dataset_key": "home",
+          "version_year": null,
+          "fetched_at": null,
+          "content_hash": "",
+          "error": "OperationalError"
+        }
+      }
+    }
+  },
+  "active_snapshots": {
+    "nhis": {
+      "id": null,
+      "effective_year": null,
+      "fetched_at": null,
+      "content_hash": "",
+      "error": "OperationalError"
+    },
+    "assets": {
+      "vehicle": {
+        "id": null,
+        "dataset_key": "vehicle",
+        "version_year": null,
+        "fetched_at": null,
+        "content_hash": "",
+        "error": "OperationalError"
+      },
+      "home": {
+        "id": null,
+        "dataset_key": "home",
+        "version_year": null,
+        "fetched_at": null,
+        "content_hash": "",
+        "error": "OperationalError"
+      }
+    }
+  },
+  "manifest_hash": "8aeeb110ed364c18c18878cb6620864df332a194ee4dc909c7762ea927be248d"
+}

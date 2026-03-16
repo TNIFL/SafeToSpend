@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}결제수단 등록 시작 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<script src="https://js.tosspayments.com/v1/payment"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:760px; padding-top:20px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">토스 결제창 연결</div>
+      <div class="p">아래 버튼을 눌러 결제수단 등록을 진행해 주세요.</div>
+      <div class="small-note muted2">등록 시도 번호: {{ order_id }}</div>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-top:12px;">
+    <div class="panel-title">진행 순서</div>
+    <ol style="margin:10px 0 0; padding-left:18px; line-height:1.6;">
+      <li>토스 결제창에서 카드 등록을 완료해 주세요.</li>
+      <li>완료 후 이 화면으로 자동 복귀해요.</li>
+      <li>등록 성공 여부를 확인한 뒤 안내를 보여드려요.</li>
+    </ol>
+
+    <div id="billing-start-error" class="note warn" style="display:none; margin-top:12px;"></div>
+    <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="billing-start-btn" type="button" class="btn primary">{% if auto_launch %}결제수단 등록창 다시 열기{% else %}토스 등록창 열기{% endif %}</button>
+      <a class="btn ghost" href="{{ url_for('web_billing.register_page') }}">다시 준비하기</a>
+    </div>
+    <div class="small-note muted2" style="margin-top:10px;">
+      카드번호와 CVC 같은 민감 정보는 서비스에 저장하지 않아요.
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const payload = {{ toss_payload | tojson }};
+  const startBtn = document.getElementById("billing-start-btn");
+  const errorBox = document.getElementById("billing-start-error");
+  if (!startBtn) return;
+
+  const showError = (message) => {
+    if (!errorBox) return;
+    errorBox.style.display = "block";
+    errorBox.textContent = message || "결제창을 열지 못했어요. 다시 시도해 주세요.";
+  };
+
+  const launch = async () => {
+    if (!window.TossPayments || !payload || !payload.client_key) {
+      showError("결제창 준비에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    startBtn.disabled = true;
+    startBtn.textContent = "연결 중...";
+    try {
+      const tossPayments = window.TossPayments(payload.client_key);
+      await tossPayments.requestBillingAuth("CARD", {
+        customerKey: payload.customer_key,
+        successUrl: payload.success_url,
+        failUrl: payload.fail_url,
+      });
+    } catch (_e) {
+      startBtn.disabled = false;
+      startBtn.textContent = "결제수단 등록창 다시 열기";
+      showError("결제창이 닫혔거나 연결에 실패했어요. 다시 시도해 주세요.");
+    }
+  };
+
+  startBtn.addEventListener("click", launch);
+
+  {% if auto_launch %}
+  window.setTimeout(() => {
+    launch();
+  }, 120);
+  {% endif %}
+})();
+</script>
+{% endblock %}
