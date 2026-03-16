@@ -396,6 +396,16 @@ class OfficialDataDocument(db.Model):
     document_period_start = db.Column(Date, nullable=True)
     document_period_end = db.Column(Date, nullable=True)
     verified_reference_date = db.Column(Date, nullable=True)
+    trust_grade = db.Column(db.String(1), nullable=True)
+    trust_grade_label = db.Column(db.String(64), nullable=True)
+    trust_scope_label = db.Column(db.String(128), nullable=True)
+    structure_validation_status = db.Column(db.String(24), nullable=False, default="not_applicable")
+    verification_source = db.Column(db.String(32), nullable=True)
+    verification_status = db.Column(db.String(24), nullable=False, default="none")
+    verification_checked_at = db.Column(db.DateTime, nullable=True)
+    verification_reference_masked = db.Column(db.String(64), nullable=True)
+    user_modified_flag = db.Column(db.Boolean, nullable=False, default=False)
+    sensitive_data_redacted = db.Column(db.Boolean, nullable=False, default=True)
 
     raw_file_storage_mode = db.Column(db.String(24), nullable=False, default="none")
     raw_file_key = db.Column(db.String(512), nullable=True)
@@ -414,10 +424,24 @@ class OfficialDataDocument(db.Model):
             "raw_file_storage_mode IN ('none','optional_saved')",
             name="ck_official_data_raw_file_storage_mode",
         ),
+        CheckConstraint(
+            "trust_grade IS NULL OR trust_grade IN ('A','B','C','D')",
+            name="ck_official_data_trust_grade",
+        ),
+        CheckConstraint(
+            "verification_status IN ('none','pending','succeeded','failed','not_applicable')",
+            name="ck_official_data_verification_status",
+        ),
+        CheckConstraint(
+            "structure_validation_status IN ('passed','failed','partial','not_applicable')",
+            name="ck_official_data_structure_validation_status",
+        ),
         Index("idx_official_data_user_parse_status", "user_pk", "parse_status"),
         Index("idx_official_data_user_source_doc", "user_pk", "source_system", "document_type"),
         Index("idx_official_data_user_reference_date", "user_pk", "verified_reference_date"),
         Index("idx_official_data_user_created", "user_pk", "created_at"),
+        Index("idx_official_data_user_trust_grade", "user_pk", "trust_grade"),
+        Index("idx_official_data_user_verification_status", "user_pk", "verification_status"),
     )
 
 

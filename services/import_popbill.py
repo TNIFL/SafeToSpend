@@ -16,8 +16,10 @@ from domain.models import (
     ImportJob,
     IncomeLabel,
     Transaction,
+    UserBankAccount,
 )
-from services.popbill_easyfinbank import PopbillApiError, request_job, get_job_state, search
+from services.popbill_easyfinbank import PopbillApiError, get_job_state, list_bank_accounts, request_job, search
+from services.privacy_guards import redact_identifier_for_render, sanitize_account_like_value
 
 # CSV 가져오기(import_csv)의 룰 재사용 (이미 네 프로젝트에 있는 함수들)
 from services.import_csv import (
@@ -42,6 +44,30 @@ class PopbillImportResult:
     duplicate_rows: int
     failed_rows: int
     errors: list[dict]
+
+
+def _redacted_account_reference(bank_code: str | None, account_number: str | None) -> str:
+    code = str(bank_code or "").strip()
+    masked = redact_identifier_for_render(account_number)
+    return f"{code}-{masked}" if code else masked
+
+
+def _resolve_live_account_number(
+    link: BankAccountLink,
+    *,
+    accounts_by_id: dict[int, UserBankAccount],
+    live_accounts_by_fingerprint: dict[tuple[str, str], str],
+) -> str:
+    if link.bank_account_id:
+        account = accounts_by_id.get(int(link.bank_account_id))
+        if account and account.account_fingerprint:
+            live = live_accounts_by_fingerprint.get((str(link.bank_code or ""), str(account.account_fingerprint)))
+            if live:
+                return live
+    token = str(link.account_number or "").strip()
+    if token and not token.startswith("acct_"):
+        return token
+    return ""
 
 
 def _hash_external(tid: str) -> str:
@@ -159,6 +185,17 @@ def sync_popbill_for_user(
 
     income_rules = _load_income_rules(user_pk)
     expense_rules = _load_expense_rules(user_pk)
+    user_accounts = {
+        int(row.id): row
+        for row in UserBankAccount.query.filter(UserBankAccount.user_pk == user_pk).all()
+    }
+    live_accounts_by_fingerprint: dict[tuple[str, str], str] = {}
+    for account in list_bank_accounts():
+        bank_code = str(getattr(account, "bankCode", "") or "").strip()
+        raw_account_number = str(getattr(account, "accountNumber", "") or "").strip()
+        safe = sanitize_account_like_value(raw_account_number)
+        if bank_code and safe.hashed:
+            live_accounts_by_fingerprint[(bank_code, safe.hashed)] = raw_account_number
 
     errors: list[dict] = []
     parsed: list[dict] = []
@@ -175,12 +212,26 @@ def sync_popbill_for_user(
         for s, e in _daterange_month_chunks(acct_start, acct_end):
             sdate = s.strftime("%Y%m%d")
             edate = e.strftime("%Y%m%d")
+            live_account_number = _resolve_live_account_number(
+                link,
+                accounts_by_id=user_accounts,
+                live_accounts_by_fingerprint=live_accounts_by_fingerprint,
+            )
+            if not live_account_number:
+                errors.append({
+                    "account": _redacted_account_reference(link.bank_code, link.account_number),
+                    "range": f"{sdate}~{edate}",
+                    "error": "연결된 계좌 식별자를 다시 확인해 주세요.",
+                })
+                job.failed_rows += 1
+                db.session.commit()
+                continue
 
             try:
-                job_id = request_job(link.bank_code, link.account_number, sdate, edate)
+                job_id = request_job(link.bank_code, live_account_number, sdate, edate)
             except PopbillApiError as pe:
                 errors.append({
-                    "account": f"{link.bank_code}-{link.account_number}",
+                    "account": _redacted_account_reference(link.bank_code, live_account_number),
                     "range": f"{sdate}~{edate}",
                     "error": str(pe),
                     "code": getattr(pe, "code", None),
@@ -192,7 +243,7 @@ def sync_popbill_for_user(
             st = _poll_until_ready(job_id)
             if not st:
                 errors.append({
-                    "account": f"{link.bank_code}-{link.account_number}",
+                    "account": _redacted_account_reference(link.bank_code, live_account_number),
                     "range": f"{sdate}~{edate}",
                     "error": "수집 상태 확인 실패",
                 })
@@ -203,7 +254,7 @@ def sync_popbill_for_user(
             # 팝빌 문서 기준: jobState==3(완료) + errorCode==1(정상)
             if str(getattr(st, "jobState", "")) != "3" or int(getattr(st, "errorCode", 0) or 0) != 1:
                 errors.append({
-                    "account": f"{link.bank_code}-{link.account_number}",
+                    "account": _redacted_account_reference(link.bank_code, live_account_number),
                     "range": f"{sdate}~{edate}",
                     "error": f"수집 미완료/실패: jobState={getattr(st, 'jobState', None)} errorCode={getattr(st, 'errorCode', None)}",
                     "reason": getattr(st, "errorReason", None),
@@ -268,7 +319,7 @@ def sync_popbill_for_user(
                     except Exception as ex:
                         job.failed_rows += 1
                         errors.append({
-                            "account": f"{link.bank_code}-{link.account_number}",
+                            "account": _redacted_account_reference(link.bank_code, live_account_number),
                             "range": f"{sdate}~{edate}",
                             "error": f"row parse error: {ex}",
                         })

@@ -10,7 +10,12 @@ from core.extensions import db
 from core.time import utcnow
 from domain.models import OfficialDataDocument
 from services.official_data_extractors import OfficialDataFileError, build_upload_envelope
-from services.official_data_guards import sanitize_official_data_payload_for_storage, sanitize_official_data_summary_for_render
+from services.official_data_guards import (
+    compute_official_data_trust_grade,
+    resolve_trust_fields_for_document,
+    sanitize_official_data_payload_for_storage,
+    sanitize_official_data_summary_for_render,
+)
 from services.official_data_parser_registry import (
     ALLOWED_DOCUMENT_HINTS,
     REGISTRY_STATUS_NEEDS_REVIEW,
@@ -30,6 +35,9 @@ PARSE_STATUS_UNSUPPORTED = "unsupported"
 PARSE_STATUS_FAILED = "failed"
 RAW_FILE_STORAGE_NONE = "none"
 RAW_FILE_STORAGE_OPTIONAL_SAVED = "optional_saved"
+STRUCTURE_STATUS_NOT_APPLICABLE = "not_applicable"
+STRUCTURE_STATUS_PARTIAL = "partial"
+STRUCTURE_STATUS_FAILED = "failed"
 
 
 @dataclass(slots=True)
@@ -102,22 +110,35 @@ def process_official_data_upload(*, user_pk: int, uploaded_file: Any, document_t
         parse_status=PARSE_STATUS_UPLOADED,
         extracted_payload_json={},
         extracted_key_summary_json={},
+        trust_grade=None,
+        trust_grade_label=None,
+        trust_scope_label=None,
+        structure_validation_status=STRUCTURE_STATUS_NOT_APPLICABLE,
+        verification_source=None,
+        verification_status="none",
+        verification_checked_at=None,
+        verification_reference_masked=None,
+        user_modified_flag=False,
+        sensitive_data_redacted=True,
         raw_file_storage_mode=(RAW_FILE_STORAGE_OPTIONAL_SAVED if raw_file_storage_mode == RAW_FILE_STORAGE_OPTIONAL_SAVED else RAW_FILE_STORAGE_NONE),
         raw_file_key=None,
     )
 
     if decision.registry_status == REGISTRY_STATUS_UNSUPPORTED_FORMAT:
         document.parse_status = PARSE_STATUS_UNSUPPORTED
+        document.structure_validation_status = STRUCTURE_STATUS_NOT_APPLICABLE
         document.parse_error_code = decision.parse_error_code
         document.parse_error_detail = decision.detection_reason
         document.parsed_at = now
     elif decision.registry_status == REGISTRY_STATUS_UNSUPPORTED_DOCUMENT:
         document.parse_status = PARSE_STATUS_UNSUPPORTED
+        document.structure_validation_status = STRUCTURE_STATUS_FAILED
         document.parse_error_code = decision.parse_error_code
         document.parse_error_detail = decision.detection_reason
         document.parsed_at = now
     elif decision.registry_status == REGISTRY_STATUS_NEEDS_REVIEW and not decision.supported_document_type:
         document.parse_status = PARSE_STATUS_NEEDS_REVIEW
+        document.structure_validation_status = STRUCTURE_STATUS_PARTIAL
         document.parse_error_code = decision.parse_error_code
         document.parse_error_detail = decision.detection_reason
         document.extracted_payload_json = {
@@ -129,6 +150,7 @@ def process_official_data_upload(*, user_pk: int, uploaded_file: Any, document_t
         parser = get_parser_for_document_type(decision.supported_document_type or "")
         if parser is None:
             document.parse_status = PARSE_STATUS_FAILED
+            document.structure_validation_status = STRUCTURE_STATUS_FAILED
             document.parse_error_code = "parser_not_registered"
             document.parse_error_detail = "지원 parser가 아직 준비되지 않았어요."
             document.parsed_at = now
@@ -145,9 +167,11 @@ def process_official_data_upload(*, user_pk: int, uploaded_file: Any, document_t
             document.document_period_start = result.document_period_start
             document.document_period_end = result.document_period_end
             document.verified_reference_date = result.verified_reference_date
+            document.structure_validation_status = result.structure_validation_status
             document.parsed_at = now
             if decision.registry_status == REGISTRY_STATUS_NEEDS_REVIEW and decision.supported_document_type:
                 document.parse_status = PARSE_STATUS_NEEDS_REVIEW
+                document.structure_validation_status = STRUCTURE_STATUS_PARTIAL
                 document.parse_error_code = decision.parse_error_code or document.parse_error_code
                 document.parse_error_detail = decision.detection_reason
             document.extracted_payload_json = result.extracted_payload or {}
@@ -162,10 +186,23 @@ def process_official_data_upload(*, user_pk: int, uploaded_file: Any, document_t
     )
     document.extracted_payload_json = guard.payload
     document.extracted_key_summary_json = guard.summary
+    document.sensitive_data_redacted = bool(guard.sensitive_data_redacted)
     if guard.downgraded_to_needs_review:
         document.parse_status = PARSE_STATUS_NEEDS_REVIEW
+        document.structure_validation_status = STRUCTURE_STATUS_PARTIAL
         document.parse_error_code = guard.downgrade_error_code or "guard_needs_review"
         document.parse_error_detail = guard.downgrade_reason
+
+    trust = compute_official_data_trust_grade(
+        verification_source=document.verification_source,
+        verification_status=document.verification_status,
+        parser_parse_status=document.parse_status,
+        structure_validation_status=document.structure_validation_status,
+        user_modified_flag=bool(document.user_modified_flag),
+    )
+    document.trust_grade = trust.trust_grade
+    document.trust_grade_label = trust.trust_grade_label
+    document.trust_scope_label = trust.trust_scope_label
 
     db.session.add(document)
     db.session.commit()
@@ -198,6 +235,17 @@ def build_official_data_result_context(document: OfficialDataDocument, *, today:
     source_label = "홈택스" if document.source_system == "hometax" else "NHIS"
     summary = dict(document.extracted_key_summary_json or {})
     render_summary = sanitize_official_data_summary_for_render(summary)
+    trust = resolve_trust_fields_for_document(
+        trust_grade=document.trust_grade,
+        trust_grade_label=document.trust_grade_label,
+        trust_scope_label=document.trust_scope_label,
+        verification_source=document.verification_source,
+        verification_status=document.verification_status,
+        parse_status=document.parse_status,
+        structure_validation_status=document.structure_validation_status,
+        user_modified_flag=bool(document.user_modified_flag),
+        summary_fallback=summary,
+    )
     summary_rows: list[dict[str, str]] = []
     for row in render_summary.rows:
         label = str(row.get("label") or "").strip()
@@ -230,9 +278,9 @@ def build_official_data_result_context(document: OfficialDataDocument, *, today:
         "summary_rows": summary_rows,
         "recheck_label": recheck_label,
         "recheck_detail": recheck_detail,
-        "trust_grade": render_summary.trust_grade,
-        "trust_grade_label": render_summary.trust_grade_label,
-        "trust_scope_label": render_summary.trust_scope_label,
+        "trust_grade": trust.trust_grade,
+        "trust_grade_label": trust.trust_grade_label,
+        "trust_scope_label": trust.trust_scope_label,
         "guide_url": f"/guide/official-data#{'nhis' if document.source_system == 'nhis' else 'hometax'}",
     }
 

@@ -1,19 +1,39 @@
 from __future__ import annotations
 
 import io
+import importlib.util
+import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from flask import Flask
+import types
 
-from routes.web.guide import web_guide_bp
-from routes.web.official_data import web_official_data_bp
 from services.official_data_extractors import OfficialDataFileError
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _load_module(module_name: str, rel_path: str):
+    path = ROOT / rel_path
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    assert spec and spec.loader
+    spec.loader.exec_module(module)
+    return module
+
+
+receipt_stub = types.ModuleType("services.receipt_expense_guidance")
+receipt_stub.get_receipt_expense_guidance_content = lambda: {"title": "stub", "summary": "stub", "sections": [], "sources": []}
+sys.modules.setdefault("services.receipt_expense_guidance", receipt_stub)
+
+web_guide_bp = _load_module("test_web_guide_module", "routes/web/guide.py").web_guide_bp
+web_official_data_bp = _load_module("test_web_official_data_module", "routes/web/official_data.py").web_official_data_bp
+OFFICIAL_DATA_MODULE = "test_web_official_data_module"
 
 
 class OfficialDataUploadRoutesTest(unittest.TestCase):
@@ -30,7 +50,9 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
             'web_main.preview': '/preview',
             'web_auth.login': '/login',
             'web_auth.logout': '/logout',
+            'web_auth.register': '/register',
             'web_overview.overview': '/overview',
+            'web_inbox.index': '/dashboard/inbox',
             'web_inbox.import_page': '/dashboard/import',
             'web_bank.index': '/dashboard/bank',
             'web_package.page': '/dashboard/package',
@@ -63,6 +85,8 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
             'document_type': 'nhis_payment_confirmation',
             'parse_status': 'parsed',
             'raw_file_storage_mode': 'none',
+            'structure_validation_status': 'passed',
+            'verification_status': 'none',
             'parse_error_code': None,
             'parse_error_detail': None,
         }
@@ -98,9 +122,9 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
         self.assertIn('CSV, XLSX, 텍스트 추출 가능한 PDF', body)
         self.assertIn('파일 전체 선택 저장은 준비 중', body)
 
-    @patch('routes.web.official_data.build_official_data_result_context')
-    @patch('routes.web.official_data.get_official_data_document_for_user')
-    @patch('routes.web.official_data.process_official_data_upload')
+    @patch(f'{OFFICIAL_DATA_MODULE}.build_official_data_result_context')
+    @patch(f'{OFFICIAL_DATA_MODULE}.get_official_data_document_for_user')
+    @patch(f'{OFFICIAL_DATA_MODULE}.process_official_data_upload')
     def test_upload_success_redirects_and_result_page_shows_basis_date(self, process_upload, get_document, build_context) -> None:
         document = self._fake_document(parse_status='parsed')
         process_upload.return_value = SimpleNamespace(document=document, status_title='구조 검증 완료', status_summary='ok', status_tone='success')
@@ -121,10 +145,12 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
         self.assertIn('공식 자료 확인 결과', body)
         self.assertIn('기준일', body)
         self.assertIn('2026-03-03', body)
+        self.assertIn('structure validation', body)
+        self.assertIn('verification', body)
 
-    @patch('routes.web.official_data.build_official_data_result_context')
-    @patch('routes.web.official_data.get_official_data_document_for_user')
-    @patch('routes.web.official_data.process_official_data_upload')
+    @patch(f'{OFFICIAL_DATA_MODULE}.build_official_data_result_context')
+    @patch(f'{OFFICIAL_DATA_MODULE}.get_official_data_document_for_user')
+    @patch(f'{OFFICIAL_DATA_MODULE}.process_official_data_upload')
     def test_upload_unsupported_state_is_rendered(self, process_upload, get_document, build_context) -> None:
         document = self._fake_document(parse_status='unsupported', parse_error_code='unsupported_extension')
         process_upload.return_value = SimpleNamespace(document=document, status_title='지원 안 함', status_summary='지원 형식이 아니에요.', status_tone='warn')
@@ -152,9 +178,9 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
         self.assertIn('지원 안 함', body)
         self.assertIn('unsupported_extension', body)
 
-    @patch('routes.web.official_data.build_official_data_result_context')
-    @patch('routes.web.official_data.get_official_data_document_for_user')
-    @patch('routes.web.official_data.process_official_data_upload')
+    @patch(f'{OFFICIAL_DATA_MODULE}.build_official_data_result_context')
+    @patch(f'{OFFICIAL_DATA_MODULE}.get_official_data_document_for_user')
+    @patch(f'{OFFICIAL_DATA_MODULE}.process_official_data_upload')
     def test_upload_needs_review_state_is_rendered(self, process_upload, get_document, build_context) -> None:
         document = self._fake_document(parse_status='needs_review', parse_error_code='known_source_but_unrecognized')
         process_upload.return_value = SimpleNamespace(document=document, status_title='검토 필요', status_summary='일부만 읽혔어요.', status_tone='warn')
@@ -192,7 +218,7 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn('파일을 먼저 선택해 주세요', body)
 
-    @patch('routes.web.official_data.process_official_data_upload')
+    @patch(f'{OFFICIAL_DATA_MODULE}.process_official_data_upload')
     def test_upload_file_error_is_rendered_as_warn_state(self, process_upload) -> None:
         process_upload.side_effect = OfficialDataFileError('파일이 너무 커요.')
         resp = self.client.post(

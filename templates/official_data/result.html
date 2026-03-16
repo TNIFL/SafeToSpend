@@ -28,12 +28,11 @@
       </div>
     </div>
     <div class="small-note muted2" style="margin-top:8px;">{{ recheck_detail }}</div>
+    <div class="small-note muted2" style="margin-top:6px;">구조 검증과 기관 확인은 같은 뜻이 아니며, 이 화면은 전용 trust field 기준으로 검증 수준을 보여줘요.</div>
     {% if document.parse_error_code %}
       <div class="small-note muted2" style="margin-top:8px;">원인 코드: <code>{{ document.parse_error_code }}</code>{% if document.parse_error_detail %} · {{ document.parse_error_detail }}{% endif %}</div>
     {% endif %}
   </div>
-
-  {% include "partials/official_data_effect_notice.html" %}
 
   <div class="card pad" style="margin-bottom:12px;">
     <div class="h2" style="font-size:1.02rem;">이번에 확인한 핵심값</div>
@@ -51,6 +50,7 @@
     <div class="h2" style="font-size:1.02rem;">저장 방식</div>
     <div class="small-note muted2" style="margin-top:8px;">기본은 파일 전체가 아니라, 핵심 추출값 · 기준일 · 파싱 상태를 저장하는 구조예요.</div>
     <div class="small-note muted2" style="margin-top:6px;">파일 저장 모드: <b>{{ document.raw_file_storage_mode }}</b></div>
+    <div class="small-note muted2" style="margin-top:6px;">structure validation: <b>{{ document.structure_validation_status }}</b> · verification: <b>{{ document.verification_status }}</b></div>
     <div class="small-note muted2" style="margin-top:6px;">기준일 있는 공식 스냅샷으로 관리하고, 새 시즌이 오거나 숫자가 크게 달라질 때만 다시 확인할 수 있어요.</div>
   </div>
 

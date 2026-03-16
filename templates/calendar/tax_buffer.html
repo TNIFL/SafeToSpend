@@ -12,6 +12,50 @@
 {% set tax_buffer_total_previous = ((buffer_before if receipt_effect_event and buffer_before is not none else tax_buffer_current) + (health_insurance_buffer|int))|int %}
 {% extends "base.html" %}
 {% block title %}세금 보관함{% endblock %}
+{% block head_extra %}
+<style>
+  .od-tax-buffer-shell{
+    margin-top:14px;
+    border:1px solid rgba(15,23,42,.12);
+    border-radius:16px;
+    padding:14px;
+    background:linear-gradient(180deg, rgba(15,23,42,.05), rgba(255,255,255,.94));
+    display:grid;
+    gap:10px;
+  }
+  .od-tax-buffer-shell.is-soft{background:var(--surface-2)}
+  .od-tax-buffer-shell.is-review{
+    background:linear-gradient(180deg, rgba(245,158,11,.08), rgba(255,255,255,.94));
+    border-color:rgba(245,158,11,.22);
+  }
+  .od-tax-buffer-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+  .od-tax-buffer-title{font-weight:950;letter-spacing:-.2px}
+  .od-tax-buffer-summary{font-size:.92rem;color:var(--muted);line-height:1.5}
+  .od-tax-buffer-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px}
+  .od-tax-buffer-metric{
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px;
+    background:#fff;
+    display:grid;
+    gap:6px;
+  }
+  .od-tax-buffer-kicker{font-size:.8rem;color:var(--muted);font-weight:800;letter-spacing:.02em;text-transform:uppercase}
+  .od-tax-buffer-before{font-size:.9rem;color:var(--muted)}
+  .od-tax-buffer-after{font-size:1.28rem;font-weight:950;letter-spacing:-.4px}
+  .od-tax-buffer-delta{font-size:.92rem;font-weight:800}
+  .od-tax-buffer-delta.down{color:#047857}
+  .od-tax-buffer-delta.up{color:#b91c1c}
+  .od-tax-buffer-reference{
+    border-top:1px solid rgba(15,23,42,.08);
+    padding-top:10px;
+    font-size:.9rem;
+    color:var(--muted);
+    line-height:1.6;
+  }
+</style>
+<script defer src="{{ url_for('static', filename='js/official-data-number-animate.js') }}"></script>
+{% endblock %}
 
 {% block content %}
 <div class="wrap cal-wrap has-side-guide-layout">
@@ -74,6 +118,7 @@
   {% set official_data_upload_label = "홈택스 자료 바로 올리기" %}
   {% set official_data_entrypoint_label = "홈택스 자료 안내 보기" %}
   {% set official_data_entrypoint_anchor = "hometax" %}
+  {% set official_data_effect_surface = "tax_buffer" %}
   {% include "partials/official_data_entrypoints.html" %}
   {% include "partials/official_data_effect_notice.html" %}
 
@@ -98,7 +143,7 @@
             {% for acc in linked_accounts %}
               <tr>
                 <td class="bank">{{ acc.bank_name }}</td>
-                <td class="account">{{ acc.account_number }}</td>
+                <td class="account">{{ acc.account_number_masked or acc.account_number }}</td>
                 <td class="right amount {% if acc.balance_krw is none %}muted{% endif %}">
                   {% if acc.balance_krw is not none %}
                     {{ acc.balance_krw|krw }}
@@ -364,6 +409,76 @@
             <a href="{{ profile_edit_url }}">내 정보 수정</a>
           {% endif %}
         </div>
+
+        {% if official_tax_visual_feedback and official_tax_visual_feedback.show %}
+          {% set tax_feedback = official_tax_visual_feedback %}
+          {% set nhis_feedback_card = nhis_visual_feedback if nhis_visual_feedback is defined else none %}
+          {% set shell_class = 'is-review' if tax_feedback.feedback_level == 'review' else ('is-soft' if tax_feedback.feedback_level == 'soft' else '') %}
+          <div id="official-tax-visual-feedback" class="od-tax-buffer-shell {{ shell_class }}">
+            <div class="od-tax-buffer-head">
+              <div>
+                <div class="od-tax-buffer-title">공식 자료 반영으로 이번 달 숫자가 바뀐 지점</div>
+                <div class="od-tax-buffer-summary">{{ tax_feedback.feedback_reason }}</div>
+              </div>
+              <div class="small-note muted2">
+                반영 강도 <b>{{ tax_feedback.strength_label }}</b>
+                {% if tax_feedback.reference_date %} · 기준일 <b>{{ tax_feedback.reference_date }}</b>{% endif %}
+                {% if tax_feedback.document_kind_summary %} · {{ tax_feedback.document_kind_summary }}{% endif %}
+              </div>
+            </div>
+            <div class="od-tax-buffer-grid">
+              <div class="od-tax-buffer-metric">
+                <div class="od-tax-buffer-kicker">추가 납부 예상세액</div>
+                <div class="od-tax-buffer-before">반영 전 {{ "{:,}".format(tax_feedback.before_tax_due_krw or 0) }}원</div>
+                <div class="od-tax-buffer-after">
+                  {% if tax_feedback.should_animate and tax_feedback.after_tax_due_krw is not none %}
+                    <span
+                      data-od-animate="1"
+                      data-od-before="{{ tax_feedback.before_tax_due_krw or 0 }}"
+                      data-od-after="{{ tax_feedback.after_tax_due_krw or 0 }}"
+                      data-od-delta="{{ tax_feedback.tax_delta_krw or 0 }}"
+                      data-od-level="{{ tax_feedback.feedback_level }}"
+                    >{{ "{:,}".format(tax_feedback.after_tax_due_krw or 0) }}원</span>
+                  {% else %}
+                    {{ "{:,}".format(tax_feedback.after_tax_due_krw or 0) }}원
+                  {% endif %}
+                </div>
+                <div class="od-tax-buffer-delta {% if (tax_feedback.tax_delta_krw or 0) <= 0 %}down{% else %}up{% endif %}">
+                  변화 {% if tax_feedback.tax_delta_krw and tax_feedback.tax_delta_krw > 0 %}+{% endif %}{{ "{:,}".format(tax_feedback.tax_delta_krw or 0) }}원
+                </div>
+              </div>
+              <div class="od-tax-buffer-metric">
+                <div class="od-tax-buffer-kicker">세금 보관 권장액</div>
+                <div class="od-tax-buffer-before">반영 전 {{ "{:,}".format(tax_feedback.before_buffer_target_krw or 0) }}원</div>
+                <div class="od-tax-buffer-after">
+                  {% if tax_feedback.should_animate and tax_feedback.after_buffer_target_krw is not none %}
+                    <span
+                      data-od-animate="1"
+                      data-od-before="{{ tax_feedback.before_buffer_target_krw or 0 }}"
+                      data-od-after="{{ tax_feedback.after_buffer_target_krw or 0 }}"
+                      data-od-delta="{{ tax_feedback.buffer_delta_krw or 0 }}"
+                      data-od-level="{{ tax_feedback.feedback_level }}"
+                    >{{ "{:,}".format(tax_feedback.after_buffer_target_krw or 0) }}원</span>
+                  {% else %}
+                    {{ "{:,}".format(tax_feedback.after_buffer_target_krw or 0) }}원
+                  {% endif %}
+                </div>
+                <div class="od-tax-buffer-delta {% if (tax_feedback.buffer_delta_krw or 0) <= 0 %}down{% else %}up{% endif %}">
+                  변화 {% if tax_feedback.buffer_delta_krw and tax_feedback.buffer_delta_krw > 0 %}+{% endif %}{{ "{:,}".format(tax_feedback.buffer_delta_krw or 0) }}원
+                </div>
+              </div>
+            </div>
+            {% if nhis_feedback_card and nhis_feedback_card.show %}
+              <div class="od-tax-buffer-reference">
+                최근 공식 납부 기준 참고
+                {% if nhis_feedback_card.nhis_reference_date %} · 기준일 <b>{{ nhis_feedback_card.nhis_reference_date }}</b>{% endif %}
+                {% if nhis_feedback_card.nhis_latest_paid_amount_krw %} · 최근 공식 납부금액 <b>{{ "{:,}".format(nhis_feedback_card.nhis_latest_paid_amount_krw) }}원</b>{% endif %}
+                {% if nhis_feedback_card.document_kind_summary %} · {{ nhis_feedback_card.document_kind_summary }}{% endif %}
+                {% if nhis_feedback_card.recheck_required %} · <b>재확인 권장</b>{% endif %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
 
         <details style="margin-top:8px;">
           <summary class="p" style="cursor:pointer; font-weight:900; color:var(--text);">왜 이렇게 나왔나요?</summary>

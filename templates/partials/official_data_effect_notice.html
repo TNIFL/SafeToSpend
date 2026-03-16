@@ -1,0 +1,75 @@
+{% set tax_notice = official_tax_effect_notice if official_tax_effect_notice is defined else none %}
+{% set nhis_notice = nhis_effect_notice if nhis_effect_notice is defined else none %}
+{% set tax_feedback = official_tax_visual_feedback if official_tax_visual_feedback is defined else none %}
+{% set nhis_feedback = nhis_visual_feedback if nhis_visual_feedback is defined else none %}
+{% set effect_surface = official_data_effect_surface if official_data_effect_surface is defined else 'default' %}
+{% if (tax_notice and tax_notice.show) or (nhis_notice and nhis_notice.show) %}
+  <div class="card pad" id="official-data-effect-notice" style="margin-top:12px; margin-bottom:12px; border-color:rgba(15,23,42,.14); background:var(--surface-2);">
+    <div class="cardTitle">공식 자료 반영 상태</div>
+    <div class="small-note muted2" style="margin-top:8px;">구조 검증과 기관 확인은 같은 뜻이 아니에요. 검증 수준에 따라 반영 강도가 달라져요.</div>
+
+    {% if tax_notice and tax_notice.show %}
+      <div style="margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:12px; background:#fff;">
+        <div style="font-weight:800;">{{ tax_notice.title }}</div>
+        <div class="small-note muted2" style="margin-top:6px;">{{ tax_notice.summary }}</div>
+        <div class="small-note muted2" style="margin-top:6px;">
+          반영 강도 <b>{{ tax_notice.strength_label }}</b>
+          {% if tax_notice.reference_date %} · 기준일 <b>{{ tax_notice.reference_date }}</b>{% endif %}
+          {% if tax_notice.source_count %} · 자료 {{ tax_notice.source_count }}건 기준{% endif %}
+          {% if tax_notice.recheck_required %} · <b>재확인 권장</b>{% endif %}
+        </div>
+        {% if tax_notice.document_kind_summary %}
+          <div class="small-note muted2" style="margin-top:6px;">반영 자료 종류 · <b>{{ tax_notice.document_kind_summary }}</b></div>
+        {% endif %}
+        {% if tax_notice.delta_krw is not none and tax_notice.delta_krw != 0 %}
+          <div class="small-note muted2" style="margin-top:6px;">
+            예상세금 변화
+            <b>
+              {% if tax_notice.delta_krw > 0 %}+{% endif %}{{ "{:,}".format(tax_notice.delta_krw) }}원
+            </b>
+            {% if tax_notice.before_tax_due_krw is not none and tax_notice.after_tax_due_krw is not none %}
+              · {{ "{:,}".format(tax_notice.before_tax_due_krw) }}원 → {{ "{:,}".format(tax_notice.after_tax_due_krw) }}원
+            {% endif %}
+          </div>
+        {% endif %}
+        {% if effect_surface == 'review' and tax_feedback and tax_feedback.show %}
+          <div style="margin-top:10px; padding:10px 12px; border-radius:12px; border:1px dashed var(--line); background:rgba(15,23,42,.03);">
+            <div class="small-note muted2">
+              이번 달 공식 자료 기준 세금 변화 요약
+              {% if tax_feedback.reference_date %} · 기준일 <b>{{ tax_feedback.reference_date }}</b>{% endif %}
+              {% if tax_feedback.document_kind_summary %} · {{ tax_feedback.document_kind_summary }}{% endif %}
+            </div>
+            <div class="small-note muted2" style="margin-top:6px;">
+              {% if tax_feedback.tax_delta_krw is not none and tax_feedback.tax_delta_krw != 0 and tax_feedback.before_tax_due_krw is not none and tax_feedback.after_tax_due_krw is not none %}
+                {{ "{:,}".format(tax_feedback.before_tax_due_krw) }}원 → <b>{{ "{:,}".format(tax_feedback.after_tax_due_krw) }}원</b>
+                · 변화 <b>{% if tax_feedback.tax_delta_krw > 0 %}+{% endif %}{{ "{:,}".format(tax_feedback.tax_delta_krw) }}원</b>
+              {% else %}
+                이번 달에는 숫자 자동 변화보다 참고/검토 안내를 우선 유지해요.
+              {% endif %}
+            </div>
+            <div style="margin-top:8px;">
+              <a class="btn small ghost" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}#official-tax-visual-feedback">세금 보관함에서 자세히 보기</a>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if nhis_notice and nhis_notice.show %}
+      <div style="margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:12px; background:#fff;">
+        <div style="font-weight:800;">{{ nhis_notice.title }}</div>
+        <div class="small-note muted2" style="margin-top:6px;">{{ nhis_notice.summary }}</div>
+        <div class="small-note muted2" style="margin-top:6px;">
+          최근 공식 납부 기준 참고
+          {% if nhis_notice.reference_date %} · 기준일 <b>{{ nhis_notice.reference_date }}</b>{% endif %}
+          {% if nhis_notice.latest_paid_amount_krw %} · 최근 공식 납부금액 <b>{{ "{:,}".format(nhis_notice.latest_paid_amount_krw) }}원</b>{% endif %}
+          · 반영 강도 <b>{{ nhis_notice.strength_label }}</b>
+          {% if nhis_notice.recheck_required %} · <b>재확인 권장</b>{% endif %}
+        </div>
+        {% if nhis_notice.document_kind_summary %}
+          <div class="small-note muted2" style="margin-top:6px;">참고 자료 종류 · <b>{{ nhis_notice.document_kind_summary }}</b></div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+{% endif %}

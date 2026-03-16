@@ -13,7 +13,9 @@ from services.official_data_parsers import (
     PARSE_STATUS_UNSUPPORTED,
     parse_fixture_for_registry,
     parse_hometax_business_card_usage,
+    parse_hometax_tax_payment_history,
     parse_hometax_withholding_statement,
+    parse_nhis_eligibility_status,
     parse_nhis_payment_confirmation,
     write_parser_smoke_report,
 )
@@ -33,9 +35,18 @@ class OfficialDataParsersTest(unittest.TestCase):
         self.assertEqual(card_usage.parse_status, PARSE_STATUS_PARSED)
         self.assertEqual(card_usage.extracted_key_summary['total_amount_krw'], 485000)
 
+        tax_payment = parse_hometax_tax_payment_history(build_envelope_from_path(FIXTURES / 'hometax_tax_payment_history.csv'))
+        self.assertEqual(tax_payment.parse_status, PARSE_STATUS_PARSED)
+        self.assertEqual(tax_payment.extracted_payload['paid_tax_total_krw'], 640000)
+        self.assertEqual(tax_payment.extracted_key_summary['primary_key_value'], '***합소득세')
+
         nhis = parse_nhis_payment_confirmation(build_envelope_from_path(FIXTURES / 'nhis_payment_confirmation.pdf'))
         self.assertEqual(nhis.parse_status, PARSE_STATUS_PARSED)
         self.assertEqual(nhis.extracted_key_summary['primary_key_value'], '***-100')
+
+        eligibility = parse_nhis_eligibility_status(build_envelope_from_path(FIXTURES / 'nhis_eligibility_status.pdf'))
+        self.assertEqual(eligibility.parse_status, PARSE_STATUS_PARSED)
+        self.assertEqual(eligibility.extracted_payload['eligibility_status'], '유지')
 
     def test_parser_returns_needs_review_when_required_fields_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -46,10 +57,25 @@ class OfficialDataParsersTest(unittest.TestCase):
         self.assertEqual(result.parse_error_code, 'missing_required_fields')
         self.assertNotIn('record', result.extracted_payload)
 
+        payment_result = parse_hometax_tax_payment_history(build_envelope_from_path(FIXTURES / 'hometax_tax_payment_history_partial.csv'))
+        self.assertEqual(payment_result.parse_status, PARSE_STATUS_NEEDS_REVIEW)
+        self.assertEqual(payment_result.parse_error_code, 'missing_required_fields')
+
+        eligibility_result = parse_nhis_eligibility_status(build_envelope_from_path(FIXTURES / 'nhis_eligibility_partial.pdf'))
+        self.assertEqual(eligibility_result.parse_status, PARSE_STATUS_NEEDS_REVIEW)
+        self.assertEqual(eligibility_result.parse_error_code, 'document_header_mismatch')
+
     def test_unregistered_parser_falls_back_to_unsupported(self) -> None:
         result = parse_fixture_for_registry('missing_document_type', build_envelope_from_path(FIXTURES / 'hometax_withholding_statement.csv'))
         self.assertEqual(result.parse_status, PARSE_STATUS_UNSUPPORTED)
         self.assertEqual(result.parse_error_code, 'parser_not_registered')
+
+    def test_new_tax_payment_parser_keeps_payload_free_of_raw_sensitive_preview(self) -> None:
+        result = parse_hometax_tax_payment_history(build_envelope_from_path(FIXTURES / 'hometax_tax_payment_history.csv'))
+        self.assertEqual(result.parse_status, PARSE_STATUS_PARSED)
+        self.assertNotIn('preview_text', result.extracted_payload)
+        self.assertNotIn('raw_text', result.extracted_payload)
+        self.assertNotIn('fixture_source', result.extracted_payload)
 
     def test_smoke_report_is_written_from_fixture_resolver(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -58,15 +84,17 @@ class OfficialDataParsersTest(unittest.TestCase):
                 fixture_paths=[
                     FIXTURES / 'hometax_withholding_statement.csv',
                     FIXTURES / 'hometax_business_card_usage.xlsx',
+                    FIXTURES / 'hometax_tax_payment_history.csv',
                     FIXTURES / 'nhis_payment_confirmation.pdf',
+                    FIXTURES / 'nhis_eligibility_status.pdf',
                     FIXTURES / 'unknown_headers.csv',
                 ],
                 resolver=resolve_fixture_document,
                 output_path=output_path,
             )
             written = json.loads(output_path.read_text(encoding='utf-8'))
-        self.assertEqual(report['row_count'], 4)
-        self.assertEqual(written['row_count'], 4)
+        self.assertEqual(report['row_count'], 6)
+        self.assertEqual(written['row_count'], 6)
         self.assertEqual(written['rows'][0]['parse_status'], PARSE_STATUS_PARSED)
 
 

@@ -377,15 +377,14 @@
         </thead>
         <tbody>
           {% for acc in popbill_accounts %}
-            {% set key = (acc.bankCode, acc.accountNumber) %}
-            {% set link = link_map.get(key) %}
+            {% set link = acc.link %}
 
             <tr>
               <td>
                 <div class="acc-left">
-                  <div class="acc-name">{{ bank_name(acc.bankCode) }} · {{ acc.accountName or '계좌' }}</div>
+                  <div class="acc-name">{{ bank_name(acc.bank_code) }} · {{ acc.account_name or '계좌' }}</div>
                   <div class="acc-sub">
-                    <span class="badge">{{ mask_account(acc.accountNumber) }}</span>
+                    <span class="badge">{{ acc.masked_account_number }}</span>
 
                     {% if link and link.last_synced_at %}
                       <span class="badge ghost">최근 동기화 {{ link.last_synced_at.strftime('%m-%d %H:%M') }}</span>
@@ -407,8 +406,9 @@
                   <div class="acc-controls">
                     <!-- Toggle -->
                     <form method="POST" action="{{ url_for('web_bank.toggle') }}">
-                      <input type="hidden" name="bank_code" value="{{ acc.bankCode }}">
-                      <input type="hidden" name="account_number" value="{{ acc.accountNumber }}">
+                      <input type="hidden" name="bank_code" value="{{ acc.bank_code }}">
+                      <input type="hidden" name="account_fingerprint" value="{{ acc.account_fingerprint }}">
+                      <input type="hidden" name="account_last4" value="{{ acc.account_last4 }}">
                       <label class="switch" title="동기화 ON/OFF">
                         <input type="checkbox" name="is_active" {% if link and link.is_active %}checked{% endif %} onchange="this.form.submit()">
                         <span class="slider"></span>
@@ -417,8 +417,9 @@
 
                     <!-- Alias -->
                     <form method="POST" action="{{ url_for('web_bank.alias') }}" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                      <input type="hidden" name="bank_code" value="{{ acc.bankCode }}">
-                      <input type="hidden" name="account_number" value="{{ acc.accountNumber }}">
+                      <input type="hidden" name="bank_code" value="{{ acc.bank_code }}">
+                      <input type="hidden" name="account_fingerprint" value="{{ acc.account_fingerprint }}">
+                      <input type="hidden" name="account_last4" value="{{ acc.account_last4 }}">
                       <input class="alias" name="alias" placeholder="별칭(예: 사업용, 생활비)" value="{{ link.alias if link else '' }}">
                       <button class="btn small ghost" type="submit" {% if not link %}disabled{% endif %}>저장</button>
                     </form>
@@ -461,7 +462,7 @@
               </div>
               <div class="s">
                 총 {{ j.total_rows }} · 추가 {{ j.inserted_rows }} · 중복 {{ j.duplicate_rows }} · 실패 {{ j.failed_rows }}
-                {% if j.error_summary %}<br>오류: {{ j.error_summary }}{% endif %}
+                {% if j.display_error_summary %}<br>오류: {{ j.display_error_summary }}{% endif %}
               </div>
             </div>
             <div class="r" style="text-align:right;">

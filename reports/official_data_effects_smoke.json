@@ -1,0 +1,56 @@
+{
+  "generated_for_branch": "official-data-trust-remediation",
+  "generated_at": "2026-03-16",
+  "cases": [
+    {
+      "case": "no_official_data",
+      "before": 150000,
+      "after": 150000,
+      "delta": 0,
+      "should_animate": false,
+      "effect_status": "none"
+    },
+    {
+      "case": "withholding_applied",
+      "before": 150000,
+      "after": 50000,
+      "delta": -100000,
+      "should_animate": true,
+      "effect_status": "applied"
+    },
+    {
+      "case": "payment_history_applied",
+      "before": 150000,
+      "after": 80000,
+      "delta": -70000,
+      "should_animate": true,
+      "effect_status": "applied"
+    },
+    {
+      "case": "withholding_and_payment_applied",
+      "before": 150000,
+      "after": 0,
+      "delta": -150000,
+      "should_animate": true,
+      "effect_status": "applied"
+    },
+    {
+      "case": "nhis_payment_reference",
+      "before": null,
+      "after": 333000,
+      "delta": null,
+      "should_animate": false,
+      "effect_status": "reference_available",
+      "reference_date": "2026-03-03"
+    },
+    {
+      "case": "nhis_eligibility_reference",
+      "before": null,
+      "after": 0,
+      "delta": null,
+      "should_animate": false,
+      "effect_status": "reference_available",
+      "reference_date": "2026-03-11"
+    }
+  ]
+}

@@ -19,6 +19,16 @@ from domain.models import (
     BankAccountLink, RecurringRule
 )
 
+from services.official_data_effects import (
+    build_official_tax_effect_notice_context,
+    build_official_tax_visual_feedback,
+    build_official_tax_visual_feedback_for_tax_buffer,
+)
+from services.nhis_effects import (
+    build_nhis_effect_notice_context,
+    build_nhis_visual_feedback,
+    collect_nhis_effects_for_user,
+)
 from services.risk import compute_risk_summary
 from services.tax_package import build_tax_package_zip
 
@@ -874,6 +884,19 @@ def review():
                 "evidence_status": st,
             })
 
+    risk_summary = compute_risk_summary(user_pk, month_key=month_key)
+    official_tax_effect_state = {
+        "official_withheld_tax_krw": risk_summary.official_withheld_tax_krw,
+        "official_paid_tax_krw": risk_summary.official_paid_tax_krw,
+        "official_tax_reference_date": risk_summary.official_tax_reference_date,
+        "official_tax_effect_strength": risk_summary.official_tax_effect_strength,
+        "official_tax_effect_source_count": risk_summary.official_tax_effect_source_count,
+        "official_tax_effect_status": risk_summary.official_tax_effect_status,
+        "official_tax_effect_reason": risk_summary.official_tax_effect_reason,
+        "official_tax_effect_document_types": risk_summary.official_tax_effect_document_types,
+    }
+    nhis_effect = collect_nhis_effects_for_user(user_pk)
+
     return render_template(
         "calendar/review.html",
         month_first=month_first,
@@ -892,6 +915,18 @@ def review():
 
         items=items,
         rows=rows,  # 기존 호환
+        official_tax_effect_notice=build_official_tax_effect_notice_context(
+            official_tax_effect_state,
+            before_tax_due_krw=risk_summary.tax_due_before_official_data_krw,
+            after_tax_due_krw=risk_summary.tax_due_after_official_data_krw,
+        ),
+        nhis_effect_notice=build_nhis_effect_notice_context(nhis_effect),
+        official_tax_visual_feedback=build_official_tax_visual_feedback(
+            official_tax_effect_state,
+            before_tax_due_krw=risk_summary.tax_due_before_official_data_krw,
+            after_tax_due_krw=risk_summary.tax_due_after_official_data_krw,
+        ),
+        nhis_visual_feedback=build_nhis_visual_feedback(nhis_effect),
     )
 
 
@@ -1266,6 +1301,17 @@ def tax_buffer():
     income_total = int(r.gross_income_krw)
     recommended = int(r.buffer_target_krw)
     balance = int(r.buffer_total_krw)
+    official_tax_effect_state = {
+        "official_withheld_tax_krw": r.official_withheld_tax_krw,
+        "official_paid_tax_krw": r.official_paid_tax_krw,
+        "official_tax_reference_date": r.official_tax_reference_date,
+        "official_tax_effect_strength": r.official_tax_effect_strength,
+        "official_tax_effect_source_count": r.official_tax_effect_source_count,
+        "official_tax_effect_status": r.official_tax_effect_status,
+        "official_tax_effect_reason": r.official_tax_effect_reason,
+        "official_tax_effect_document_types": r.official_tax_effect_document_types,
+    }
+    nhis_effect = collect_nhis_effects_for_user(user_pk)
 
     ledger = (
         db.session.query(TaxBufferLedger)
@@ -1294,6 +1340,20 @@ def tax_buffer():
         progress_pct=progress_pct,
         shortage=shortage,
         overage=overage,
+        official_tax_effect_notice=build_official_tax_effect_notice_context(
+            official_tax_effect_state,
+            before_tax_due_krw=r.tax_due_before_official_data_krw,
+            after_tax_due_krw=r.tax_due_after_official_data_krw,
+        ),
+        nhis_effect_notice=build_nhis_effect_notice_context(nhis_effect),
+        official_tax_visual_feedback=build_official_tax_visual_feedback_for_tax_buffer(
+            official_tax_effect_state,
+            before_tax_due_krw=r.tax_due_before_official_data_krw,
+            after_tax_due_krw=r.tax_due_after_official_data_krw,
+            before_buffer_target_krw=r.tax_due_before_official_data_krw,
+            after_buffer_target_krw=r.buffer_target_krw,
+        ),
+        nhis_visual_feedback=build_nhis_visual_feedback(nhis_effect),
     )
 
 

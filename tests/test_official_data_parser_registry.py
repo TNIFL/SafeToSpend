@@ -24,7 +24,9 @@ class OfficialDataParserRegistryTest(unittest.TestCase):
         cases = {
             'hometax_withholding_statement.csv': 'hometax_withholding_statement',
             'hometax_business_card_usage.xlsx': 'hometax_business_card_usage',
+            'hometax_tax_payment_history.csv': 'hometax_tax_payment_history',
             'nhis_payment_confirmation.pdf': 'nhis_payment_confirmation',
+            'nhis_eligibility_status.pdf': 'nhis_eligibility_status',
         }
         for filename, document_type in cases.items():
             envelope = build_envelope_from_path(FIXTURES / filename)
@@ -40,6 +42,16 @@ class OfficialDataParserRegistryTest(unittest.TestCase):
         unknown = identify_official_data_document(build_envelope_from_path(FIXTURES / 'unknown_headers.csv'))
         self.assertEqual(unknown.registry_status, REGISTRY_STATUS_UNSUPPORTED_DOCUMENT)
         self.assertEqual(unknown.parse_error_code, 'unsupported_document_type')
+
+        partial_tax = identify_official_data_document(build_envelope_from_path(FIXTURES / 'hometax_tax_payment_history_partial.csv'))
+        self.assertEqual(partial_tax.registry_status, REGISTRY_STATUS_NEEDS_REVIEW)
+        self.assertEqual(partial_tax.supported_document_type, 'hometax_tax_payment_history')
+        self.assertEqual(partial_tax.parse_error_code, 'partial_structure_detected')
+
+        partial_nhis = identify_official_data_document(build_envelope_from_path(FIXTURES / 'nhis_eligibility_partial.pdf'))
+        self.assertEqual(partial_nhis.registry_status, REGISTRY_STATUS_NEEDS_REVIEW)
+        self.assertEqual(partial_nhis.supported_document_type, 'nhis_eligibility_status')
+        self.assertEqual(partial_nhis.parse_error_code, 'partial_structure_detected')
 
         encrypted = identify_official_data_document(build_envelope_from_path(FIXTURES / 'encrypted_notice.pdf'))
         self.assertEqual(encrypted.registry_status, REGISTRY_STATUS_UNSUPPORTED_FORMAT)
@@ -58,7 +70,10 @@ class OfficialDataParserRegistryTest(unittest.TestCase):
 
     def test_supported_options_and_parser_lookup_exist(self) -> None:
         options = list_supported_document_options()
-        self.assertGreaterEqual(len(options), 3)
+        document_types = {item['document_type'] for item in options}
+        self.assertGreaterEqual(len(options), 5)
+        self.assertIn('hometax_tax_payment_history', document_types)
+        self.assertIn('nhis_eligibility_status', document_types)
         self.assertIsNotNone(get_parser_for_document_type('hometax_withholding_statement'))
         self.assertIsNone(get_parser_for_document_type('missing_document_type'))
 

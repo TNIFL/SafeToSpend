@@ -218,6 +218,20 @@
 15. 문의/관리자 문의 관리 체크:
 - 사용자 문의 작성:
   - 로그인 후 `/support` 진입
+
+## 42) trust/remediation 시작 전 baseline 체크
+- 아래 3개가 모두 정상일 때만 `official-data-trust-remediation` 작업을 시작한다.
+- 하나라도 실패하면 schema/model/route 변경을 중단하고 migration chain 또는 DB 연결 상태를 먼저 복구한다.
+
+실행 명령:
+- `PYTHONPATH=/tmp/official-data-v1-baseline FLASK_APP=/tmp/official-data-v1-baseline/app.py .venv/bin/flask db heads -d /tmp/official-data-v1-baseline/migrations`
+- `PYTHONPATH=/tmp/official-data-v1-baseline FLASK_APP=/tmp/official-data-v1-baseline/app.py .venv/bin/flask db current -d /tmp/official-data-v1-baseline/migrations`
+- `PYTHONPATH=/tmp/official-data-v1-baseline FLASK_APP=/tmp/official-data-v1-baseline/app.py .venv/bin/flask db upgrade -d /tmp/official-data-v1-baseline/migrations`
+
+기대 결과:
+- `flask db heads`: `fb24c1d9e8a1 (head)`
+- `flask db current`: `fb24c1d9e8a1 (head)`
+- `flask db upgrade`: no-op 또는 정상 upgrade 완료
   - 제목/내용 입력 후 `문의 보내기`
   - 연속 제출 시 30초 쿨다운 안내가 노출되는지 확인
   - `/support/my` 목록, `/support/my/<id>` 상세에서 상태/내용 확인
@@ -1392,7 +1406,7 @@ FLASK_APP=app.py .venv/bin/flask billing-startup-check
     `from pathlib import Path`
     `from services.official_data_parser_registry import resolve_fixture_document`
     `from services.official_data_parsers import write_parser_smoke_report`
-    `write_parser_smoke_report(fixture_paths=[Path('tests/fixtures/official_data/hometax_withholding_statement.csv'), Path('tests/fixtures/official_data/hometax_business_card_usage.xlsx'), Path('tests/fixtures/official_data/nhis_payment_confirmation.pdf'), Path('tests/fixtures/official_data/unknown_headers.csv'), Path('tests/fixtures/official_data/encrypted_notice.pdf'), Path('tests/fixtures/official_data/scanned_image_notice.pdf')], resolver=resolve_fixture_document, output_path=Path('reports/official_data_parser_smoke.json'))`
+    `write_parser_smoke_report(fixture_paths=[Path('tests/fixtures/official_data/hometax_withholding_statement.csv'), Path('tests/fixtures/official_data/hometax_business_card_usage.xlsx'), Path('tests/fixtures/official_data/hometax_tax_payment_history.csv'), Path('tests/fixtures/official_data/nhis_payment_confirmation.pdf'), Path('tests/fixtures/official_data/nhis_eligibility_status.pdf'), Path('tests/fixtures/official_data/unknown_headers.csv'), Path('tests/fixtures/official_data/encrypted_notice.pdf'), Path('tests/fixtures/official_data/scanned_image_notice.pdf')], resolver=resolve_fixture_document, output_path=Path('reports/official_data_parser_smoke.json'))`
     `PY`
   - `FLASK_APP=app.py .venv/bin/flask db upgrade`
 - 확인 포인트
@@ -1444,3 +1458,104 @@ FLASK_APP=app.py .venv/bin/flask billing-startup-check
   - 공식 기관 verification 메타 없이는 A등급이 나오지 않는지
   - `result.html`, `official_data_effect_notice.html`, `routes/web/official_data.py`에 `진본`, `법적으로 보장`, `100% 정확`, `원본임을 보증` 표현이 없는지
   - `docs/OFFICIAL_DATA_RISK_INVENTORY.md`, `docs/OFFICIAL_DATA_REMEDIATION_PLAN.md`, `docs/OFFICIAL_DATA_RUNTIME_GUARDS_REPORT.md`에 즉시 수정 항목과 남은 리스크가 정리돼 있는지
+
+## 43) trust/remediation 회귀
+- baseline 체크
+```bash
+PYTHONPATH=/tmp/official-data-v1-baseline FLASK_APP=/tmp/official-data-v1-baseline/app.py .venv/bin/flask db heads -d /tmp/official-data-v1-baseline/migrations
+PYTHONPATH=/tmp/official-data-v1-baseline FLASK_APP=/tmp/official-data-v1-baseline/app.py .venv/bin/flask db current -d /tmp/official-data-v1-baseline/migrations
+PYTHONPATH=/tmp/official-data-v1-baseline FLASK_APP=/tmp/official-data-v1-baseline/app.py .venv/bin/flask db upgrade -d /tmp/official-data-v1-baseline/migrations
+```
+- trust field / runtime guard / route 회귀
+```bash
+PYTHONPATH=. .venv/bin/python -m unittest tests.test_official_data_trust_fields tests.test_bank_identifier_guards tests.test_official_data_runtime_guards tests.test_official_data_upload_routes
+```
+- remediation dry-run
+```bash
+PYTHONPATH=. .venv/bin/python scripts/remediate_sensitive_identifiers.py --limit 200 --output reports/bank_identifier_remediation_smoke.json
+```
+- 다음 공식 자료 상태반영 티켓 시작 전 체크리스트
+  - baseline db heads/current/upgrade 정상 확인
+  - trust field migration head 확인 (`8fd1c2b3a4e5`)
+  - 새 저장은 전용 필드 우선인지 확인
+  - raw identifier 저장/렌더가 다시 생기지 않았는지 확인
+
+
+## 48) 공식 자료 effect 1차 회귀
+- 목적
+  - trust field 기준축을 사용해 홈택스/NHIS 공식 자료 effect가 세금과 상태 UI에 안전하게 연결되는지 확인
+- 명령
+  - `PYTHONPATH=. .venv/bin/python -m unittest tests.test_official_data_effects tests.test_official_data_effects_integration tests.test_nhis_effects tests.test_official_data_effects_render tests.test_official_data_upload_routes`
+  - `PYTHONPATH=. .venv/bin/python -m py_compile services/official_data_effects.py services/nhis_effects.py services/risk.py routes/web/overview.py routes/web/web_calendar.py tests/test_official_data_effects.py tests/test_official_data_effects_integration.py tests/test_nhis_effects.py tests/test_official_data_effects_render.py`
+  - `PYTHONPATH=. .venv/bin/python - <<'PY'`
+    `from pathlib import Path`
+    `from types import SimpleNamespace`
+    `from datetime import date`
+    `from services.official_data_effects import build_official_tax_effect_state`
+    `from services.nhis_effects import build_nhis_effect_state`
+    `report_path = Path('reports/official_data_effects_smoke.json')`
+    `print(report_path.exists())`
+    `PY`
+- 확인 포인트
+  - 반영 강도는 `trust_grade`, `verification_status`, `structure_validation_status` 전용 필드 기준으로만 결정되는지
+  - `hometax_withholding_statement`만 세금 직접 반영 대상으로 쓰는지
+  - `hometax_business_card_usage`는 참고 정보로만 남는지
+  - NHIS는 `reference_available / stale / review_needed / none` 범위만 쓰는지
+  - `overview`, `tax_buffer`, `review`에서 금지 표현 없이 기준일/반영 강도/재확인 notice가 보이는지
+  - 다음 단계 전 체크리스트
+    - parser 확대 없이 현재 `document_type`만 사용했는지
+    - raw identifier가 새 effect 경로에서 다시 저장되지 않았는지
+    - NHIS 계산값 직접 덮어쓰기가 없는지
+
+
+## 49) 공식 자료 parser/effect 2차 확대 회귀
+- 목적
+  - 홈택스 납부내역과 NHIS 자격 자료가 registry, parser, effect, notice까지 안전하게 연결되는지 확인
+- 명령
+  - `PYTHONPATH=. .venv/bin/python -m unittest tests.test_official_data_parser_registry tests.test_official_data_parsers tests.test_official_data_effects tests.test_official_data_effects_integration tests.test_nhis_effects tests.test_official_data_effects_render tests.test_official_data_upload_routes`
+  - `PYTHONPATH=. .venv/bin/python -m py_compile services/official_data_parser_registry.py services/official_data_parsers.py services/official_data_effects.py services/nhis_effects.py services/risk.py routes/web/overview.py routes/web/web_calendar.py tests/test_official_data_parser_registry.py tests/test_official_data_parsers.py tests/test_official_data_effects.py tests/test_official_data_effects_integration.py tests/test_nhis_effects.py tests/test_official_data_effects_render.py`
+- 확인 포인트
+  - `hometax_tax_payment_history`가 `official_paid_tax_krw` 후보로만 반영되는지
+  - `nhis_eligibility_status`가 건보료 직접 확정 없이 reason/recheck 보조에만 쓰이는지
+  - 반영 강도는 계속 `trust_grade`, `verification_status`, `structure_validation_status` 전용 필드 기준인지
+  - notice가 `원천징수 반영`, `납부내역 반영`, `납부확인 참고`, `자격자료 참고`를 과장 없이 보여주는지
+  - 다음 단계 전 체크리스트
+    - verification 연계 없이 A 자동 판정이 다시 생기지 않았는지
+    - parser 추가 후 raw identifier 저장/표시가 새 경로에서 늘지 않았는지
+    - NHIS 자격 자료만으로 건보료 완전 확정처럼 보이지 않는지
+
+## 50) 숫자 시각 피드백 시작 전 체크
+- 목적
+  - 공식 자료 effect를 숫자로 더 강하게 보여 주더라도 정책과 접근성 조건이 먼저 잠겨 있는지 확인
+- 명령
+  - `PYTHONPATH=. .venv/bin/python -m unittest tests.test_official_data_effects tests.test_nhis_effects`
+  - `PYTHONPATH=. .venv/bin/python -m unittest tests.test_official_data_effects_integration tests.test_official_data_effects_render`
+- 확인 포인트
+  - 숫자 피드백은 `trust_grade`, `verification_status`, `structure_validation_status` 전용 필드 기준으로만 움직이는지
+  - `official_tax_effect_status=applied` 이고 delta가 실제로 있을 때만 애니메이션 후보가 되는지
+  - `reference_only`, `review_needed`, `stale`, `none`은 강한 숫자 강조 대신 설명/재확인 톤을 유지하는지
+  - NHIS는 숫자 애니메이션 없이 기준일, 최근 공식 납부금액, 재확인 안내만 보여 주는지
+  - reduced motion 환경에서는 즉시 최종값을 렌더하도록 설계됐는지
+  - 금지 표현(`확정`, `보증`, `100% 정확`)이 새 숫자 피드백 경로에 들어가지 않았는지
+
+## 51) 공식 자료 숫자 시각 피드백 회귀
+- 목적
+  - overview / tax_buffer / review에서 공식 자료 숫자 변화가 과장 없이, 그리고 접근성 조건을 지키며 보이는지 확인
+- 명령
+  - `PYTHONPATH=. .venv/bin/python -m unittest tests.test_official_data_effects tests.test_official_data_effects_integration tests.test_nhis_effects tests.test_official_data_effects_render tests.test_official_data_upload_routes`
+  - `PYTHONPATH=. .venv/bin/python -m py_compile services/official_data_effects.py services/nhis_effects.py services/risk.py routes/web/overview.py routes/web/web_calendar.py tests/test_official_data_effects.py tests/test_official_data_effects_integration.py tests/test_nhis_effects.py tests/test_official_data_effects_render.py tests/test_official_data_upload_routes.py`
+- JS / 템플릿 스모크 확인
+  - `templates/overview.html`, `templates/calendar/tax_buffer.html`에 `official-data-number-animate.js`가 로드되는지
+  - `data-od-before`, `data-od-after`, `data-od-delta`가 applied 경로에만 붙는지
+  - `templates/calendar/review.html`에서 review용 summary notice와 `세금 보관함에서 자세히 보기` 링크가 보이는지
+- 확인 포인트
+  - `official_tax_visual_feedback`, `nhis_visual_feedback`가 라우트 context에 존재하는지
+  - `applied + delta != 0`에서만 `should_animate=true`가 되는지
+  - `reference_only`, `review_needed`, `stale`, `none`은 강한 숫자 강조를 하지 않는지
+  - NHIS는 숫자 애니메이션 없이 참고/기준일/재확인 톤을 유지하는지
+  - reduced motion에서는 최종값 즉시 렌더로 대체되는지
+  - 금지 표현(`확정`, `보증`, `100% 정확`)이 숫자 피드백 UI에 들어가지 않았는지
+- 다음 단계 전 체크리스트
+  - verification 연계 없이 A 자동 판정이 다시 생기지 않았는지
+  - parser/registry 보정 시 숫자 피드백 조건식이 JSON 임시값으로 돌아가지 않았는지
+  - NHIS 참고 스트립이 계산값 직접 덮어쓰기처럼 보이지 않는지

@@ -17,7 +17,9 @@ from services.official_data_extractors import (
 from services.official_data_parsers import (
     OFFICIAL_DATA_PARSER_VERSION,
     parse_hometax_business_card_usage,
+    parse_hometax_tax_payment_history,
     parse_hometax_withholding_statement,
+    parse_nhis_eligibility_status,
     parse_nhis_payment_confirmation,
 )
 
@@ -52,12 +54,32 @@ SUPPORTED_DOCUMENT_SPECS: dict[str, dict[str, Any]] = {
         "parser": parse_hometax_business_card_usage,
         "guide_anchor": "hometax",
     },
+    "hometax_tax_payment_history": {
+        "source_system": "hometax",
+        "display_name": "홈택스 납부내역",
+        "supported_extensions": {".csv", ".xlsx", ".pdf"},
+        "required_headers": {"문서명", "발급기관", "조회일", "세목", "납부일", "납부세액 합계", "귀속기간시작", "귀속기간종료"},
+        "must_contain": {"납부", "국세청", "세목"},
+        "partial_tokens": {"납부", "세목", "조회일", "납부세액"},
+        "parser": parse_hometax_tax_payment_history,
+        "guide_anchor": "hometax",
+    },
     "nhis_payment_confirmation": {
         "source_system": "nhis",
         "display_name": "건보료 납부확인서",
         "supported_extensions": {".pdf"},
         "must_contain": {"보험료 납부확인서", "국민건강보험공단"},
+        "partial_tokens": {"보험료", "납부", "가입자 구분"},
         "parser": parse_nhis_payment_confirmation,
+        "guide_anchor": "nhis",
+    },
+    "nhis_eligibility_status": {
+        "source_system": "nhis",
+        "display_name": "NHIS 자격 상태 자료",
+        "supported_extensions": {".pdf"},
+        "must_contain": {"자격득실확인서", "국민건강보험공단"},
+        "partial_tokens": {"자격", "취득일", "상실일", "가입자 유형"},
+        "parser": parse_nhis_eligibility_status,
         "guide_anchor": "nhis",
     },
 }
@@ -109,8 +131,8 @@ def _preview_headers(envelope: OfficialDataFileEnvelope) -> set[str]:
 def _matches_tabular_spec(envelope: OfficialDataFileEnvelope, spec: dict[str, Any], preview_text: str) -> bool:
     headers = _preview_headers(envelope)
     required_headers = set(spec.get("required_headers") or set())
-    if required_headers and required_headers.issubset(headers):
-        return True
+    if required_headers:
+        return required_headers.issubset(headers)
     must_contain = set(spec.get("must_contain") or set())
     return bool(must_contain and all(token in preview_text for token in must_contain))
 
@@ -118,6 +140,29 @@ def _matches_tabular_spec(envelope: OfficialDataFileEnvelope, spec: dict[str, An
 def _matches_pdf_spec(preview_text: str, spec: dict[str, Any]) -> bool:
     must_contain = set(spec.get("must_contain") or set())
     return bool(must_contain and all(token in preview_text for token in must_contain))
+
+
+def _tabular_partial_match_score(envelope: OfficialDataFileEnvelope, spec: dict[str, Any], preview_text: str) -> int:
+    headers = _preview_headers(envelope)
+    required_headers = set(spec.get("required_headers") or set())
+    overlap = 0
+    if required_headers:
+        overlap = len(required_headers & headers)
+    partial_tokens = set(spec.get("partial_tokens") or set(spec.get("must_contain") or set()))
+    token_hits = sum(1 for token in partial_tokens if token in preview_text)
+    if required_headers and 0 < overlap < len(required_headers):
+        return overlap + token_hits
+    if not required_headers and 0 < token_hits < len(must_contain):
+        return token_hits
+    return 0
+
+
+def _pdf_partial_match_score(preview_text: str, spec: dict[str, Any]) -> int:
+    partial_tokens = set(spec.get("partial_tokens") or set(spec.get("must_contain") or set()))
+    token_hits = sum(1 for token in partial_tokens if token in preview_text)
+    if token_hits > 0:
+        return token_hits
+    return 0
 
 
 def identify_official_data_document(envelope: OfficialDataFileEnvelope, *, document_type_hint: str | None = None) -> OfficialDataRegistryDecision:
@@ -199,6 +244,34 @@ def identify_official_data_document(envelope: OfficialDataFileEnvelope, *, docum
             parser_version=OFFICIAL_DATA_PARSER_VERSION,
             parse_error_code=None,
             detection_reason="지원 문서 헤더를 확인했어요.",
+            preview_text=preview_text,
+            guide_anchor=spec.get("guide_anchor"),
+        )
+
+    partial_match_document_type: str | None = None
+    partial_match_score = 0
+    for document_type, spec in SUPPORTED_DOCUMENT_SPECS.items():
+        if envelope.ext not in set(spec.get("supported_extensions") or set()):
+            continue
+        score = (
+            _pdf_partial_match_score(preview_text, spec)
+            if envelope.ext == ".pdf"
+            else _tabular_partial_match_score(envelope, spec, preview_text)
+        )
+        if score > partial_match_score:
+            partial_match_score = score
+            partial_match_document_type = document_type
+
+    if partial_match_document_type:
+        spec = SUPPORTED_DOCUMENT_SPECS[partial_match_document_type]
+        return OfficialDataRegistryDecision(
+            registry_status=REGISTRY_STATUS_NEEDS_REVIEW,
+            supported_document_type=partial_match_document_type,
+            source_system=spec["source_system"],
+            display_name=spec["display_name"],
+            parser_version=OFFICIAL_DATA_PARSER_VERSION,
+            parse_error_code="partial_structure_detected",
+            detection_reason="공식 자료처럼 보이지만 필수 구조를 끝까지 확인하지 못했어요.",
             preview_text=preview_text,
             guide_anchor=spec.get("guide_anchor"),
         )

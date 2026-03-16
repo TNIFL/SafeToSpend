@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func
 
 from core.extensions import db
+from services.official_data_effects import collect_official_tax_effects_for_user_month
 from domain.models import (
     Transaction,
     EvidenceItem,
@@ -85,6 +86,17 @@ class RiskSummary:
     buffer_total_krw: int
     buffer_target_krw: int
     buffer_shortage_krw: int
+    tax_due_before_official_data_krw: int
+    tax_due_after_official_data_krw: int
+    official_withheld_tax_krw: int
+    official_paid_tax_krw: int
+    tax_delta_from_official_data_krw: int
+    official_tax_reference_date: str | None
+    official_tax_effect_status: str
+    official_tax_effect_strength: str
+    official_tax_effect_reason: str
+    official_tax_effect_source_count: int
+    official_tax_effect_document_types: tuple[str, ...]
 
 
 def compute_risk_summary(user_pk: int, month_key: str | None = None) -> RiskSummary:
@@ -170,8 +182,14 @@ def compute_risk_summary(user_pk: int, month_key: str | None = None) -> RiskSumm
         .scalar()
     ) or 0
 
-    buffer_target = int(gross_income * tax_rate)
-    buffer_shortage = max(0, buffer_target - int(buffer_total))
+    buffer_target_before = int(gross_income * tax_rate)
+    official_tax_effect = collect_official_tax_effects_for_user_month(int(user_pk), month_key=month_key)
+    official_withheld_tax = int(official_tax_effect.get("official_withheld_tax_krw") or 0)
+    official_paid_tax = int(official_tax_effect.get("official_paid_tax_krw") or 0)
+    official_adjustment = max(0, official_withheld_tax + official_paid_tax)
+    buffer_target_after = max(0, buffer_target_before - official_adjustment)
+    buffer_shortage = max(0, buffer_target_after - int(buffer_total))
+    tax_delta = int(buffer_target_after - buffer_target_before)
 
     return RiskSummary(
         month_key=month_key,
@@ -182,8 +200,19 @@ def compute_risk_summary(user_pk: int, month_key: str | None = None) -> RiskSumm
         expense_needs_review=int(expense_review),
         income_unknown=int(income_unknown),
         buffer_total_krw=int(buffer_total),
-        buffer_target_krw=int(buffer_target),
+        buffer_target_krw=int(buffer_target_after),
         buffer_shortage_krw=int(buffer_shortage),
+        tax_due_before_official_data_krw=int(buffer_target_before),
+        tax_due_after_official_data_krw=int(buffer_target_after),
+        official_withheld_tax_krw=int(official_withheld_tax),
+        official_paid_tax_krw=int(official_paid_tax),
+        tax_delta_from_official_data_krw=int(tax_delta),
+        official_tax_reference_date=official_tax_effect.get("official_tax_reference_date"),
+        official_tax_effect_status=str(official_tax_effect.get("official_tax_effect_status") or "none"),
+        official_tax_effect_strength=str(official_tax_effect.get("official_tax_effect_strength") or "none"),
+        official_tax_effect_reason=str(official_tax_effect.get("official_tax_effect_reason") or ""),
+        official_tax_effect_source_count=int(official_tax_effect.get("official_tax_effect_source_count") or 0),
+        official_tax_effect_document_types=tuple(official_tax_effect.get("official_tax_effect_document_types") or ()),
     )
 
 
@@ -242,6 +271,17 @@ def compute_overview(user_pk: int, month_key: str | None = None) -> dict:
         tax_buffer=int(tax_buffer),
         tax_shortfall=int(tax_shortfall),
         tax_progress_percent=float(tax_progress_percent),
+        tax_due_before_official_data_krw=int(r.tax_due_before_official_data_krw),
+        tax_due_after_official_data_krw=int(r.tax_due_after_official_data_krw),
+        official_withheld_tax_krw=int(r.official_withheld_tax_krw),
+        official_paid_tax_krw=int(r.official_paid_tax_krw),
+        tax_delta_from_official_data_krw=int(r.tax_delta_from_official_data_krw),
+        official_tax_reference_date=r.official_tax_reference_date,
+        official_tax_effect_status=r.official_tax_effect_status,
+        official_tax_effect_strength=r.official_tax_effect_strength,
+        official_tax_effect_reason=r.official_tax_effect_reason,
+        official_tax_effect_source_count=int(r.official_tax_effect_source_count),
+        official_tax_effect_document_types=tuple(r.official_tax_effect_document_types),
 
         evidence_missing_count=int(evidence_missing_count),
         mixed_count=int(mixed_count),

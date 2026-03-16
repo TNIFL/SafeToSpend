@@ -88,6 +88,46 @@
   .season-state.todo{background:rgba(59,130,246,.12); color:#1d4ed8}
   .season-state.in_progress{background:rgba(245,158,11,.15); color:#b45309}
   .season-state.done{background:rgba(16,185,129,.14); color:#047857}
+  .od-visual-shell{
+    margin-top:12px;
+    border:1px solid rgba(15,23,42,.12);
+    border-radius:16px;
+    padding:14px;
+    background:linear-gradient(180deg, rgba(15,23,42,.05), rgba(255,255,255,.92));
+    display:grid;
+    gap:10px;
+  }
+  .od-visual-shell.is-soft{background:var(--surface-2)}
+  .od-visual-shell.is-review{
+    background:linear-gradient(180deg, rgba(245,158,11,.08), rgba(255,255,255,.92));
+    border-color:rgba(245,158,11,.22);
+  }
+  .od-visual-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .od-visual-title{font-weight:950;letter-spacing:-.2px}
+  .od-visual-summary{font-size:.92rem;color:var(--muted);line-height:1.5}
+  .od-visual-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:10px}
+  .od-visual-metric{
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px;
+    background:#fff;
+    display:grid;
+    gap:6px;
+  }
+  .od-visual-kicker{font-size:.8rem;color:var(--muted);font-weight:800;letter-spacing:.02em;text-transform:uppercase}
+  .od-visual-before{font-size:.9rem;color:var(--muted)}
+  .od-visual-after{font-size:1.35rem;font-weight:950;letter-spacing:-.4px}
+  .od-visual-delta{font-size:.92rem;font-weight:800}
+  .od-visual-delta.down{color:#047857}
+  .od-visual-delta.up{color:#b91c1c}
+  .od-visual-meta{font-size:.9rem;color:var(--muted)}
+  .od-reference-strip{
+    border-top:1px solid rgba(15,23,42,.08);
+    padding-top:10px;
+    font-size:.9rem;
+    color:var(--muted);
+    line-height:1.6;
+  }
   @media (max-width: 980px){
     .home-cta .btn{width:100%}
     .todo-action{width:100%}
@@ -95,6 +135,7 @@
     .rec-actions .btn{width:100%}
   }
 </style>
+<script defer src="{{ url_for('static', filename='js/official-data-number-animate.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -158,6 +199,7 @@
     {% set official_data_upload_href = url_for('web_official_data.upload_page') %}
     {% set official_data_upload_label = "공식 자료 바로 올리기" %}
     {% set official_data_entrypoint_label = "공식 자료 안내 보기" %}
+    {% set official_data_effect_surface = "overview" %}
     {% include "partials/official_data_entrypoints.html" %}
     {% include "partials/official_data_effect_notice.html" %}
 
@@ -269,6 +311,75 @@
             <div class="small-note muted2" style="margin-top:6px;">
               세금/건보료는 확정값이 아닌 추정치예요. 입력이 부족하면 실제보다 낮게 보일 수 있어요.
             </div>
+            {% if official_tax_visual_feedback and official_tax_visual_feedback.show %}
+              {% set tax_feedback = official_tax_visual_feedback %}
+              {% set nhis_feedback_card = nhis_visual_feedback if nhis_visual_feedback is defined else none %}
+              {% set visual_shell_class = 'is-review' if tax_feedback.feedback_level == 'review' else ('is-soft' if tax_feedback.feedback_level == 'soft' else '') %}
+              <div id="overview-official-tax-visual-feedback" class="od-visual-shell {{ visual_shell_class }}">
+                <div class="od-visual-head">
+                  <div>
+                    <div class="od-visual-title">공식 자료 반영으로 세금 숫자가 이렇게 달라졌어요</div>
+                    <div class="od-visual-summary">{{ tax_feedback.feedback_reason }}</div>
+                  </div>
+                  <div class="small-note muted2">
+                    반영 강도 <b>{{ tax_feedback.strength_label }}</b>
+                    {% if tax_feedback.reference_date %} · 기준일 <b>{{ tax_feedback.reference_date }}</b>{% endif %}
+                    {% if tax_feedback.document_kind_summary %} · {{ tax_feedback.document_kind_summary }}{% endif %}
+                  </div>
+                </div>
+                <div class="od-visual-grid">
+                  <div class="od-visual-metric">
+                    <div class="od-visual-kicker">예상세금</div>
+                    <div class="od-visual-before">반영 전 {{ "{:,}".format(tax_feedback.before_tax_due_krw or 0) }}원</div>
+                    <div class="od-visual-after">
+                      {% if tax_feedback.should_animate and tax_feedback.after_tax_due_krw is not none %}
+                        <span
+                          data-od-animate="1"
+                          data-od-before="{{ tax_feedback.before_tax_due_krw or 0 }}"
+                          data-od-after="{{ tax_feedback.after_tax_due_krw or 0 }}"
+                          data-od-delta="{{ tax_feedback.tax_delta_krw or 0 }}"
+                          data-od-level="{{ tax_feedback.feedback_level }}"
+                        >{{ "{:,}".format(tax_feedback.after_tax_due_krw or 0) }}원</span>
+                      {% else %}
+                        {{ "{:,}".format(tax_feedback.after_tax_due_krw or 0) }}원
+                      {% endif %}
+                    </div>
+                    <div class="od-visual-delta {% if (tax_feedback.tax_delta_krw or 0) <= 0 %}down{% else %}up{% endif %}">
+                      변화 {% if tax_feedback.tax_delta_krw and tax_feedback.tax_delta_krw > 0 %}+{% endif %}{{ "{:,}".format(tax_feedback.tax_delta_krw or 0) }}원
+                    </div>
+                  </div>
+                  <div class="od-visual-metric">
+                    <div class="od-visual-kicker">세금 보관 권장액</div>
+                    <div class="od-visual-before">반영 전 {{ "{:,}".format(tax_feedback.before_buffer_target_krw or 0) }}원</div>
+                    <div class="od-visual-after">
+                      {% if tax_feedback.should_animate and tax_feedback.after_buffer_target_krw is not none %}
+                        <span
+                          data-od-animate="1"
+                          data-od-before="{{ tax_feedback.before_buffer_target_krw or 0 }}"
+                          data-od-after="{{ tax_feedback.after_buffer_target_krw or 0 }}"
+                          data-od-delta="{{ tax_feedback.buffer_delta_krw or 0 }}"
+                          data-od-level="{{ tax_feedback.feedback_level }}"
+                        >{{ "{:,}".format(tax_feedback.after_buffer_target_krw or 0) }}원</span>
+                      {% else %}
+                        {{ "{:,}".format(tax_feedback.after_buffer_target_krw or 0) }}원
+                      {% endif %}
+                    </div>
+                    <div class="od-visual-delta {% if (tax_feedback.buffer_delta_krw or 0) <= 0 %}down{% else %}up{% endif %}">
+                      변화 {% if tax_feedback.buffer_delta_krw and tax_feedback.buffer_delta_krw > 0 %}+{% endif %}{{ "{:,}".format(tax_feedback.buffer_delta_krw or 0) }}원
+                    </div>
+                  </div>
+                </div>
+                {% if nhis_feedback_card and nhis_feedback_card.show %}
+                  <div class="od-reference-strip">
+                    최근 공식 납부 기준 참고
+                    {% if nhis_feedback_card.nhis_reference_date %} · 기준일 <b>{{ nhis_feedback_card.nhis_reference_date }}</b>{% endif %}
+                    {% if nhis_feedback_card.nhis_latest_paid_amount_krw %} · 최근 공식 납부금액 <b>{{ "{:,}".format(nhis_feedback_card.nhis_latest_paid_amount_krw) }}원</b>{% endif %}
+                    {% if nhis_feedback_card.document_kind_summary %} · {{ nhis_feedback_card.document_kind_summary }}{% endif %}
+                    {% if nhis_feedback_card.recheck_required %} · <b>재확인 권장</b>{% endif %}
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
             {% if has_recovery_cta %}
               <div class="package-issues">
                 {% if tax_recovery_cta and tax_recovery_cta.show %}

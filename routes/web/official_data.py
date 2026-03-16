@@ -4,7 +4,6 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, s
 
 from core.auth import login_required
 from services.official_data_extractors import OfficialDataFileError
-from services.official_data_effects import summarize_official_data_effects
 from services.official_data_upload import (
     build_official_data_result_context,
     get_official_data_document_for_user,
@@ -85,5 +84,4 @@ def result_page(document_id: int):
     if document is None:
         abort(404)
     context = build_official_data_result_context(document)
-    context["official_data_effect_notice"] = summarize_official_data_effects(document=document)
     return render_template("official_data/result.html", **context)

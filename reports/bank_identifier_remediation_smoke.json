@@ -1,0 +1,43 @@
+{
+  "scanned_rows": {
+    "bank_account_links": 1,
+    "import_jobs": 1
+  },
+  "changed_rows": {
+    "bank_account_links": 1,
+    "import_jobs": 1,
+    "user_bank_accounts_created": 1
+  },
+  "skipped_rows": {
+    "bank_account_links": 0,
+    "import_jobs": 0
+  },
+  "affected_models": [
+    "BankAccountLink",
+    "ImportJob",
+    "UserBankAccount"
+  ],
+  "dry_run": true,
+  "applied": false,
+  "db_available": false,
+  "mode": "fixture",
+  "sample_after": {
+    "bank_account_link": {
+      "bank_code": "0004",
+      "account_number": "acct_2a33349e7e606a8ad2e30e3c",
+      "account_last4": "9012"
+    },
+    "import_job_error_summary": {
+      "errors": [
+        {
+          "account": "0004-****9012",
+          "error": "demo"
+        },
+        {
+          "account": "0092-****5544",
+          "error": "demo-2"
+        }
+      ]
+    }
+  }
+}
