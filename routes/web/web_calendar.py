@@ -894,6 +894,11 @@ def review():
         "official_tax_effect_status": risk_summary.official_tax_effect_status,
         "official_tax_effect_reason": risk_summary.official_tax_effect_reason,
         "official_tax_effect_document_types": risk_summary.official_tax_effect_document_types,
+        "official_tax_confidence_label": risk_summary.official_tax_confidence_label,
+        "official_tax_verification_badge": risk_summary.official_tax_verification_badge,
+        "official_tax_verification_hint": risk_summary.official_tax_verification_hint,
+        "official_tax_verification_level": risk_summary.official_tax_verification_level,
+        "official_tax_is_high_confidence": risk_summary.official_tax_is_high_confidence,
     }
     nhis_effect = collect_nhis_effects_for_user(user_pk)
 
@@ -1310,6 +1315,11 @@ def tax_buffer():
         "official_tax_effect_status": r.official_tax_effect_status,
         "official_tax_effect_reason": r.official_tax_effect_reason,
         "official_tax_effect_document_types": r.official_tax_effect_document_types,
+        "official_tax_confidence_label": r.official_tax_confidence_label,
+        "official_tax_verification_badge": r.official_tax_verification_badge,
+        "official_tax_verification_hint": r.official_tax_verification_hint,
+        "official_tax_verification_level": r.official_tax_verification_level,
+        "official_tax_is_high_confidence": r.official_tax_is_high_confidence,
     }
     nhis_effect = collect_nhis_effects_for_user(user_pk)
 

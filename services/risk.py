@@ -97,6 +97,11 @@ class RiskSummary:
     official_tax_effect_reason: str
     official_tax_effect_source_count: int
     official_tax_effect_document_types: tuple[str, ...]
+    official_tax_confidence_label: str
+    official_tax_verification_badge: str
+    official_tax_verification_hint: str
+    official_tax_verification_level: str
+    official_tax_is_high_confidence: bool
 
 
 def compute_risk_summary(user_pk: int, month_key: str | None = None) -> RiskSummary:
@@ -213,6 +218,11 @@ def compute_risk_summary(user_pk: int, month_key: str | None = None) -> RiskSumm
         official_tax_effect_reason=str(official_tax_effect.get("official_tax_effect_reason") or ""),
         official_tax_effect_source_count=int(official_tax_effect.get("official_tax_effect_source_count") or 0),
         official_tax_effect_document_types=tuple(official_tax_effect.get("official_tax_effect_document_types") or ()),
+        official_tax_confidence_label=str(official_tax_effect.get("official_tax_confidence_label") or ""),
+        official_tax_verification_badge=str(official_tax_effect.get("official_tax_verification_badge") or ""),
+        official_tax_verification_hint=str(official_tax_effect.get("official_tax_verification_hint") or ""),
+        official_tax_verification_level=str(official_tax_effect.get("official_tax_verification_level") or "none"),
+        official_tax_is_high_confidence=bool(official_tax_effect.get("official_tax_is_high_confidence")),
     )
 
 
@@ -282,6 +292,11 @@ def compute_overview(user_pk: int, month_key: str | None = None) -> dict:
         official_tax_effect_reason=r.official_tax_effect_reason,
         official_tax_effect_source_count=int(r.official_tax_effect_source_count),
         official_tax_effect_document_types=tuple(r.official_tax_effect_document_types),
+        official_tax_confidence_label=r.official_tax_confidence_label,
+        official_tax_verification_badge=r.official_tax_verification_badge,
+        official_tax_verification_hint=r.official_tax_verification_hint,
+        official_tax_verification_level=r.official_tax_verification_level,
+        official_tax_is_high_confidence=bool(r.official_tax_is_high_confidence),
 
         evidence_missing_count=int(evidence_missing_count),
         mixed_count=int(mixed_count),

@@ -18,6 +18,15 @@
           {% if tax_notice.source_count %} · 자료 {{ tax_notice.source_count }}건 기준{% endif %}
           {% if tax_notice.recheck_required %} · <b>재확인 권장</b>{% endif %}
         </div>
+        {% if tax_notice.confidence_label or tax_notice.verification_badge %}
+          <div class="small-note muted2" style="margin-top:6px;">
+            검증 신뢰도 <b>{{ tax_notice.confidence_label }}</b>
+            {% if tax_notice.verification_badge %} · {{ tax_notice.verification_badge }}{% endif %}
+          </div>
+        {% endif %}
+        {% if tax_notice.verification_hint %}
+          <div class="small-note muted2" style="margin-top:6px;">{{ tax_notice.verification_hint }}</div>
+        {% endif %}
         {% if tax_notice.document_kind_summary %}
           <div class="small-note muted2" style="margin-top:6px;">반영 자료 종류 · <b>{{ tax_notice.document_kind_summary }}</b></div>
         {% endif %}
@@ -66,6 +75,15 @@
           · 반영 강도 <b>{{ nhis_notice.strength_label }}</b>
           {% if nhis_notice.recheck_required %} · <b>재확인 권장</b>{% endif %}
         </div>
+        {% if nhis_notice.confidence_label or nhis_notice.verification_badge %}
+          <div class="small-note muted2" style="margin-top:6px;">
+            참고 신뢰도 <b>{{ nhis_notice.confidence_label }}</b>
+            {% if nhis_notice.verification_badge %} · {{ nhis_notice.verification_badge }}{% endif %}
+          </div>
+        {% endif %}
+        {% if nhis_notice.verification_hint %}
+          <div class="small-note muted2" style="margin-top:6px;">{{ nhis_notice.verification_hint }}</div>
+        {% endif %}
         {% if nhis_notice.document_kind_summary %}
           <div class="small-note muted2" style="margin-top:6px;">참고 자료 종류 · <b>{{ nhis_notice.document_kind_summary }}</b></div>
         {% endif %}

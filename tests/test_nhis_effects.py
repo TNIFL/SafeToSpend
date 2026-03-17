@@ -22,6 +22,8 @@ class NhisEffectsTest(unittest.TestCase):
             "parse_status": "parsed",
             "trust_grade": "B",
             "structure_validation_status": "passed",
+            "verification_status": "none",
+            "verification_source": None,
             "verified_reference_date": date(2026, 3, 3),
             "extracted_payload_json": {"total_paid_amount_krw": 333000},
         }
@@ -35,6 +37,8 @@ class NhisEffectsTest(unittest.TestCase):
             "parse_status": "parsed",
             "trust_grade": "B",
             "structure_validation_status": "passed",
+            "verification_status": "none",
+            "verification_source": None,
             "verified_reference_date": date(2026, 3, 11),
             "extracted_payload_json": {
                 "subscriber_type": "지역가입자",
@@ -88,6 +92,8 @@ class NhisEffectsTest(unittest.TestCase):
         self.assertTrue(feedback["show"])
         self.assertTrue(feedback["should_highlight_reference"])
         self.assertFalse(feedback["should_animate"])
+        self.assertEqual(feedback["confidence_label"], "참고 신뢰도 보통")
+        self.assertEqual(feedback["verification_badge"], "구조 검증 통과")
         self.assertIn("납부확인 참고", feedback["source_labels"])
         self.assertIn("자격자료 참고", feedback["source_labels"])
 
@@ -97,6 +103,26 @@ class NhisEffectsTest(unittest.TestCase):
         self.assertEqual(feedback["nhis_effect_status"], NHIS_EFFECT_STATUS_REVIEW_NEEDED)
         self.assertFalse(feedback["should_highlight_reference"])
         self.assertEqual(feedback["nhis_feedback_level"], "review")
+        self.assertEqual(feedback["confidence_label"], "재확인 필요")
+        self.assertFalse(feedback["should_animate"])
+
+    def test_verified_nhis_reference_raises_confidence_without_animation(self) -> None:
+        state = build_nhis_effect_state(
+            [
+                self._doc(
+                    trust_grade="A",
+                    verification_status="succeeded",
+                    verification_source="nhis_certificate_verify",
+                )
+            ],
+            today=date(2026, 3, 16),
+        )
+        feedback = build_nhis_visual_feedback(state)
+        self.assertEqual(feedback["nhis_effect_status"], NHIS_EFFECT_STATUS_REFERENCE_AVAILABLE)
+        self.assertEqual(feedback["confidence_label"], "참고 신뢰도 높음")
+        self.assertEqual(feedback["verification_badge"], "기관 확인 메타 있음")
+        self.assertTrue(feedback["is_high_confidence_effect"])
+        self.assertFalse(feedback["should_animate"])
 
 
 if __name__ == "__main__":

@@ -30,6 +30,11 @@ def overview():
         "official_tax_effect_status": ctx.get("official_tax_effect_status"),
         "official_tax_effect_reason": ctx.get("official_tax_effect_reason"),
         "official_tax_effect_document_types": ctx.get("official_tax_effect_document_types", ()),
+        "official_tax_confidence_label": ctx.get("official_tax_confidence_label"),
+        "official_tax_verification_badge": ctx.get("official_tax_verification_badge"),
+        "official_tax_verification_hint": ctx.get("official_tax_verification_hint"),
+        "official_tax_verification_level": ctx.get("official_tax_verification_level"),
+        "official_tax_is_high_confidence": ctx.get("official_tax_is_high_confidence", False),
     }
     nhis_effect = collect_nhis_effects_for_user(user_pk)
     ctx["official_tax_effect_notice"] = build_official_tax_effect_notice_context(

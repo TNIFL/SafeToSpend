@@ -29,6 +29,28 @@ NHIS_VISUAL_FEEDBACK_LEVEL_SOFT = "soft"
 NHIS_VISUAL_FEEDBACK_LEVEL_MEDIUM = "medium"
 NHIS_VISUAL_FEEDBACK_LEVEL_REVIEW = "review"
 
+VERIFICATION_LEVEL_NONE = "none"
+VERIFICATION_LEVEL_LOW = "low"
+VERIFICATION_LEVEL_MEDIUM = "medium"
+VERIFICATION_LEVEL_HIGH = "high"
+VERIFICATION_LEVEL_REVIEW = "review"
+
+CONFIDENCE_LABELS = {
+    VERIFICATION_LEVEL_NONE: "없음",
+    VERIFICATION_LEVEL_LOW: "참고용",
+    VERIFICATION_LEVEL_MEDIUM: "참고 신뢰도 보통",
+    VERIFICATION_LEVEL_HIGH: "참고 신뢰도 높음",
+    VERIFICATION_LEVEL_REVIEW: "재확인 필요",
+}
+
+VERIFICATION_BADGES = {
+    VERIFICATION_LEVEL_NONE: "검증 정보 없음",
+    VERIFICATION_LEVEL_LOW: "참고 자료",
+    VERIFICATION_LEVEL_MEDIUM: "구조 검증 통과",
+    VERIFICATION_LEVEL_HIGH: "기관 확인 메타 있음",
+    VERIFICATION_LEVEL_REVIEW: "검토 또는 재확인 필요",
+}
+
 
 def _serialize_date(value: date | None) -> str | None:
     return value.isoformat() if value else None
@@ -78,8 +100,67 @@ def _nhis_document_kind_labels(document_types: Iterable[str]) -> tuple[str, ...]
     return tuple(labels)
 
 
-def _nhis_feedback_level(status: str, strength: str) -> str:
+def _doc_verification_status(document: Any) -> str:
+    return str(getattr(document, "verification_status", "") or "").strip().lower()
+
+
+def _doc_verification_source(document: Any) -> str:
+    return str(getattr(document, "verification_source", "") or "").strip()
+
+
+def _is_verified_document(document: Any) -> bool:
+    if _doc_verification_status(document) == "succeeded" and _doc_verification_source(document):
+        return True
+    return str(getattr(document, "trust_grade", "") or "").strip() == "A"
+
+
+def _build_nhis_verification_summary(status: str, documents: Iterable[Any]) -> dict[str, Any]:
+    docs = tuple(doc for doc in documents if doc is not None)
     if status == NHIS_EFFECT_STATUS_REFERENCE_AVAILABLE:
+        if any(_is_verified_document(doc) for doc in docs):
+            return {
+                "nhis_verification_level": VERIFICATION_LEVEL_HIGH,
+                "nhis_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_HIGH],
+                "nhis_verification_badge": VERIFICATION_BADGES[VERIFICATION_LEVEL_HIGH],
+                "nhis_verification_hint": "기관 확인 메타가 있어도 NHIS는 참고 상태로만 연결해요.",
+                "nhis_is_high_confidence": True,
+            }
+        return {
+            "nhis_verification_level": VERIFICATION_LEVEL_MEDIUM,
+            "nhis_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_MEDIUM],
+            "nhis_verification_badge": VERIFICATION_BADGES[VERIFICATION_LEVEL_MEDIUM],
+            "nhis_verification_hint": "구조 검증 자료 기준으로 참고 상태만 보여 줘요.",
+            "nhis_is_high_confidence": False,
+        }
+    if status == NHIS_EFFECT_STATUS_STALE:
+        return {
+            "nhis_verification_level": VERIFICATION_LEVEL_REVIEW,
+            "nhis_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_REVIEW],
+            "nhis_verification_badge": "기준일 지난 자료",
+            "nhis_verification_hint": "기준일이 지나 최신 상태를 다시 확인하는 편이 안전해요.",
+            "nhis_is_high_confidence": False,
+        }
+    if status == NHIS_EFFECT_STATUS_REVIEW_NEEDED:
+        return {
+            "nhis_verification_level": VERIFICATION_LEVEL_REVIEW,
+            "nhis_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_REVIEW],
+            "nhis_verification_badge": "검토 필요",
+            "nhis_verification_hint": "검토가 더 필요한 자료라 강한 신뢰 표현을 쓰지 않아요.",
+            "nhis_is_high_confidence": False,
+        }
+    return {
+        "nhis_verification_level": VERIFICATION_LEVEL_NONE,
+        "nhis_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_NONE],
+        "nhis_verification_badge": VERIFICATION_BADGES[VERIFICATION_LEVEL_NONE],
+        "nhis_verification_hint": "이번 달 참고로 보여 줄 검증 자료가 없어요.",
+        "nhis_is_high_confidence": False,
+    }
+
+
+def _nhis_feedback_level(status: str, strength: str, verification_level: str) -> str:
+    if status == NHIS_EFFECT_STATUS_REFERENCE_AVAILABLE:
+        if verification_level == VERIFICATION_LEVEL_HIGH:
+            return NHIS_VISUAL_FEEDBACK_LEVEL_MEDIUM
         return NHIS_VISUAL_FEEDBACK_LEVEL_MEDIUM if strength in {
             NHIS_EFFECT_STRENGTH_MEDIUM,
             NHIS_EFFECT_STRENGTH_STRONG,
@@ -170,6 +251,7 @@ def build_nhis_effect_state(documents: Iterable[Any], *, today: date | None = No
         "nhis_effect_source_count": 0,
         "nhis_effect_documents": tuple(),
         "nhis_effect_document_types": tuple(),
+        **_build_nhis_verification_summary(NHIS_EFFECT_STATUS_NONE, ()),
     }
 
     if not best_documents and review_candidates:
@@ -183,6 +265,7 @@ def build_nhis_effect_state(documents: Iterable[Any], *, today: date | None = No
                 "nhis_effect_document_types": tuple(
                     str(getattr(doc, "document_type", "") or "") for doc in review_candidates
                 ),
+                **_build_nhis_verification_summary(NHIS_EFFECT_STATUS_REVIEW_NEEDED, review_candidates),
             }
         )
         return state
@@ -220,6 +303,7 @@ def build_nhis_effect_state(documents: Iterable[Any], *, today: date | None = No
                 "nhis_effect_document_types": tuple(
                     str(getattr(doc, "document_type", "") or "") for doc in (*payment_candidates, *eligibility_candidates)
                 ),
+                **_build_nhis_verification_summary(NHIS_EFFECT_STATUS_STALE, best_documents),
             }
         )
         return state
@@ -249,6 +333,7 @@ def build_nhis_effect_state(documents: Iterable[Any], *, today: date | None = No
             "nhis_effect_document_types": tuple(
                 str(getattr(doc, "document_type", "") or "") for doc in (*payment_candidates, *eligibility_candidates)
             ),
+            **_build_nhis_verification_summary(NHIS_EFFECT_STATUS_REFERENCE_AVAILABLE, best_documents),
         }
     )
     return state
@@ -284,6 +369,11 @@ def build_nhis_effect_notice_context(effect_state: dict[str, Any] | None) -> dic
         "source_count": int(effect.get("nhis_effect_source_count") or 0),
         "document_kind_summary": ", ".join(document_kind_labels),
         "recheck_required": bool(effect.get("nhis_recheck_required")),
+        "confidence_label": str(effect.get("nhis_confidence_label") or CONFIDENCE_LABELS[VERIFICATION_LEVEL_NONE]),
+        "verification_badge": str(effect.get("nhis_verification_badge") or VERIFICATION_BADGES[VERIFICATION_LEVEL_NONE]),
+        "verification_hint": str(effect.get("nhis_verification_hint") or ""),
+        "verification_level": str(effect.get("nhis_verification_level") or VERIFICATION_LEVEL_NONE),
+        "is_high_confidence_effect": bool(effect.get("nhis_is_high_confidence")),
     }
 
 
@@ -293,12 +383,13 @@ def build_nhis_visual_feedback(effect_state: dict[str, Any] | None) -> dict[str,
     strength = str(effect.get("nhis_effect_strength") or NHIS_EFFECT_STRENGTH_NONE)
     document_types = tuple(effect.get("nhis_effect_document_types") or ())
     source_labels = _nhis_document_kind_labels(document_types)
+    verification_level = str(effect.get("nhis_verification_level") or VERIFICATION_LEVEL_NONE)
     return {
         "show": status != NHIS_EFFECT_STATUS_NONE,
         "nhis_effect_status": status,
         "nhis_reference_date": effect.get("nhis_reference_date"),
         "nhis_latest_paid_amount_krw": int(effect.get("nhis_latest_paid_amount_krw") or 0),
-        "nhis_feedback_level": _nhis_feedback_level(status, strength),
+        "nhis_feedback_level": _nhis_feedback_level(status, strength, verification_level),
         "nhis_feedback_reason": str(effect.get("nhis_effect_reason") or ""),
         "should_highlight_reference": status in {
             NHIS_EFFECT_STATUS_REFERENCE_AVAILABLE,
@@ -311,4 +402,9 @@ def build_nhis_visual_feedback(effect_state: dict[str, Any] | None) -> dict[str,
         "strength": strength,
         "strength_label": STRENGTH_LABELS.get(strength, "없음"),
         "document_kind_summary": ", ".join(source_labels),
+        "confidence_label": str(effect.get("nhis_confidence_label") or CONFIDENCE_LABELS[VERIFICATION_LEVEL_NONE]),
+        "verification_badge": str(effect.get("nhis_verification_badge") or VERIFICATION_BADGES[VERIFICATION_LEVEL_NONE]),
+        "verification_hint": str(effect.get("nhis_verification_hint") or ""),
+        "verification_level": verification_level,
+        "is_high_confidence_effect": bool(effect.get("nhis_is_high_confidence")),
     }

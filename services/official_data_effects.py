@@ -34,6 +34,28 @@ VISUAL_FEEDBACK_LEVEL_MEDIUM = "medium"
 VISUAL_FEEDBACK_LEVEL_STRONG = "strong"
 VISUAL_FEEDBACK_LEVEL_REVIEW = "review"
 
+VERIFICATION_LEVEL_NONE = "none"
+VERIFICATION_LEVEL_LOW = "low"
+VERIFICATION_LEVEL_MEDIUM = "medium"
+VERIFICATION_LEVEL_HIGH = "high"
+VERIFICATION_LEVEL_REVIEW = "review"
+
+CONFIDENCE_LABELS = {
+    VERIFICATION_LEVEL_NONE: "없음",
+    VERIFICATION_LEVEL_LOW: "참고용",
+    VERIFICATION_LEVEL_MEDIUM: "보수 반영",
+    VERIFICATION_LEVEL_HIGH: "신뢰도 높음",
+    VERIFICATION_LEVEL_REVIEW: "재확인 필요",
+}
+
+VERIFICATION_BADGES = {
+    VERIFICATION_LEVEL_NONE: "검증 정보 없음",
+    VERIFICATION_LEVEL_LOW: "참고 자료",
+    VERIFICATION_LEVEL_MEDIUM: "구조 검증 통과",
+    VERIFICATION_LEVEL_HIGH: "기관 확인 메타 있음",
+    VERIFICATION_LEVEL_REVIEW: "검토 또는 재확인 필요",
+}
+
 
 def _month_bounds(month_key: str) -> tuple[date, date]:
     year, month = (month_key or "").split("-", 1)
@@ -101,12 +123,81 @@ def _tax_document_kind_labels(
     return tuple(labels)
 
 
-def _tax_feedback_level(status: str, strength: str, *, has_delta: bool) -> str:
+def _doc_verification_status(document: Any) -> str:
+    return str(getattr(document, "verification_status", "") or "").strip().lower()
+
+
+def _doc_verification_source(document: Any) -> str:
+    return str(getattr(document, "verification_source", "") or "").strip()
+
+
+def _is_verified_document(document: Any) -> bool:
+    if _doc_verification_status(document) == "succeeded" and _doc_verification_source(document):
+        return True
+    return str(getattr(document, "trust_grade", "") or "").strip() == "A"
+
+
+def _build_tax_verification_summary(status: str, documents: Iterable[Any]) -> dict[str, Any]:
+    docs = tuple(doc for doc in documents if doc is not None)
+    if status == TAX_EFFECT_STATUS_APPLIED:
+        if any(_is_verified_document(doc) for doc in docs):
+            return {
+                "official_tax_verification_level": VERIFICATION_LEVEL_HIGH,
+                "official_tax_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_HIGH],
+                "official_tax_verification_badge": VERIFICATION_BADGES[VERIFICATION_LEVEL_HIGH],
+                "official_tax_verification_hint": "기관 확인 메타와 구조 검증이 있는 자료까지 반영했어요.",
+                "official_tax_is_high_confidence": True,
+            }
+        return {
+            "official_tax_verification_level": VERIFICATION_LEVEL_MEDIUM,
+            "official_tax_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_MEDIUM],
+            "official_tax_verification_badge": VERIFICATION_BADGES[VERIFICATION_LEVEL_MEDIUM],
+            "official_tax_verification_hint": "기관 확인 전이라 구조 검증을 통과한 자료 범위에서만 숫자를 반영했어요.",
+            "official_tax_is_high_confidence": False,
+        }
+    if status == TAX_EFFECT_STATUS_REFERENCE_ONLY:
+        return {
+            "official_tax_verification_level": VERIFICATION_LEVEL_LOW,
+            "official_tax_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_LOW],
+            "official_tax_verification_badge": VERIFICATION_BADGES[VERIFICATION_LEVEL_LOW],
+            "official_tax_verification_hint": "업로드 자료나 참고 문서라 숫자는 보수적으로만 보여 줘요.",
+            "official_tax_is_high_confidence": False,
+        }
+    if status == TAX_EFFECT_STATUS_STALE:
+        return {
+            "official_tax_verification_level": VERIFICATION_LEVEL_REVIEW,
+            "official_tax_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_REVIEW],
+            "official_tax_verification_badge": "기준일 지난 자료",
+            "official_tax_verification_hint": "기준일이 지나 강한 반영 표현보다 재확인을 우선해요.",
+            "official_tax_is_high_confidence": False,
+        }
+    if status == TAX_EFFECT_STATUS_REVIEW_NEEDED:
+        return {
+            "official_tax_verification_level": VERIFICATION_LEVEL_REVIEW,
+            "official_tax_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_REVIEW],
+            "official_tax_verification_badge": "검토 필요",
+            "official_tax_verification_hint": "검토가 더 필요한 자료라 강한 반영 표현을 쓰지 않아요.",
+            "official_tax_is_high_confidence": False,
+        }
+    return {
+        "official_tax_verification_level": VERIFICATION_LEVEL_NONE,
+        "official_tax_confidence_label": CONFIDENCE_LABELS[VERIFICATION_LEVEL_NONE],
+        "official_tax_verification_badge": VERIFICATION_BADGES[VERIFICATION_LEVEL_NONE],
+        "official_tax_verification_hint": "이번 달에는 자동 반영 가능한 검증 자료가 없어요.",
+        "official_tax_is_high_confidence": False,
+    }
+
+
+def _tax_feedback_level(status: str, strength: str, *, has_delta: bool, verification_level: str) -> str:
     if status == TAX_EFFECT_STATUS_APPLIED and has_delta:
-        return VISUAL_FEEDBACK_LEVEL_STRONG if strength in {
-            TAX_EFFECT_STRENGTH_MEDIUM,
-            TAX_EFFECT_STRENGTH_STRONG,
-        } else VISUAL_FEEDBACK_LEVEL_MEDIUM
+        if verification_level == VERIFICATION_LEVEL_HIGH:
+            return VISUAL_FEEDBACK_LEVEL_STRONG if strength in {
+                TAX_EFFECT_STRENGTH_MEDIUM,
+                TAX_EFFECT_STRENGTH_STRONG,
+            } else VISUAL_FEEDBACK_LEVEL_MEDIUM
+        if verification_level == VERIFICATION_LEVEL_MEDIUM:
+            return VISUAL_FEEDBACK_LEVEL_MEDIUM
+        return VISUAL_FEEDBACK_LEVEL_SOFT
     if status == TAX_EFFECT_STATUS_REFERENCE_ONLY:
         return VISUAL_FEEDBACK_LEVEL_SOFT
     if status in {TAX_EFFECT_STATUS_STALE, TAX_EFFECT_STATUS_REVIEW_NEEDED}:
@@ -240,6 +331,7 @@ def build_official_tax_effect_state(
         "official_tax_effect_documents": tuple(),
         "official_tax_effect_document_types": tuple(),
         "official_tax_effect_supported_reference_count": len(buckets["supported_reference"]),
+        **_build_tax_verification_summary(TAX_EFFECT_STATUS_NONE, ()),
     }
 
     if best_applied:
@@ -278,6 +370,7 @@ def build_official_tax_effect_state(
                 "official_tax_effect_document_types": tuple(
                     str(getattr(doc, "document_type", "") or "") for doc in applied_docs
                 ),
+                **_build_tax_verification_summary(TAX_EFFECT_STATUS_APPLIED, applied_docs),
             }
         )
         return state
@@ -302,6 +395,7 @@ def build_official_tax_effect_state(
                 "official_tax_effect_document_types": tuple(
                     str(getattr(doc, "document_type", "") or "") for doc in reference_docs
                 ),
+                **_build_tax_verification_summary(TAX_EFFECT_STATUS_REFERENCE_ONLY, reference_docs),
             }
         )
         return state
@@ -318,6 +412,7 @@ def build_official_tax_effect_state(
                 "official_tax_effect_document_types": tuple(
                     str(getattr(doc, "document_type", "") or "") for doc in buckets["stale"]
                 ),
+                **_build_tax_verification_summary(TAX_EFFECT_STATUS_STALE, buckets["stale"]),
             }
         )
         return state
@@ -333,6 +428,7 @@ def build_official_tax_effect_state(
                 "official_tax_effect_document_types": tuple(
                     str(getattr(doc, "document_type", "") or "") for doc in buckets["review_needed"]
                 ),
+                **_build_tax_verification_summary(TAX_EFFECT_STATUS_REVIEW_NEEDED, buckets["review_needed"]),
             }
         )
         return state
@@ -348,6 +444,7 @@ def build_official_tax_effect_state(
                 "official_tax_effect_document_types": tuple(
                     str(getattr(doc, "document_type", "") or "") for doc in buckets["supported_reference"]
                 ),
+                **_build_tax_verification_summary(TAX_EFFECT_STATUS_REFERENCE_ONLY, buckets["supported_reference"]),
             }
         )
     return state
@@ -408,6 +505,11 @@ def build_official_tax_effect_notice_context(
         "after_tax_due_krw": int(after_tax_due_krw) if after_tax_due_krw is not None else None,
         "delta_krw": delta,
         "recheck_required": status in {TAX_EFFECT_STATUS_STALE, TAX_EFFECT_STATUS_REVIEW_NEEDED},
+        "confidence_label": str(effect.get("official_tax_confidence_label") or CONFIDENCE_LABELS[VERIFICATION_LEVEL_NONE]),
+        "verification_badge": str(effect.get("official_tax_verification_badge") or VERIFICATION_BADGES[VERIFICATION_LEVEL_NONE]),
+        "verification_hint": str(effect.get("official_tax_verification_hint") or ""),
+        "verification_level": str(effect.get("official_tax_verification_level") or VERIFICATION_LEVEL_NONE),
+        "is_high_confidence_effect": bool(effect.get("official_tax_is_high_confidence")),
     }
 
 
@@ -447,7 +549,13 @@ def build_official_tax_visual_feedback(
         status=status,
         supported_reference_count=supported_reference_count,
     )
-    feedback_level = _tax_feedback_level(status, strength, has_delta=has_delta)
+    verification_level = str(effect.get("official_tax_verification_level") or VERIFICATION_LEVEL_NONE)
+    feedback_level = _tax_feedback_level(
+        status,
+        strength,
+        has_delta=has_delta,
+        verification_level=verification_level,
+    )
     should_animate = status == TAX_EFFECT_STATUS_APPLIED and has_delta
 
     return {
@@ -472,6 +580,11 @@ def build_official_tax_visual_feedback(
         "recheck_required": status in {TAX_EFFECT_STATUS_STALE, TAX_EFFECT_STATUS_REVIEW_NEEDED},
         "document_kind_summary": ", ".join(source_labels),
         "supported_reference_count": supported_reference_count,
+        "confidence_label": str(effect.get("official_tax_confidence_label") or CONFIDENCE_LABELS[VERIFICATION_LEVEL_NONE]),
+        "verification_badge": str(effect.get("official_tax_verification_badge") or VERIFICATION_BADGES[VERIFICATION_LEVEL_NONE]),
+        "verification_hint": str(effect.get("official_tax_verification_hint") or ""),
+        "verification_level": verification_level,
+        "is_high_confidence_effect": bool(effect.get("official_tax_is_high_confidence")),
     }
 
 

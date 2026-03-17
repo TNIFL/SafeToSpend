@@ -23,6 +23,8 @@ class OfficialDataEffectsTest(unittest.TestCase):
             "parse_status": "parsed",
             "trust_grade": "B",
             "structure_validation_status": "passed",
+            "verification_status": "none",
+            "verification_source": None,
             "verified_reference_date": date(2026, 3, 5),
             "document_period_start": date(2026, 3, 1),
             "document_period_end": date(2026, 3, 31),
@@ -38,6 +40,8 @@ class OfficialDataEffectsTest(unittest.TestCase):
             "parse_status": "parsed",
             "trust_grade": "B",
             "structure_validation_status": "passed",
+            "verification_status": "none",
+            "verification_source": None,
             "verified_reference_date": date(2026, 3, 12),
             "document_period_start": date(2026, 3, 1),
             "document_period_end": date(2026, 3, 31),
@@ -47,10 +51,23 @@ class OfficialDataEffectsTest(unittest.TestCase):
         return SimpleNamespace(**base)
 
     def test_a_or_b_documents_are_applied(self) -> None:
-        state = build_official_tax_effect_state([self._doc(trust_grade="A")], month_key="2026-03", today=date(2026, 3, 16))
+        state = build_official_tax_effect_state(
+            [
+                self._doc(
+                    trust_grade="A",
+                    verification_status="succeeded",
+                    verification_source="hometax_origin_check",
+                )
+            ],
+            month_key="2026-03",
+            today=date(2026, 3, 16),
+        )
         self.assertEqual(state["official_tax_effect_status"], TAX_EFFECT_STATUS_APPLIED)
         self.assertEqual(state["official_tax_effect_strength"], "strong")
         self.assertEqual(state["official_withheld_tax_krw"], 120000)
+        self.assertEqual(state["official_tax_confidence_label"], "신뢰도 높음")
+        self.assertEqual(state["official_tax_verification_badge"], "기관 확인 메타 있음")
+        self.assertTrue(state["official_tax_is_high_confidence"])
 
     def test_c_grade_is_reference_only(self) -> None:
         state = build_official_tax_effect_state([self._doc(trust_grade="C")], month_key="2026-03", today=date(2026, 3, 16))
@@ -127,6 +144,8 @@ class OfficialDataEffectsTest(unittest.TestCase):
         self.assertTrue(feedback["show"])
         self.assertEqual(feedback["tax_delta_krw"], -150000)
         self.assertTrue(feedback["should_animate"])
+        self.assertEqual(feedback["feedback_level"], "strong")
+        self.assertEqual(feedback["confidence_label"], "신뢰도 높음")
         self.assertIn("원천징수 반영", feedback["source_labels"])
         self.assertIn("납부내역 반영", feedback["source_labels"])
 
@@ -144,6 +163,8 @@ class OfficialDataEffectsTest(unittest.TestCase):
         self.assertEqual(feedback["status"], TAX_EFFECT_STATUS_REFERENCE_ONLY)
         self.assertFalse(feedback["should_animate"])
         self.assertEqual(feedback["feedback_level"], "soft")
+        self.assertEqual(feedback["confidence_label"], "참고용")
+        self.assertEqual(feedback["verification_badge"], "참고 자료")
 
     def test_visual_feedback_stays_idle_without_delta(self) -> None:
         state = build_official_tax_effect_state(
@@ -158,6 +179,48 @@ class OfficialDataEffectsTest(unittest.TestCase):
         )
         self.assertFalse(feedback["should_animate"])
         self.assertEqual(feedback["tax_delta_krw"], 0)
+
+    def test_structure_checked_applied_feedback_stays_medium_confidence(self) -> None:
+        state = build_official_tax_effect_state(
+            [self._payment_doc()],
+            month_key="2026-03",
+            today=date(2026, 3, 16),
+        )
+        feedback = build_official_tax_visual_feedback(
+            state,
+            before_tax_due_krw=120000,
+            after_tax_due_krw=50000,
+        )
+        self.assertEqual(feedback["status"], TAX_EFFECT_STATUS_APPLIED)
+        self.assertEqual(feedback["confidence_label"], "보수 반영")
+        self.assertEqual(feedback["verification_badge"], "구조 검증 통과")
+        self.assertEqual(feedback["feedback_level"], "medium")
+        self.assertFalse(feedback["is_high_confidence_effect"])
+
+    def test_stale_feedback_uses_review_confidence_copy(self) -> None:
+        state = build_official_tax_effect_state(
+            [
+                self._doc(
+                    trust_grade="A",
+                    verification_status="succeeded",
+                    verification_source="hometax_origin_check",
+                    verified_reference_date=date(2025, 6, 1),
+                    document_period_start=date(2026, 3, 1),
+                    document_period_end=date(2026, 3, 31),
+                )
+            ],
+            month_key="2026-03",
+            today=date(2026, 3, 16),
+        )
+        feedback = build_official_tax_visual_feedback(
+            state,
+            before_tax_due_krw=150000,
+            after_tax_due_krw=150000,
+        )
+        self.assertEqual(feedback["status"], TAX_EFFECT_STATUS_STALE)
+        self.assertEqual(feedback["feedback_level"], "review")
+        self.assertEqual(feedback["confidence_label"], "재확인 필요")
+        self.assertFalse(feedback["should_animate"])
 
 
 if __name__ == "__main__":

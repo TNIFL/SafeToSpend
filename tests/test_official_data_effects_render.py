@@ -23,6 +23,9 @@ class OfficialDataEffectsRenderTest(unittest.TestCase):
                     'title': '홈택스 자료 반영 상태',
                     'summary': '공식 양식 구조를 검증한 자료 기준으로 이미 빠진 세금을 반영했어요.',
                     'strength_label': '보통',
+                    'confidence_label': '보수 반영',
+                    'verification_badge': '구조 검증 통과',
+                    'verification_hint': '기관 확인 전이라 구조 검증을 통과한 자료 범위에서만 숫자를 반영했어요.',
                     'reference_date': '2026-03-05',
                     'source_count': 1,
                     'document_kind_summary': '원천징수 반영, 납부내역 반영',
@@ -36,6 +39,9 @@ class OfficialDataEffectsRenderTest(unittest.TestCase):
                     'title': 'NHIS 참고 상태',
                     'summary': '최근 공식 납부 기준 참고 상태로만 연결하고, 건보료 계산값을 바로 덮어쓰지는 않아요.',
                     'strength_label': '보통',
+                    'confidence_label': '참고 신뢰도 보통',
+                    'verification_badge': '구조 검증 통과',
+                    'verification_hint': '구조 검증 자료 기준으로 참고 상태만 보여 줘요.',
                     'reference_date': '2026-03-03',
                     'latest_paid_amount_krw': 333000,
                     'document_kind_summary': '납부확인 참고, 자격자료 참고',
@@ -46,8 +52,11 @@ class OfficialDataEffectsRenderTest(unittest.TestCase):
         self.assertIn('예상세금 변화', body)
         self.assertIn('150,000원 → 50,000원', body)
         self.assertIn('원천징수 반영, 납부내역 반영', body)
+        self.assertIn('검증 신뢰도', body)
+        self.assertIn('구조 검증 통과', body)
         self.assertIn('최근 공식 납부 기준 참고', body)
         self.assertIn('납부확인 참고, 자격자료 참고', body)
+        self.assertIn('참고 신뢰도', body)
         self.assertIn('재확인 권장', body)
         self.assertIn('구조 검증과 기관 확인은 같은 뜻이 아니에요.', body)
 
@@ -60,6 +69,9 @@ class OfficialDataEffectsRenderTest(unittest.TestCase):
                     'title': '홈택스 자료 반영 상태',
                     'summary': '업로드한 자료 기준 참고 상태로만 유지해요.',
                     'strength_label': '약',
+                    'confidence_label': '참고용',
+                    'verification_badge': '참고 자료',
+                    'verification_hint': '업로드 자료나 참고 문서라 숫자는 보수적으로만 보여 줘요.',
                     'reference_date': '2026-03-05',
                     'source_count': 1,
                     'document_kind_summary': '납부내역 참고',
@@ -85,6 +97,9 @@ class OfficialDataEffectsRenderTest(unittest.TestCase):
                     'title': '홈택스 자료 반영 상태',
                     'summary': '공식 양식 구조를 검증한 자료 기준으로 이미 빠진 세금을 반영했어요.',
                     'strength_label': '보통',
+                    'confidence_label': '신뢰도 높음',
+                    'verification_badge': '기관 확인 메타 있음',
+                    'verification_hint': '기관 확인 메타와 구조 검증이 있는 자료까지 반영했어요.',
                     'reference_date': '2026-03-05',
                     'source_count': 1,
                     'document_kind_summary': '원천징수 반영',
@@ -100,6 +115,8 @@ class OfficialDataEffectsRenderTest(unittest.TestCase):
                     'tax_delta_krw': -100000,
                     'before_tax_due_krw': 150000,
                     'after_tax_due_krw': 50000,
+                    'confidence_label': '신뢰도 높음',
+                    'verification_badge': '기관 확인 메타 있음',
                 },
                 nhis_effect_notice={'show': False},
             )
@@ -107,6 +124,7 @@ class OfficialDataEffectsRenderTest(unittest.TestCase):
         self.assertIn('150,000원 →', body)
         self.assertIn('50,000원', body)
         self.assertIn('세금 보관함에서 자세히 보기', body)
+        self.assertIn('기관 확인 메타 있음', body)
 
     def test_templates_include_notice_partial_and_visual_feedback_hooks(self) -> None:
         overview = (ROOT / 'templates/overview.html').read_text(encoding='utf-8')

@@ -190,6 +190,53 @@
 - reduced motion
   - `prefers-reduced-motion: reduce`이면 JS가 즉시 최종값으로 렌더한다.
 
+## verification 연계 규칙
+
+- 기준축
+  - `trust_grade`
+  - `verification_status`
+  - `structure_validation_status`
+- 세금 숫자 피드백
+  - `applied` + `verification_status=succeeded` 또는 `trust_grade=A`
+    - `confidence_label = 신뢰도 높음`
+    - `verification_badge = 기관 확인 메타 있음`
+    - 강한 표현 허용
+  - `applied` + 구조 검증 통과 + 기관 확인 전(`trust_grade=B`)
+    - `confidence_label = 보수 반영`
+    - `verification_badge = 구조 검증 통과`
+    - 숫자 반영은 유지하되 강도는 한 단계 낮춘다
+  - `reference_only`
+    - `confidence_label = 참고용`
+    - `verification_badge = 참고 자료`
+    - 강한 반영 표현 금지
+  - `stale` / `review_needed`
+    - `confidence_label = 재확인 필요`
+    - 강한 반영 표현 금지
+    - 재확인 또는 검토 안내 우선
+- NHIS 참고 피드백
+  - verification이 있어도 `참고 신뢰도 높음/보통`까지만 허용
+  - NHIS는 계속 참고 정보, 기준일, 최근 공식 납부금액, 상태 설명 중심
+  - 세금처럼 확정형 숫자 표현이나 애니메이션은 쓰지 않는다
+
+## verification 연계 view-model
+
+- `official_tax_visual_feedback`
+  - `confidence_label`
+  - `verification_badge`
+  - `verification_hint`
+  - `verification_level`
+  - `is_high_confidence_effect`
+- `official_tax_effect_notice`
+  - 위 5개 필드를 notice 요약에도 동일하게 반영
+- `nhis_visual_feedback`
+  - `confidence_label`
+  - `verification_badge`
+  - `verification_hint`
+  - `verification_level`
+  - `is_high_confidence_effect`
+- `nhis_effect_notice`
+  - NHIS도 같은 필드명을 쓰되 참고 톤만 유지한다
+
 ## 새 document_type 2종
 
 - `hometax_tax_payment_history`

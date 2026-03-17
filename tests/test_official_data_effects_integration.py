@@ -90,6 +90,11 @@ class OfficialDataEffectsIntegrationTest(unittest.TestCase):
             "official_tax_effect_strength": "none",
             "official_tax_effect_reason": "none",
             "official_tax_effect_source_count": 0,
+            "official_tax_confidence_label": "없음",
+            "official_tax_verification_badge": "검증 정보 없음",
+            "official_tax_verification_hint": "이번 달에는 자동 반영 가능한 검증 자료가 없어요.",
+            "official_tax_verification_level": "none",
+            "official_tax_is_high_confidence": False,
         }
 
         summary = compute_risk_summary(7, month_key="2026-03")
@@ -121,6 +126,11 @@ class OfficialDataEffectsIntegrationTest(unittest.TestCase):
             "official_tax_effect_strength": "medium",
             "official_tax_effect_reason": "공식 양식 구조를 검증한 자료 기준으로 이미 빠진 세금을 반영했어요.",
             "official_tax_effect_source_count": 1,
+            "official_tax_confidence_label": "보수 반영",
+            "official_tax_verification_badge": "구조 검증 통과",
+            "official_tax_verification_hint": "기관 확인 전이라 구조 검증을 통과한 자료 범위에서만 숫자를 반영했어요.",
+            "official_tax_verification_level": "medium",
+            "official_tax_is_high_confidence": False,
         }
 
         summary = compute_risk_summary(7, month_key="2026-03")
@@ -154,6 +164,11 @@ class OfficialDataEffectsIntegrationTest(unittest.TestCase):
             "official_tax_effect_strength": "none",
             "official_tax_effect_reason": "검토가 더 필요한 자료라 세금 숫자에는 자동 반영하지 않았어요.",
             "official_tax_effect_source_count": 1,
+            "official_tax_confidence_label": "재확인 필요",
+            "official_tax_verification_badge": "검토 필요",
+            "official_tax_verification_hint": "검토가 더 필요한 자료라 강한 반영 표현을 쓰지 않아요.",
+            "official_tax_verification_level": "review",
+            "official_tax_is_high_confidence": False,
         }
 
         summary = compute_risk_summary(7, month_key="2026-03")
@@ -184,6 +199,11 @@ class OfficialDataEffectsIntegrationTest(unittest.TestCase):
             "official_tax_effect_strength": "medium",
             "official_tax_effect_reason": "공식 양식 구조를 검증한 자료 기준으로 이미 납부한 세금을 반영했어요.",
             "official_tax_effect_source_count": 1,
+            "official_tax_confidence_label": "보수 반영",
+            "official_tax_verification_badge": "구조 검증 통과",
+            "official_tax_verification_hint": "기관 확인 전이라 구조 검증을 통과한 자료 범위에서만 숫자를 반영했어요.",
+            "official_tax_verification_level": "medium",
+            "official_tax_is_high_confidence": False,
         }
 
         summary = compute_risk_summary(7, month_key="2026-03")
@@ -208,6 +228,11 @@ class OfficialDataEffectsIntegrationTest(unittest.TestCase):
             "official_tax_effect_reason": "공식 양식 구조를 검증한 자료 기준으로 이미 빠진 세금을 반영했어요.",
             "official_tax_effect_source_count": 1,
             "official_tax_effect_document_types": ("hometax_withholding_statement",),
+            "official_tax_confidence_label": "신뢰도 높음",
+            "official_tax_verification_badge": "기관 확인 메타 있음",
+            "official_tax_verification_hint": "기관 확인 메타와 구조 검증이 있는 자료까지 반영했어요.",
+            "official_tax_verification_level": "high",
+            "official_tax_is_high_confidence": True,
         }
         nhis_effect_mock.return_value = {
             "nhis_effect_status": "reference_available",
@@ -218,6 +243,11 @@ class OfficialDataEffectsIntegrationTest(unittest.TestCase):
             "nhis_recheck_required": False,
             "nhis_effect_source_count": 1,
             "nhis_effect_document_types": ("nhis_payment_confirmation",),
+            "nhis_confidence_label": "참고 신뢰도 높음",
+            "nhis_verification_badge": "기관 확인 메타 있음",
+            "nhis_verification_hint": "기관 확인 메타가 있어도 NHIS는 참고 상태로만 연결해요.",
+            "nhis_verification_level": "high",
+            "nhis_is_high_confidence": True,
         }
         render_template_mock.side_effect = lambda template_name, **context: context
 
@@ -229,7 +259,10 @@ class OfficialDataEffectsIntegrationTest(unittest.TestCase):
         self.assertIn("nhis_visual_feedback", context)
         self.assertEqual(context["official_tax_visual_feedback"]["tax_delta_krw"], -100000)
         self.assertTrue(context["official_tax_visual_feedback"]["should_animate"])
+        self.assertEqual(context["official_tax_visual_feedback"]["confidence_label"], "신뢰도 높음")
+        self.assertEqual(context["official_tax_visual_feedback"]["verification_badge"], "기관 확인 메타 있음")
         self.assertFalse(context["nhis_visual_feedback"]["should_animate"])
+        self.assertEqual(context["nhis_visual_feedback"]["confidence_label"], "참고 신뢰도 높음")
 
     @patch("test_effects_web_calendar_module.collect_nhis_effects_for_user")
     @patch("test_effects_web_calendar_module.compute_risk_summary")
@@ -256,6 +289,11 @@ class OfficialDataEffectsIntegrationTest(unittest.TestCase):
             official_tax_effect_reason="공식 양식 구조를 검증한 자료 기준으로 이미 납부한 세금을 반영했어요.",
             official_tax_effect_source_count=1,
             official_tax_effect_document_types=("hometax_tax_payment_history",),
+            official_tax_confidence_label="보수 반영",
+            official_tax_verification_badge="구조 검증 통과",
+            official_tax_verification_hint="기관 확인 전이라 구조 검증을 통과한 자료 범위에서만 숫자를 반영했어요.",
+            official_tax_verification_level="medium",
+            official_tax_is_high_confidence=False,
             tax_due_before_official_data_krw=150_000,
             tax_due_after_official_data_krw=80_000,
         )
@@ -268,6 +306,11 @@ class OfficialDataEffectsIntegrationTest(unittest.TestCase):
             "nhis_recheck_required": False,
             "nhis_effect_source_count": 1,
             "nhis_effect_document_types": ("nhis_payment_confirmation",),
+            "nhis_confidence_label": "참고 신뢰도 보통",
+            "nhis_verification_badge": "구조 검증 통과",
+            "nhis_verification_hint": "구조 검증 자료 기준으로 참고 상태만 보여 줘요.",
+            "nhis_verification_level": "medium",
+            "nhis_is_high_confidence": False,
         }
         query_mock.return_value = _LedgerQuery([])
         settings_model_mock.query = SimpleNamespace(get=lambda user_pk: SimpleNamespace(default_tax_rate=0.15))
@@ -281,7 +324,9 @@ class OfficialDataEffectsIntegrationTest(unittest.TestCase):
         self.assertIn("nhis_visual_feedback", context)
         self.assertEqual(context["official_tax_visual_feedback"]["buffer_delta_krw"], -70000)
         self.assertTrue(context["official_tax_visual_feedback"]["should_animate"])
+        self.assertEqual(context["official_tax_visual_feedback"]["confidence_label"], "보수 반영")
         self.assertEqual(context["nhis_visual_feedback"]["nhis_effect_status"], "reference_available")
+        self.assertEqual(context["nhis_visual_feedback"]["confidence_label"], "참고 신뢰도 보통")
 
 
 if __name__ == "__main__":

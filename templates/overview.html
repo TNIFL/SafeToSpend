@@ -320,6 +320,15 @@
                   <div>
                     <div class="od-visual-title">공식 자료 반영으로 세금 숫자가 이렇게 달라졌어요</div>
                     <div class="od-visual-summary">{{ tax_feedback.feedback_reason }}</div>
+                    {% if tax_feedback.confidence_label or tax_feedback.verification_badge %}
+                      <div class="small-note muted2" style="margin-top:6px;">
+                        왜 이 숫자를 믿어도 되는지 · <b>{{ tax_feedback.confidence_label }}</b>
+                        {% if tax_feedback.verification_badge %} · {{ tax_feedback.verification_badge }}{% endif %}
+                      </div>
+                    {% endif %}
+                    {% if tax_feedback.verification_hint %}
+                      <div class="small-note muted2" style="margin-top:4px;">{{ tax_feedback.verification_hint }}</div>
+                    {% endif %}
                   </div>
                   <div class="small-note muted2">
                     반영 강도 <b>{{ tax_feedback.strength_label }}</b>
@@ -375,6 +384,8 @@
                     {% if nhis_feedback_card.nhis_reference_date %} · 기준일 <b>{{ nhis_feedback_card.nhis_reference_date }}</b>{% endif %}
                     {% if nhis_feedback_card.nhis_latest_paid_amount_krw %} · 최근 공식 납부금액 <b>{{ "{:,}".format(nhis_feedback_card.nhis_latest_paid_amount_krw) }}원</b>{% endif %}
                     {% if nhis_feedback_card.document_kind_summary %} · {{ nhis_feedback_card.document_kind_summary }}{% endif %}
+                    {% if nhis_feedback_card.confidence_label %} · 참고 신뢰도 <b>{{ nhis_feedback_card.confidence_label }}</b>{% endif %}
+                    {% if nhis_feedback_card.verification_badge %} · {{ nhis_feedback_card.verification_badge }}{% endif %}
                     {% if nhis_feedback_card.recheck_required %} · <b>재확인 권장</b>{% endif %}
                   </div>
                 {% endif %}

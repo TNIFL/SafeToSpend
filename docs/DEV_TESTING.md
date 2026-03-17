@@ -1559,3 +1559,21 @@ PYTHONPATH=. .venv/bin/python scripts/remediate_sensitive_identifiers.py --limit
   - verification 연계 없이 A 자동 판정이 다시 생기지 않았는지
   - parser/registry 보정 시 숫자 피드백 조건식이 JSON 임시값으로 돌아가지 않았는지
   - NHIS 참고 스트립이 계산값 직접 덮어쓰기처럼 보이지 않는지
+
+## 52) verification 연계 회귀
+- 목적
+  - 공식 자료 숫자 피드백이 verification 상태와 자연스럽게 연결되고, 강한 표현 허용 조건이 일관되는지 확인
+- 명령
+  - `PYTHONPATH=. .venv/bin/python -m unittest tests.test_official_data_effects tests.test_nhis_effects`
+  - `PYTHONPATH=. .venv/bin/python -m unittest tests.test_official_data_effects_integration tests.test_official_data_effects_render tests.test_official_data_upload_routes`
+  - `PYTHONPATH=. .venv/bin/python -m py_compile services/official_data_effects.py services/nhis_effects.py services/risk.py routes/web/overview.py routes/web/web_calendar.py tests/test_official_data_effects.py tests/test_nhis_effects.py tests/test_official_data_effects_integration.py tests/test_official_data_effects_render.py tests/test_official_data_upload_routes.py`
+- 확인 포인트
+  - `applied + verification_status=succeeded` 또는 `trust_grade=A`일 때만 `confidence_label=신뢰도 높음`이 나오는지
+  - `applied + trust_grade=B`는 숫자 반영은 유지하되 `confidence_label=보수 반영`으로 낮춰지는지
+  - `reference_only`는 `confidence_label=참고용`, `should_animate=false`를 유지하는지
+  - `stale`, `review_needed`는 `confidence_label=재확인 필요`이고 강한 표현을 쓰지 않는지
+  - NHIS는 verification이 있어도 `should_animate=false`를 유지하는지
+  - `official_tax_visual_feedback`, `nhis_visual_feedback`, notice context가 동일한 confidence/badge/hint를 쓰는지
+  - 금지 표현(`확정`, `보증`, `100% 정확`)이 새 verification 경로에도 들어가지 않았는지
+- 실패 시 원칙
+  - baseline 브랜치/DB가 맞더라도 위 규칙이 깨지면 verification 후속 구현을 시작하지 말고 service-layer 판정부터 다시 점검할 것
