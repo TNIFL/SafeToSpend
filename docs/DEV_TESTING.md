@@ -83,3 +83,46 @@ PYTHONPATH=. .venv/bin/python -m py_compile \
 - 참고자료/추가설명 업로드 후 `참고용`, `자동 반영 안 됨`, `세무사 참고용` 문구 노출 여부
 - 공식자료/증빙과 별도 관리 설명이 업로드 화면에 보이는지
 - 목록에서 자료종류, 표시제목, 파일명, 업로드시각, 메모 확인 가능 여부
+
+# 교차검증 규칙 v1 회귀
+
+main 브랜치에서 교차검증 규칙 v1 변경을 점검할 때는 아래 순서로 실행한다.
+
+## 1. baseline 확인
+
+```bash
+git status --short --branch
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db heads
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db current
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db upgrade
+```
+
+## 2. 교차검증/공식자료 회귀
+
+```bash
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' PYTHONPATH=. .venv/bin/python -m unittest \
+  tests.test_cross_validation \
+  tests.test_official_data_upload_routes \
+  tests.test_official_data_parsers \
+  tests.test_official_data_parser_registry \
+  tests.test_tax_package \
+  tests.test_package_routes
+```
+
+## 3. 정적 검증
+
+```bash
+PYTHONPATH=. .venv/bin/python -m py_compile \
+  services/cross_validation.py \
+  services/official_data_upload.py \
+  routes/web/official_data.py \
+  tests/test_cross_validation.py \
+  tests/test_official_data_upload_routes.py
+```
+
+## 4. 수동 확인
+
+- 공식자료 결과 화면에서 `교차검증 결과` 카드가 보이는지
+- `일치 / 부분일치 / 참고용 / 재확인필요 / 불일치` 한글 표현이 그대로 노출되는지
+- 금액/날짜가 명확한 공식자료는 거래와 비교되고, 비교 대상이 약한 문서는 `참고용`으로 남는지
+- 교차검증 결과가 곧바로 `완전 확정`처럼 읽히지 않는지

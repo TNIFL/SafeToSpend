@@ -49,7 +49,7 @@
           - 읽기 실패: 파일은 받았지만 구조를 읽는 중 오류가 난 자료
         </div>
         <div class="small-note muted2" style="margin-top:10px;">
-          공식자료 채널은 도입되지만, 현재 세무사 패키지 v1에는 아직 자동 포함되지 않습니다.
+          현재 세무사 패키지 v2에는 공식자료 목록과 원본 파일이 포함될 수 있지만, 교차검증은 여전히 보수적으로 해석해야 합니다.
         </div>
       </div>
     </div>
@@ -84,6 +84,7 @@
             <th>기관명</th>
             <th>기준일</th>
             <th>읽기상태</th>
+            <th>교차검증</th>
             <th>신뢰등급</th>
             <th>파일</th>
           </tr>
@@ -96,6 +97,10 @@
               <td>{{ doc.source_authority }}</td>
               <td class="mono">{{ doc.reference_date }}</td>
               <td>{{ doc.parse_status_label }}</td>
+              <td>
+                {{ doc.cross_validation.status_label }}<br>
+                <span class="small-note muted2">{{ doc.cross_validation.reason }}</span>
+              </td>
               <td>{{ doc.trust_grade_label }}</td>
               <td>{{ doc.original_filename }}</td>
             </tr>

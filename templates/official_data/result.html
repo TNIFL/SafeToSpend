@@ -43,8 +43,37 @@
           {{ document.status_reason }}
         </div>
         <div class="small-note muted2" style="margin-top:10px;">
-          공식자료 채널은 도입되었지만, 현재 세무사 패키지 v1에는 아직 포함되지 않습니다.
+          현재 세무사 패키지 v2에는 공식자료 목록과 원본 파일이 포함될 수 있지만, 교차검증 결과가 곧바로 완전 확정을 뜻하지는 않습니다.
         </div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+      <div class="cardTitle">
+        <span>교차검증 결과</span>
+        <span class="badge {% if document.cross_validation.status == 'match' %}good{% elif document.cross_validation.status == 'partial_match' %}warn{% elif document.cross_validation.status == 'mismatch' %}bad{% else %}primary{% endif %}">
+          {{ document.cross_validation.status_label }}
+        </span>
+      </div>
+      <div class="p" style="margin-top:10px;">
+        {{ document.cross_validation.reason }}
+      </div>
+      <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+        {% if document.cross_validation.matched_transactions %}
+          일치한 거래: {{ document.cross_validation.matched_transactions|length }}건<br>
+        {% endif %}
+        {% if document.cross_validation.matched_reference_items %}
+          비교에 쓰인 참고자료: {{ document.cross_validation.matched_reference_items|length }}건<br>
+        {% endif %}
+        {% if document.cross_validation.mismatched_transactions %}
+          다시 확인할 거래: {{ document.cross_validation.mismatched_transactions|length }}건<br>
+        {% endif %}
+        {% if document.cross_validation.mismatched_reference_items %}
+          다시 확인할 참고자료: {{ document.cross_validation.mismatched_reference_items|length }}건<br>
+        {% endif %}
+        교차검증 v1은 비교 가능한 날짜·금액·기관명 범위만 보수적으로 확인합니다.
       </div>
     </div>
 

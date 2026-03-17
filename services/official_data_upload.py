@@ -259,13 +259,17 @@ def official_data_document_to_view_model(document: OfficialDataDocument) -> dict
     }
 
 
-def list_official_data_documents(*, user_pk: int, limit: int = 50) -> list[dict[str, Any]]:
-    rows = (
+def query_official_data_documents(*, user_pk: int, limit: int = 50) -> list[OfficialDataDocument]:
+    return (
         OfficialDataDocument.query.filter_by(user_pk=user_pk)
         .order_by(OfficialDataDocument.created_at.desc(), OfficialDataDocument.id.desc())
         .limit(limit)
         .all()
     )
+
+
+def list_official_data_documents(*, user_pk: int, limit: int = 50) -> list[dict[str, Any]]:
+    rows = query_official_data_documents(user_pk=user_pk, limit=limit)
     return [official_data_document_to_view_model(row) for row in rows]
 
 
