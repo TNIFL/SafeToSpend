@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import re
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, or_
 
 from core.extensions import db
 from core.time import utcnow
@@ -21,11 +21,14 @@ from domain.models import (
     ExpenseLabel,
     ImportJob,
     IncomeLabel,
+    OfficialDataDocument,
     SafeToSpendSettings,
     TaxBufferLedger,
     Transaction,
     User,
 )
+from services.official_data_store import resolve_official_data_path
+from services.official_data_upload import official_data_document_to_view_model
 from services.evidence_vault import resolve_file_path
 
 
@@ -33,7 +36,7 @@ KST = ZoneInfo("Asia/Seoul")
 HEADER_FILL = PatternFill("solid", fgColor="E8EEF8")
 HEADER_FONT = Font(bold=True)
 TOP_ALIGN = Alignment(vertical="top")
-PACKAGE_VERSION = "거래+증빙 패키지 v1"
+PACKAGE_VERSION = "거래+증빙+공식자료 패키지 v2"
 
 
 @dataclass(frozen=True)
@@ -64,6 +67,11 @@ class PackageStats:
     tax_buffer_total: int
     tax_buffer_target: int
     tax_buffer_shortage: int
+    official_data_total: int = 0
+    official_data_parsed_count: int = 0
+    official_data_review_count: int = 0
+    official_data_unsupported_count: int = 0
+    official_data_failed_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -78,6 +86,7 @@ class PackageSnapshot:
     evidence_missing_items: list[dict[str, Any]]
     review_trade_items: list[dict[str, Any]]
     included_source_labels: list[str]
+    official_documents: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _month_range_kst_naive(month_key: str) -> tuple[datetime, datetime]:
@@ -140,6 +149,74 @@ def _safe_attachment_name(filename: str | None, fallback: str) -> str:
     text = re.sub(r'[\\/:*?"<>|]+', "_", text)
     text = text.replace("..", ".")
     return text[:160] or fallback
+
+
+def _month_date_range(month_key: str) -> tuple[date, date]:
+    start_dt, end_dt = _month_range_kst_naive(month_key)
+    return start_dt.date(), (end_dt.date())
+
+
+def _official_package_basename(doc: OfficialDataDocument, view: dict[str, Any]) -> str:
+    authority = "공식기관"
+    if (doc.source_authority or "").startswith("국세청"):
+        authority = "홈택스"
+    elif (doc.source_authority or "").startswith("국민건강보험공단"):
+        authority = "건보공단"
+
+    type_label = view.get("document_type_label") or "공식자료"
+    type_label = re.sub(r"\s+", "", type_label)
+    date_label = doc.reference_date.isoformat() if doc.reference_date else _fmt_kst(doc.created_at, "%Y-%m-%d") or "기준일미상"
+    ext = Path(doc.original_filename or "").suffix.lower() or ".bin"
+    return _safe_attachment_name(f"{authority}_{type_label}_{date_label}{ext}", f"공식자료_{doc.id}{ext}")
+
+
+def _dedupe_zip_path(zip_dir: str, filename: str, used_paths: set[str]) -> str:
+    stem = Path(filename).stem
+    suffix = Path(filename).suffix
+    candidate = f"{zip_dir}/{filename}"
+    serial = 2
+    while candidate in used_paths:
+        candidate = f"{zip_dir}/{stem}_{serial}{suffix}"
+        serial += 1
+    used_paths.add(candidate)
+    return candidate
+
+
+def _official_trust_label(view: dict[str, Any], document: OfficialDataDocument) -> str:
+    label = view.get("trust_grade_label") or "반영 보류"
+    grade = (document.trust_grade or "").strip()
+    return f"{label} ({grade})" if grade else label
+
+
+def _official_package_included_label(document: OfficialDataDocument) -> str:
+    return "예" if document.parse_status == "parsed" else "아니오"
+
+
+def _official_recheck_label(document: OfficialDataDocument) -> str:
+    return "예" if document.parse_status != "parsed" or document.verification_status != "verified" else "아니오"
+
+
+def _official_note(view: dict[str, Any], document: OfficialDataDocument, *, file_included: bool) -> str:
+    notes: list[str] = []
+    if document.verification_status != "verified":
+        notes.append(view.get("verification_status_label") or "검증 미실시")
+    if document.parse_status != "parsed":
+        reason = (view.get("status_reason") or "").strip()
+        if reason:
+            notes.append(reason)
+    if not file_included:
+        notes.append("원본 파일을 패키지에 포함하지 못했습니다")
+    return " / ".join(dict.fromkeys(note for note in notes if note))
+
+
+def _official_summary_text(view: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for item in view.get("summary_items") or []:
+        label = (item.get("label") or "").strip()
+        value = (item.get("value") or "").strip()
+        if label and value:
+            parts.append(f"{label}: {value}")
+    return " / ".join(parts)
 
 
 def _source_labels(source: str | None) -> tuple[str, str]:
@@ -534,6 +611,84 @@ def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
 
     review_items, evidence_missing_items, review_trade_items = _build_review_items(tx_rows)
 
+    official_rows: list[dict[str, Any]] = []
+    official_start_date, official_end_date = _month_date_range(month_key)
+    official_docs = (
+        OfficialDataDocument.query.filter(OfficialDataDocument.user_pk == user_pk)
+        .filter(
+            or_(
+                and_(
+                    OfficialDataDocument.reference_date.isnot(None),
+                    OfficialDataDocument.reference_date >= official_start_date,
+                    OfficialDataDocument.reference_date < official_end_date,
+                ),
+                and_(
+                    OfficialDataDocument.reference_date.is_(None),
+                    OfficialDataDocument.created_at >= start_dt,
+                    OfficialDataDocument.created_at < end_dt,
+                ),
+            )
+        )
+        .order_by(OfficialDataDocument.created_at.asc(), OfficialDataDocument.id.asc())
+        .all()
+    )
+
+    used_official_paths: set[str] = set()
+    official_parsed_count = 0
+    official_review_count = 0
+    official_unsupported_count = 0
+    official_failed_count = 0
+
+    for document in official_docs:
+        view = official_data_document_to_view_model(document)
+        zip_path = ""
+        abs_path: Path | None = None
+        file_included = False
+
+        try:
+            abs_path = resolve_official_data_path(document.raw_file_key)
+            if abs_path.exists() and abs_path.is_file():
+                basename = _official_package_basename(document, view)
+                zip_path = _dedupe_zip_path("공식자료", basename, used_official_paths)
+                file_included = True
+            else:
+                abs_path = None
+        except Exception:
+            abs_path = None
+
+        if document.parse_status == "parsed":
+            official_parsed_count += 1
+        elif document.parse_status == "needs_review":
+            official_review_count += 1
+        elif document.parse_status == "unsupported":
+            official_unsupported_count += 1
+        else:
+            official_failed_count += 1
+
+        official_rows.append(
+            {
+                "자료번호": int(document.id),
+                "기관명": view.get("source_authority", "확인 전"),
+                "문서종류": view.get("document_type_label", "문서 판별 전"),
+                "기준일": view.get("reference_date", "확인 전"),
+                "원본파일명": document.original_filename,
+                "파일열기": ("열기", zip_path) if zip_path else "",
+                "읽기상태": view.get("parse_status_label", "처리 결과 확인"),
+                "검증상태": view.get("verification_status_label", "검증 미실시"),
+                "구조확인": view.get("structure_validation_label", "구조 미확인"),
+                "신뢰등급": _official_trust_label(view, document),
+                "핵심값요약": _official_summary_text(view),
+                "패키지반영여부": _official_package_included_label(document),
+                "재확인필요여부": _official_recheck_label(document),
+                "메모": _official_note(view, document, file_included=file_included),
+                "_zip_path": zip_path,
+                "_abs_path": abs_path,
+                "_summary_items": view.get("summary_items") or [],
+                "_document_type_label": view.get("document_type_label", "문서 판별 전"),
+                "_parse_status": document.parse_status,
+            }
+        )
+
     settings = _get_settings(user_pk)
     rate = _tax_rate(settings)
     tax_buffer_total = (
@@ -571,6 +726,11 @@ def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
         tax_buffer_total=int(tax_buffer_total),
         tax_buffer_target=int(tax_buffer_target),
         tax_buffer_shortage=int(tax_buffer_shortage),
+        official_data_total=len(official_rows),
+        official_data_parsed_count=int(official_parsed_count),
+        official_data_review_count=int(official_review_count),
+        official_data_unsupported_count=int(official_unsupported_count),
+        official_data_failed_count=int(official_failed_count),
     )
 
     return PackageSnapshot(
@@ -584,6 +744,7 @@ def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
         evidence_missing_items=evidence_missing_items,
         review_trade_items=review_trade_items,
         included_source_labels=sorted(source_labels),
+        official_documents=official_rows,
     )
 
 
@@ -651,8 +812,11 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
             {"항목명": "총 지출", "값": stats.sum_out_total},
             {"항목명": "업무 관련 지출 합계", "값": stats.expense_business_total},
             {"항목명": "증빙 첨부 수", "값": stats.evidence_attached_count},
+            {"항목명": "공식자료 수", "값": stats.official_data_total},
+            {"항목명": "반영 가능 공식자료 수", "값": stats.official_data_parsed_count},
+            {"항목명": "검토 필요 공식자료 수", "값": stats.official_data_review_count},
             {"항목명": "확인 필요 항목 수", "값": stats.review_needed_count},
-            {"항목명": "참고", "값": "공식자료는 현재 패키지 범위에서 제외됩니다."},
+            {"항목명": "참고", "값": "공식자료는 분리 목록/폴더로 포함되며, 현재는 교차검증 없이 보수 메타만 제공합니다."},
         ]
         _write_table_sheet(ws, ["항목명", "값"], summary_rows)
 
@@ -663,24 +827,24 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
             [
                 {
                     "구분": "반영됨",
-                    "의미": "구조화된 거래가 분류 완료되고 필요한 증빙 상태가 정리된 항목",
+                    "의미": "구조화된 거래 또는 읽기 가능한 공식자료처럼 현재 패키지에서 반영 후보로 볼 수 있는 항목",
                     "계산 반영 여부": "예 또는 아니오",
                     "세무사 확인 필요 여부": "낮음",
-                    "예시": "자동연동/수동업로드 거래 + 분류 완료 + 증빙 첨부 또는 불필요",
+                    "예시": "자동연동/수동업로드 거래 + 분류 완료, 또는 반영 가능으로 읽힌 공식자료",
                 },
                 {
                     "구분": "참고용",
-                    "의미": "현재 자료는 있으나 구조화 근거가 상대적으로 약한 항목",
+                    "의미": "현재 자료는 있으나 구조화 근거 또는 검증 정보가 상대적으로 약한 항목",
                     "계산 반영 여부": "예/아니오를 함께 표기",
                     "세무사 확인 필요 여부": "보통",
-                    "예시": "수동입력 거래처럼 사용자가 직접 입력한 거래",
+                    "예시": "수동입력 거래, 또는 검증 미실시 상태의 보수적 공식자료 메타",
                 },
                 {
                     "구분": "재확인필요",
-                    "의미": "분류 미확정, 필수 증빙 누락, 혼합 판단 등으로 추가 확인이 필요한 항목",
+                    "의미": "분류 미확정, 필수 증빙 누락, 공식자료 검토 필요/미지원/읽기 실패처럼 추가 확인이 필요한 항목",
                     "계산 반영 여부": "보류 중심",
                     "세무사 확인 필요 여부": "높음",
-                    "예시": "지출 분류 미확정 거래, 필수 증빙 미첨부 거래",
+                    "예시": "지출 분류 미확정 거래, 필수 증빙 미첨부 거래, 검토 필요 공식자료",
                 },
             ],
         )
@@ -691,11 +855,12 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
         ws3 = wb.create_sheet("반영현황")
         _write_table_sheet(
             ws3,
-            ["자료 구분", "개수", "반영 건수", "참고용 건수", "재확인 건수"],
+            ["자료 구분", "개수", "반영 건수", "참고용 건수", "재확인 건수", "미지원/실패 건수"],
             [
-                {"자료 구분": "거래내역", "개수": len(snapshot.transactions), "반영 건수": tx_status["반영됨"], "참고용 건수": tx_status["참고용"], "재확인 건수": tx_status["재확인필요"]},
-                {"자료 구분": "증빙자료", "개수": len(snapshot.evidences), "반영 건수": ev_status["반영됨"], "참고용 건수": ev_status["참고용"], "재확인 건수": ev_status["재확인필요"]},
-                {"자료 구분": "확인필요항목", "개수": len(snapshot.review_items), "반영 건수": review_status["반영됨"], "참고용 건수": review_status["참고용"], "재확인 건수": review_status["재확인필요"]},
+                {"자료 구분": "거래내역", "개수": len(snapshot.transactions), "반영 건수": tx_status["반영됨"], "참고용 건수": tx_status["참고용"], "재확인 건수": tx_status["재확인필요"], "미지원/실패 건수": 0},
+                {"자료 구분": "증빙자료", "개수": len(snapshot.evidences), "반영 건수": ev_status["반영됨"], "참고용 건수": ev_status["참고용"], "재확인 건수": ev_status["재확인필요"], "미지원/실패 건수": 0},
+                {"자료 구분": "공식자료", "개수": stats.official_data_total, "반영 건수": stats.official_data_parsed_count, "참고용 건수": 0, "재확인 건수": stats.official_data_review_count, "미지원/실패 건수": stats.official_data_unsupported_count + stats.official_data_failed_count},
+                {"자료 구분": "확인필요항목", "개수": len(snapshot.review_items), "반영 건수": review_status["반영됨"], "참고용 건수": review_status["참고용"], "재확인 건수": review_status["재확인필요"], "미지원/실패 건수": 0},
             ],
         )
 
@@ -706,8 +871,9 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
             [
                 {"항목명": "패키지 버전", "값": PACKAGE_VERSION},
                 {"항목명": "생성 기준 월", "값": stats.month_key},
-                {"항목명": "포함 파일 수", "값": 6},
+                {"항목명": "포함 파일 수", "값": 6 + len(snapshot.evidences) + sum(1 for row in snapshot.official_documents if row.get("_zip_path"))},
                 {"항목명": "포함 증빙 수", "값": len(snapshot.evidences)},
+                {"항목명": "포함 공식자료 수", "값": sum(1 for row in snapshot.official_documents if row.get("_zip_path"))},
                 {"항목명": "연동 포함 여부", "값": ", ".join(snapshot.included_source_labels) if snapshot.included_source_labels else "없음"},
             ],
         )
@@ -938,10 +1104,136 @@ def _build_review_workbook(snapshot: PackageSnapshot) -> bytes:
     return _workbook_bytes(build)
 
 
+def _build_official_data_workbook(snapshot: PackageSnapshot) -> bytes:
+    def build() -> Workbook:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "공식자료목록"
+
+        official_rows = []
+        if snapshot.official_documents:
+            for row in snapshot.official_documents:
+                official_rows.append(
+                    {
+                        "자료번호": row.get("자료번호", ""),
+                        "기관명": row.get("기관명", ""),
+                        "문서종류": row.get("문서종류", ""),
+                        "기준일": row.get("기준일", ""),
+                        "원본파일명": row.get("원본파일명", ""),
+                        "파일열기": row.get("파일열기", ""),
+                        "읽기상태": row.get("읽기상태", ""),
+                        "검증상태": row.get("검증상태", ""),
+                        "구조확인": row.get("구조확인", ""),
+                        "신뢰등급": row.get("신뢰등급", ""),
+                        "핵심값요약": row.get("핵심값요약", ""),
+                        "패키지반영여부": row.get("패키지반영여부", "아니오"),
+                        "재확인필요여부": row.get("재확인필요여부", "예"),
+                        "메모": row.get("메모", ""),
+                    }
+                )
+        else:
+            official_rows.append(
+                {
+                    "자료번호": "",
+                    "기관명": "",
+                    "문서종류": "현재 포함된 공식자료 없음",
+                    "기준일": "",
+                    "원본파일명": "",
+                    "파일열기": "",
+                    "읽기상태": "자료 없음",
+                    "검증상태": "검증 미실시",
+                    "구조확인": "구조 미확인",
+                    "신뢰등급": "반영 보류",
+                    "핵심값요약": "",
+                    "패키지반영여부": "아니오",
+                    "재확인필요여부": "아니오",
+                    "메모": "대상 월 기준으로 포함할 공식자료가 없습니다.",
+                }
+            )
+
+        _write_table_sheet(
+            ws,
+            ["자료번호", "기관명", "문서종류", "기준일", "원본파일명", "파일열기", "읽기상태", "검증상태", "구조확인", "신뢰등급", "핵심값요약", "패키지반영여부", "재확인필요여부", "메모"],
+            official_rows,
+        )
+
+        ws2 = wb.create_sheet("공식자료반영요약")
+        summary_rows = []
+        if snapshot.official_documents:
+            buckets: dict[str, dict[str, int]] = {}
+            for row in snapshot.official_documents:
+                key = row.get("문서종류", "문서 판별 전")
+                bucket = buckets.setdefault(
+                    key,
+                    {"개수": 0, "반영 가능 건수": 0, "검토 필요 건수": 0, "미지원 건수": 0, "읽기 실패 건수": 0},
+                )
+                bucket["개수"] += 1
+                status = row.get("읽기상태")
+                if status == "반영 가능":
+                    bucket["반영 가능 건수"] += 1
+                elif status == "검토 필요":
+                    bucket["검토 필요 건수"] += 1
+                elif status == "미지원 형식":
+                    bucket["미지원 건수"] += 1
+                else:
+                    bucket["읽기 실패 건수"] += 1
+            for key, bucket in sorted(buckets.items()):
+                summary_rows.append({"문서종류": key, **bucket})
+        else:
+            summary_rows.append(
+                {
+                    "문서종류": "현재 포함된 공식자료 없음",
+                    "개수": 0,
+                    "반영 가능 건수": 0,
+                    "검토 필요 건수": 0,
+                    "미지원 건수": 0,
+                    "읽기 실패 건수": 0,
+                }
+            )
+        _write_table_sheet(
+            ws2,
+            ["문서종류", "개수", "반영 가능 건수", "검토 필요 건수", "미지원 건수", "읽기 실패 건수"],
+            summary_rows,
+        )
+
+        ws3 = wb.create_sheet("공식자료핵심값")
+        flattened_rows = []
+        for row in snapshot.official_documents:
+            summary_items = row.get("_summary_items") or []
+            for item in summary_items:
+                label = (item.get("label") or "").strip()
+                value = (item.get("value") or "").strip()
+                if not label or not value:
+                    continue
+                flattened_rows.append(
+                    {
+                        "자료번호": row.get("자료번호", ""),
+                        "문서종류": row.get("문서종류", ""),
+                        "기관명": row.get("기관명", ""),
+                        "핵심항목": label,
+                        "값": value,
+                    }
+                )
+        if not flattened_rows:
+            flattened_rows.append(
+                {
+                    "자료번호": "",
+                    "문서종류": "현재 추출된 공식자료 핵심값 없음",
+                    "기관명": "",
+                    "핵심항목": "",
+                    "값": "",
+                }
+            )
+        _write_table_sheet(ws3, ["자료번호", "문서종류", "기관명", "핵심항목", "값"], flattened_rows)
+        return wb
+
+    return _workbook_bytes(build)
+
+
 def _render_package_guide(snapshot: PackageSnapshot) -> str:
     stats = snapshot.stats
     lines = [
-        "[쓸수있어(SafeToSpend) 거래+증빙 중심 세무사 전달 패키지]",
+        "[쓸수있어(SafeToSpend) 거래+증빙+공식자료 세무사 전달 패키지]",
         f"- 패키지 버전: {PACKAGE_VERSION}",
         f"- 대상 기간: {stats.period_start_kst} ~ {stats.period_end_kst}",
         f"- 생성 시각(KST): {stats.generated_at_kst}",
@@ -952,30 +1244,36 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "- 01_패키지요약.xlsx : 전체 요약, 신뢰 구분 안내, 반영 현황",
         "- 02_거래정리.xlsx : 거래 목록, 원본 정보, 분류/증빙 연결",
         "- 03_증빙목록.xlsx : 첨부된 증빙 목록과 거래별 연결",
+        "- 04_공식자료목록.xlsx : 공식자료 목록, 상태, 핵심값, 파일 링크",
         "- 05_확인필요항목.xlsx : 필수 누락/분류 미확정 등 재확인 목록",
         "- 증빙자료/ : 현재 연결된 대표 증빙 파일",
+        "- 공식자료/ : 대상 월에 포함된 공식자료 원본 파일",
         "",
         "[현재 포함되는 자료 범위]",
         "- 수동입력 거래",
         "- 수동업로드(CSV) 거래",
         "- 자동연동 거래",
         "- 거래에 연결된 대표 증빙 1개",
+        "- 기준일 또는 업로드 시각 기준으로 대상 월에 포함된 공식자료",
         "- 누락/검토 필요 상태",
         "",
         "[현재 포함되지 않는 자료 범위]",
-        "- 공식자료 목록/공식자료 폴더",
         "- 참고자료 폴더",
         "- 추가설명 폴더",
         "- 거래당 다중 증빙 구조",
+        "- 거래와 공식자료의 자동 대조/교차검증",
         "",
         "[신뢰 구분 기준]",
         "- 반영됨: 구조화된 거래가 분류 완료되고 필요한 증빙 상태가 정리된 항목",
         "- 참고용: 수동입력처럼 구조화 근거가 상대적으로 약한 항목",
         "- 재확인필요: 분류 미확정, 필수 증빙 누락, 혼합 판단 등 추가 확인이 필요한 항목",
+        "- 공식자료의 검증상태/신뢰등급은 현재 main 저장 메타를 그대로 보수적으로 전달합니다.",
         "",
         "[현재 한계]",
         "- 거래당 대표 증빙 1개 기준으로 정리됩니다.",
-        "- 공식자료 교차검증은 현재 패키지 범위에 포함되지 않습니다.",
+        f"- 공식자료는 {stats.official_data_total}건 포함될 수 있지만, 현재는 교차검증 없이 목록/원본/핵심값만 제공합니다.",
+        "- 공식자료의 검증상태가 '검증 미실시'이면 세무사 확인이 필요합니다.",
+        "- PDF 공식자료는 현재 텍스트 추출 가능한 범위만 지원합니다.",
         "- ZIP 내부 링크는 압축을 푼 뒤 여는 방식이 가장 안정적입니다.",
     ]
     return "\n".join(lines) + "\n"
@@ -989,12 +1287,25 @@ def build_tax_package_zip_from_snapshot(snapshot: PackageSnapshot) -> tuple[io.B
         zf.writestr(f"{root}/01_패키지요약.xlsx", _build_summary_workbook(snapshot))
         zf.writestr(f"{root}/02_거래정리.xlsx", _build_transactions_workbook(snapshot))
         zf.writestr(f"{root}/03_증빙목록.xlsx", _build_evidence_workbook(snapshot))
+        zf.writestr(f"{root}/04_공식자료목록.xlsx", _build_official_data_workbook(snapshot))
         zf.writestr(f"{root}/05_확인필요항목.xlsx", _build_review_workbook(snapshot))
         zf.writestr(f"{root}/증빙자료/", b"")
+        zf.writestr(f"{root}/공식자료/", b"")
 
         for evidence in snapshot.evidences:
             zip_path = evidence.get("_zip_path") or ""
             abs_path = evidence.get("_abs_path")
+            if not zip_path or not abs_path:
+                continue
+            try:
+                with Path(abs_path).open("rb") as f:
+                    zf.writestr(f"{root}/{zip_path}", f.read())
+            except Exception:
+                continue
+
+        for document in snapshot.official_documents:
+            zip_path = document.get("_zip_path") or ""
+            abs_path = document.get("_abs_path")
             if not zip_path or not abs_path:
                 continue
             try:
