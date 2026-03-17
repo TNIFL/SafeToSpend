@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}참고자료 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <section class="card pad">
+    <div class="row" style="justify-content:space-between; gap:12px; align-items:flex-start;">
+      <div>
+        <div class="h2">참고자료 / 추가설명 업로드</div>
+        <div class="small-note muted2" style="margin-top:4px;">
+          사용자가 직접 만든 엑셀, 메모 PDF, 설명 스크린샷 같은 자유형 자료를 공식자료/증빙과 분리해서 보관하는 채널입니다.
+        </div>
+      </div>
+      <div class="row" style="gap:8px; flex-wrap:wrap;">
+        <a class="btn small ghost" href="{{ url_for('web_package.page') }}">세무사 패키지</a>
+        <a class="btn small ghost" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>
+        <a class="btn small" href="{{ url_for('web_vault.index') }}">증빙 보관함</a>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="grid cols-2">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>이 채널의 용도</span>
+          <span class="badge">참고용</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          - 이 자료는 자동 반영되지 않습니다.<br>
+          - 세무사 참고용 자료로만 보관됩니다.<br>
+          - 공식자료/증빙과는 별도 관리됩니다.<br>
+          - 이후 패키지의 참고자료/추가설명 영역으로 들어갈 예정입니다.
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>올릴 수 있는 파일</span>
+          <span class="badge">v1 범위</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          - PDF<br>
+          - XLSX / CSV<br>
+          - TXT<br>
+          - JPG / PNG
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">
+          사용자가 직접 만든 정리 엑셀, 추가 설명 문서, 전달 메모 파일을 받기 위한 범위만 열어 두었습니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <form method="POST" action="{{ url_for('web_reference_material.upload') }}" enctype="multipart/form-data">
+      <div class="grid cols-2" style="gap:12px;">
+        <label class="field">
+          <span class="label">자료종류</span>
+          <select name="material_kind" required>
+            <option value="reference">참고자료</option>
+            <option value="note_attachment">추가설명</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="label">표시 제목</span>
+          <input type="text" name="title" maxlength="200" placeholder="예: 3월 카드 사용 직접 정리">
+        </label>
+      </div>
+
+      <div class="grid cols-2" style="gap:12px; margin-top:12px;">
+        <label class="field">
+          <span class="label">파일</span>
+          <input type="file" name="file" accept=".pdf,.xlsx,.csv,.txt,.jpg,.jpeg,.png,application/pdf,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png" required>
+        </label>
+
+        <label class="field">
+          <span class="label">메모 / 설명</span>
+          <textarea name="note" rows="3" maxlength="4000" placeholder="세무사에게 같이 봐 달라고 전할 설명이 있으면 적어 주세요."></textarea>
+        </label>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button class="btn primary" type="submit">참고자료 보관</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card pad" style="margin-top:12px;">
+    <div class="cardTitle">
+      <span>최근 업로드</span>
+      <span class="badge">{{ items|length }}건</span>
+    </div>
+
+    <div style="height:12px;"></div>
+
+    {% if items %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>업로드시각</th>
+            <th>자료종류</th>
+            <th>표시제목</th>
+            <th>파일명</th>
+            <th>분류</th>
+            <th>메모</th>
+            <th>파일</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+            <tr>
+              <td class="mono">{{ item.created_at }}</td>
+              <td>{{ item.material_kind_label }}</td>
+              <td>{{ item.title }}</td>
+              <td>{{ item.original_filename }}</td>
+              <td>
+                {{ item.classification_label }}<br>
+                <span class="small-note muted2">{{ item.handling_label }}</span>
+              </td>
+              <td>
+                {% if item.note %}
+                  {{ item.note }}
+                {% else %}
+                  <span class="small-note muted2">메모 없음</span>
+                {% endif %}
+              </td>
+              <td><a href="{{ url_for('web_reference_material.download', item_id=item.id) }}">받기</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="h2">아직 업로드된 참고자료가 없어요</div>
+        <div class="p" style="margin-top:8px;">
+          직접 만든 엑셀, 설명 문서, 전달 메모 파일은 이 채널에 올리면 참고용으로만 분리 보관됩니다.
+        </div>
+      </div>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}

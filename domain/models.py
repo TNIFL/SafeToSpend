@@ -280,6 +280,33 @@ class OfficialDataDocument(db.Model):
     )
 
 
+class ReferenceMaterialItem(db.Model):
+    __tablename__ = "reference_material_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_pk = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    material_kind = db.Column(db.String(24), nullable=False, default="reference")
+
+    raw_file_key = db.Column(db.String(512), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(120), nullable=False)
+    size_bytes = db.Column(db.Integer, nullable=False)
+    sha256 = db.Column(db.String(64), nullable=False)
+
+    title = db.Column(db.String(200), nullable=False)
+    note = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("material_kind IN ('reference','note_attachment')", name="ck_reference_material_kind"),
+        Index("idx_reference_material_user_created", "user_pk", "created_at"),
+        Index("idx_reference_material_user_kind", "user_pk", "material_kind"),
+    )
+
+
 class WeeklyTask(db.Model):
     __tablename__ = "weekly_tasks"
 

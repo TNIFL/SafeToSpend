@@ -43,3 +43,43 @@ PYTHONPATH=. .venv/bin/python -m py_compile \
 - 지원 문서 업로드 후 `반영 가능 / 검토 필요 / 미지원 형식 / 읽기 실패` 표시 여부
 - 업로드 결과 화면에서 문서종류, 기관명, 기준일, 읽기상태, 검증상태, 신뢰등급, 핵심 추출값 요약 표시 여부
 - 패키지 화면에서 공식자료 업로드 진입 링크가 보이지만, 패키지 v1 범위에는 미포함으로 안내되는지 확인
+
+# 참고자료/추가설명 채널 v1 회귀
+
+main 브랜치에서 참고자료/추가설명 채널 변경을 점검할 때는 아래 순서로 실행한다.
+
+## 1. baseline 확인
+
+```bash
+git status --short --branch
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db heads
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db current
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db upgrade
+```
+
+## 2. 참고자료 채널 회귀
+
+```bash
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' PYTHONPATH=. .venv/bin/python -m unittest \
+  tests.test_reference_material_upload_routes
+```
+
+## 3. 정적 검증
+
+```bash
+PYTHONPATH=. .venv/bin/python -m py_compile \
+  app.py \
+  domain/models.py \
+  routes/__init__.py \
+  routes/web/reference_material.py \
+  services/reference_material_store.py \
+  services/reference_material_upload.py \
+  tests/test_reference_material_upload_routes.py
+```
+
+## 4. 수동 확인
+
+- `/dashboard/reference-materials`에서 업로드 진입 가능 여부
+- 참고자료/추가설명 업로드 후 `참고용`, `자동 반영 안 됨`, `세무사 참고용` 문구 노출 여부
+- 공식자료/증빙과 별도 관리 설명이 업로드 화면에 보이는지
+- 목록에서 자료종류, 표시제목, 파일명, 업로드시각, 메모 확인 가능 여부

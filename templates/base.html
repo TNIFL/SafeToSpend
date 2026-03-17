@@ -38,6 +38,10 @@
              href="{{ url_for('web_official_data.index') }}">
             공식자료 업로드
           </a>
+          <a class="nav-link {{ 'active' if (request.endpoint or '').startswith('web_reference_material.') else '' }}"
+             href="{{ url_for('web_reference_material.index') }}">
+            참고자료
+          </a>
           {% endif %}
 
       {% if session.get('user_id') %}
