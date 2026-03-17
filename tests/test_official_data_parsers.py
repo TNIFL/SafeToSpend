@@ -31,6 +31,10 @@ class OfficialDataParsersTest(unittest.TestCase):
         self.assertEqual(withholding.parse_status, PARSE_STATUS_PARSED)
         self.assertEqual(withholding.extracted_key_summary['total_amount_krw'], 1820000)
 
+        withholding_variant = parse_hometax_withholding_statement(build_envelope_from_path(FIXTURES / 'hometax_withholding_statement_shifted_headers.csv'))
+        self.assertEqual(withholding_variant.parse_status, PARSE_STATUS_PARSED)
+        self.assertEqual(withholding_variant.extracted_payload['total_withheld_tax_krw'], 1820000)
+
         card_usage = parse_hometax_business_card_usage(build_envelope_from_path(FIXTURES / 'hometax_business_card_usage.xlsx'))
         self.assertEqual(card_usage.parse_status, PARSE_STATUS_PARSED)
         self.assertEqual(card_usage.extracted_key_summary['total_amount_krw'], 485000)
@@ -40,13 +44,26 @@ class OfficialDataParsersTest(unittest.TestCase):
         self.assertEqual(tax_payment.extracted_payload['paid_tax_total_krw'], 640000)
         self.assertEqual(tax_payment.extracted_key_summary['primary_key_value'], '***합소득세')
 
+        tax_payment_variant = parse_hometax_tax_payment_history(build_envelope_from_path(FIXTURES / 'hometax_tax_payment_history_variant.csv'))
+        self.assertEqual(tax_payment_variant.parse_status, PARSE_STATUS_PARSED)
+        self.assertEqual(tax_payment_variant.extracted_payload['paid_tax_total_krw'], 640000)
+        self.assertEqual(tax_payment_variant.extracted_payload['latest_payment_date'], '2026-03-10')
+
         nhis = parse_nhis_payment_confirmation(build_envelope_from_path(FIXTURES / 'nhis_payment_confirmation.pdf'))
         self.assertEqual(nhis.parse_status, PARSE_STATUS_PARSED)
         self.assertEqual(nhis.extracted_key_summary['primary_key_value'], '***-100')
 
+        nhis_variant = parse_nhis_payment_confirmation(build_envelope_from_path(FIXTURES / 'nhis_payment_confirmation_variant.pdf'))
+        self.assertEqual(nhis_variant.parse_status, PARSE_STATUS_PARSED)
+        self.assertEqual(nhis_variant.extracted_payload['total_paid_amount_krw'], 352000)
+
         eligibility = parse_nhis_eligibility_status(build_envelope_from_path(FIXTURES / 'nhis_eligibility_status.pdf'))
         self.assertEqual(eligibility.parse_status, PARSE_STATUS_PARSED)
         self.assertEqual(eligibility.extracted_payload['eligibility_status'], '유지')
+
+        eligibility_variant = parse_nhis_eligibility_status(build_envelope_from_path(FIXTURES / 'nhis_eligibility_status_variant.pdf'))
+        self.assertEqual(eligibility_variant.parse_status, PARSE_STATUS_PARSED)
+        self.assertEqual(eligibility_variant.extracted_payload['eligibility_start_date'], '2025-07-01')
 
     def test_parser_returns_needs_review_when_required_fields_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -77,24 +94,37 @@ class OfficialDataParsersTest(unittest.TestCase):
         self.assertNotIn('raw_text', result.extracted_payload)
         self.assertNotIn('fixture_source', result.extracted_payload)
 
+    def test_variant_pdf_and_shifted_tabular_structures_do_not_force_missing_defaults(self) -> None:
+        tax_payment = parse_hometax_tax_payment_history(build_envelope_from_path(FIXTURES / 'hometax_tax_payment_history_variant.csv'))
+        self.assertEqual(tax_payment.parse_status, PARSE_STATUS_PARSED)
+        self.assertEqual(tax_payment.extracted_payload['payment_entry_count'], 2)
+
+        eligibility = parse_nhis_eligibility_status(build_envelope_from_path(FIXTURES / 'nhis_eligibility_status_variant.pdf'))
+        self.assertEqual(eligibility.parse_status, PARSE_STATUS_PARSED)
+        self.assertIsNone(eligibility.extracted_payload['eligibility_end_date'])
+
     def test_smoke_report_is_written_from_fixture_resolver(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / 'smoke.json'
             report = write_parser_smoke_report(
                 fixture_paths=[
                     FIXTURES / 'hometax_withholding_statement.csv',
+                    FIXTURES / 'hometax_withholding_statement_shifted_headers.csv',
                     FIXTURES / 'hometax_business_card_usage.xlsx',
                     FIXTURES / 'hometax_tax_payment_history.csv',
+                    FIXTURES / 'hometax_tax_payment_history_variant.csv',
                     FIXTURES / 'nhis_payment_confirmation.pdf',
+                    FIXTURES / 'nhis_payment_confirmation_variant.pdf',
                     FIXTURES / 'nhis_eligibility_status.pdf',
+                    FIXTURES / 'nhis_eligibility_status_variant.pdf',
                     FIXTURES / 'unknown_headers.csv',
                 ],
                 resolver=resolve_fixture_document,
                 output_path=output_path,
             )
             written = json.loads(output_path.read_text(encoding='utf-8'))
-        self.assertEqual(report['row_count'], 6)
-        self.assertEqual(written['row_count'], 6)
+        self.assertEqual(report['row_count'], 10)
+        self.assertEqual(written['row_count'], 10)
         self.assertEqual(written['rows'][0]['parse_status'], PARSE_STATUS_PARSED)
 
 

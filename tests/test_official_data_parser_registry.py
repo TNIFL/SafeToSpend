@@ -23,10 +23,14 @@ class OfficialDataParserRegistryTest(unittest.TestCase):
     def test_supported_fixture_documents_are_identified(self) -> None:
         cases = {
             'hometax_withholding_statement.csv': 'hometax_withholding_statement',
+            'hometax_withholding_statement_shifted_headers.csv': 'hometax_withholding_statement',
             'hometax_business_card_usage.xlsx': 'hometax_business_card_usage',
             'hometax_tax_payment_history.csv': 'hometax_tax_payment_history',
+            'hometax_tax_payment_history_variant.csv': 'hometax_tax_payment_history',
             'nhis_payment_confirmation.pdf': 'nhis_payment_confirmation',
+            'nhis_payment_confirmation_variant.pdf': 'nhis_payment_confirmation',
             'nhis_eligibility_status.pdf': 'nhis_eligibility_status',
+            'nhis_eligibility_status_variant.pdf': 'nhis_eligibility_status',
         }
         for filename, document_type in cases.items():
             envelope = build_envelope_from_path(FIXTURES / filename)
@@ -42,6 +46,10 @@ class OfficialDataParserRegistryTest(unittest.TestCase):
         unknown = identify_official_data_document(build_envelope_from_path(FIXTURES / 'unknown_headers.csv'))
         self.assertEqual(unknown.registry_status, REGISTRY_STATUS_UNSUPPORTED_DOCUMENT)
         self.assertEqual(unknown.parse_error_code, 'unsupported_document_type')
+
+        known_source_unrecognized = identify_official_data_document(build_envelope_from_path(FIXTURES / 'hometax_known_source_unrecognized.csv'))
+        self.assertEqual(known_source_unrecognized.registry_status, REGISTRY_STATUS_NEEDS_REVIEW)
+        self.assertNotEqual(known_source_unrecognized.registry_status, REGISTRY_STATUS_SUPPORTED)
 
         partial_tax = identify_official_data_document(build_envelope_from_path(FIXTURES / 'hometax_tax_payment_history_partial.csv'))
         self.assertEqual(partial_tax.registry_status, REGISTRY_STATUS_NEEDS_REVIEW)

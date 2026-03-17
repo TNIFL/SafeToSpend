@@ -36,10 +36,87 @@ class OfficialDataParseResult:
     structure_validation_status: str = "not_applicable"
 
 
+DATE_FRAGMENT_PATTERN = r"[0-9]{4}(?:[./-][0-9]{1,2}(?:[./-][0-9]{1,2})?|년\s*[0-9]{1,2}\s*월\s*[0-9]{1,2}\s*일)"
+MAX_HEADER_SCAN_ROWS = 4
+
+DOCUMENT_TITLE_VARIANTS: dict[str, tuple[str, ...]] = {
+    "hometax_withholding_statement": ("원천징수 이행상황 신고서", "원천징수이행상황신고서"),
+    "hometax_business_card_usage": ("사업용 신용카드 사용내역", "사업용신용카드사용내역"),
+    "hometax_tax_payment_history": (
+        "세금 납부내역 조회",
+        "세금납부내역조회",
+        "세금 납부내역서",
+        "세금납부내역서",
+        "납부 내역",
+        "납부내역",
+    ),
+    "nhis_payment_confirmation": ("보험료 납부확인서", "보험료납부확인서"),
+    "nhis_eligibility_status": ("자격득실확인서", "자격득실 확인서"),
+}
+
+DOCUMENT_ISSUER_VARIANTS: dict[str, tuple[str, ...]] = {
+    "hometax_withholding_statement": ("국세청 홈택스", "국세청", "홈택스"),
+    "hometax_business_card_usage": ("국세청 홈택스", "국세청", "홈택스"),
+    "hometax_tax_payment_history": ("국세청 홈택스", "국세청", "홈택스"),
+    "nhis_payment_confirmation": ("국민건강보험공단",),
+    "nhis_eligibility_status": ("국민건강보험공단",),
+}
+
+TABULAR_HEADER_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
+    "hometax_withholding_statement": {
+        "문서명": ("문서명", "문서 명", "자료명"),
+        "발급기관": ("발급기관", "발급 기관", "기관명"),
+        "기준일": ("기준일", "조회일", "기준 일"),
+        "귀속기간시작": ("귀속기간시작", "귀속기간 시작", "귀속 시작일"),
+        "귀속기간종료": ("귀속기간종료", "귀속기간 종료", "귀속 종료일"),
+        "총 원천징수세액": ("총 원천징수세액", "총원천징수세액", "원천징수세액 합계", "원천징수세액합계"),
+        "지급처 식별키": ("지급처 식별키", "지급처식별키", "지급처 참조", "지급처 코드"),
+        "지급건수": ("지급건수", "지급 건수", "건수"),
+    },
+    "hometax_business_card_usage": {
+        "문서명": ("문서명", "문서 명", "자료명"),
+        "발급기관": ("발급기관", "발급 기관", "기관명"),
+        "기준일": ("기준일", "조회일", "기준 일"),
+        "사용기간시작": ("사용기간시작", "사용기간 시작", "사용 시작일"),
+        "사용기간종료": ("사용기간종료", "사용기간 종료", "사용 종료일"),
+        "총 사용금액": ("총 사용금액", "총사용금액", "사용금액 합계", "총 사용 금액"),
+        "사업자 식별키": ("사업자 식별키", "사업자식별키", "사업자 참조", "사업자 코드"),
+        "승인건수": ("승인건수", "승인 건수", "건수"),
+        "카드 구분": ("카드 구분", "카드구분", "카드 유형"),
+    },
+    "hometax_tax_payment_history": {
+        "문서명": ("문서명", "문서 명", "자료명"),
+        "발급기관": ("발급기관", "발급 기관", "기관명"),
+        "조회일": ("조회일", "기준일", "조회 일", "기준 일"),
+        "세목": ("세목", "세목명", "세목 요약"),
+        "납부일": ("납부일", "최근 납부일", "납부 일"),
+        "납부세액 합계": ("납부세액 합계", "납부세액합계", "납부금액 합계", "납부세액", "납부 금액 합계"),
+        "귀속기간시작": ("귀속기간시작", "귀속기간 시작", "대상기간시작", "대상기간 시작"),
+        "귀속기간종료": ("귀속기간종료", "귀속기간 종료", "대상기간종료", "대상기간 종료"),
+        "납부건수": ("납부건수", "납부 건수", "건수"),
+    },
+}
+
+
+@dataclass(slots=True)
+class TabularRecordLookup:
+    record: dict[str, str]
+    observed_headers: list[str]
+    missing_required_fields: list[str]
+    matched_required_count: int
+
+
 def _parse_date(raw: str | None) -> date | None:
     text = str(raw or "").strip()
     if not text:
         return None
+    korean_match = re.fullmatch(r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일", text)
+    if korean_match:
+        year, month, day = korean_match.groups()
+        try:
+            return date(int(year), int(month), int(day))
+        except Exception:
+            return None
     text = text.replace(".", "-").replace("/", "-")
     for fmt in ("%Y-%m-%d", "%Y-%m", "%Y%m%d"):
         try:
@@ -54,6 +131,9 @@ def _parse_datetime(raw: str | None) -> datetime | None:
     text = str(raw or "").strip()
     if not text:
         return None
+    korean_date = _parse_date(text)
+    if korean_date:
+        return datetime.combine(korean_date, datetime.min.time())
     text = text.replace(".", "-").replace("/", "-")
     for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d", "%Y%m%d"):
         try:
@@ -84,6 +164,128 @@ def _mask_identifier(value: str | None) -> str:
     if len(text) <= 4:
         return "*" * len(text)
     return f"***{text[-4:]}"
+
+
+def _normalize_fragment(value: str | None) -> str:
+    text = str(value or "").strip().lower()
+    return re.sub(r"[\s\-_:/|().,:;{}\[\]<>·]+", "", text)
+
+
+def _header_matches_alias(header: str, alias: str) -> bool:
+    header_norm = _normalize_fragment(header)
+    alias_norm = _normalize_fragment(alias)
+    if not header_norm or not alias_norm:
+        return False
+    return header_norm == alias_norm or header_norm.startswith(alias_norm)
+
+
+def _contains_variant(text: str, variants: tuple[str, ...]) -> bool:
+    normalized = _normalize_fragment(text)
+    return any(_normalize_fragment(variant) in normalized for variant in variants if str(variant or "").strip())
+
+
+def _flex_label_pattern(label: str) -> str:
+    chars = [re.escape(ch) for ch in str(label or "").strip() if not ch.isspace()]
+    return r"\s*".join(chars)
+
+
+def _find_labeled_value(text: str, labels: tuple[str, ...], value_pattern: str) -> str | None:
+    label_pattern = "|".join(_flex_label_pattern(label) for label in labels if str(label or "").strip())
+    if not label_pattern:
+        return None
+    match = re.search(rf"(?:{label_pattern})\s*[:：]?\s*({value_pattern})", text)
+    if not match:
+        return None
+    return str(match.group(1) or "").strip()
+
+
+def _find_labeled_date(text: str, labels: tuple[str, ...]) -> date | None:
+    return _parse_date(_find_labeled_value(text, labels, DATE_FRAGMENT_PATTERN))
+
+
+def _find_labeled_datetime(text: str, labels: tuple[str, ...]) -> datetime | None:
+    return _parse_datetime(_find_labeled_value(text, labels, DATE_FRAGMENT_PATTERN))
+
+
+def _find_labeled_amount(text: str, labels: tuple[str, ...]) -> int | None:
+    return _parse_int_krw(_find_labeled_value(text, labels, r"[0-9][0-9,\s]*원?"))
+
+
+def _find_labeled_text(text: str, labels: tuple[str, ...]) -> str:
+    return str(_find_labeled_value(text, labels, r"[^\n]+") or "").strip()
+
+
+def _find_labeled_period(text: str, labels: tuple[str, ...]) -> tuple[date | None, date | None]:
+    label_pattern = "|".join(_flex_label_pattern(label) for label in labels if str(label or "").strip())
+    if not label_pattern:
+        return (None, None)
+    match = re.search(
+        rf"(?:{label_pattern})\s*[:：]?\s*({DATE_FRAGMENT_PATTERN})\s*[~\-]\s*({DATE_FRAGMENT_PATTERN})",
+        text,
+    )
+    if not match:
+        return (None, None)
+    return (_parse_date(match.group(1)), _parse_date(match.group(2)))
+
+
+def _find_next_data_row(matrix: list[list[str]], start_index: int) -> list[str]:
+    for row in matrix[start_index:]:
+        cleaned = [str(cell or "").strip() for cell in row]
+        if sum(1 for cell in cleaned if cell) >= 2:
+            return cleaned
+    return []
+
+
+def _lookup_tabular_record(
+    matrix: list[list[str]],
+    *,
+    document_type: str,
+    required_fields: tuple[str, ...],
+) -> TabularRecordLookup:
+    alias_map = TABULAR_HEADER_ALIASES[document_type]
+    best_headers: list[str] = []
+    best_positions: dict[str, int] = {}
+    best_score = 0
+
+    for row_index, row in enumerate(matrix[:MAX_HEADER_SCAN_ROWS]):
+        headers = [str(cell or "").strip() for cell in row]
+        positions: dict[str, int] = {}
+        for field in required_fields:
+            aliases = alias_map.get(field, (field,))
+            for idx, header in enumerate(headers):
+                if any(_header_matches_alias(header, alias) for alias in aliases):
+                    positions[field] = idx
+                    break
+        if len(positions) > best_score:
+            best_score = len(positions)
+            best_headers = headers
+            best_positions = positions
+        if len(positions) == len(required_fields):
+            data_row = _find_next_data_row(matrix, row_index + 1)
+            record = {
+                field: (str(data_row[idx] or "").strip() if idx < len(data_row) else "")
+                for field, idx in positions.items()
+            }
+            optional_fields = [field for field in alias_map.keys() if field not in required_fields]
+            for field in optional_fields:
+                for idx, header in enumerate(headers):
+                    if any(_header_matches_alias(header, alias) for alias in alias_map.get(field, ())):
+                        record[field] = str(data_row[idx] or "").strip() if idx < len(data_row) else ""
+                        break
+            missing_required = [field for field in required_fields if not record.get(field)]
+            return TabularRecordLookup(
+                record=record,
+                observed_headers=headers,
+                missing_required_fields=missing_required,
+                matched_required_count=len(required_fields),
+            )
+
+    return TabularRecordLookup(
+        record={},
+        observed_headers=best_headers,
+        missing_required_fields=[field for field in required_fields if field not in best_positions],
+        matched_required_count=best_score,
+    )
 
 
 def _result_summary(*, issuer: str, document_name: str, verified_reference_date: date | None, period_start: date | None, period_end: date | None, total_amount_krw: int | None, primary_key_label: str, primary_key_value: str) -> dict[str, Any]:
@@ -148,9 +350,14 @@ def parse_hometax_withholding_statement(envelope: OfficialDataFileEnvelope) -> O
     parser_name = "parse_hometax_withholding_statement"
     try:
         matrix = extract_matrix(envelope)
-        record = _tabular_single_record(matrix)
-        required = ["문서명", "발급기관", "기준일", "귀속기간시작", "귀속기간종료", "총 원천징수세액", "지급처 식별키"]
-        missing = [key for key in required if not str(record.get(key) or "").strip()]
+        required = ("문서명", "발급기관", "기준일", "귀속기간시작", "귀속기간종료", "총 원천징수세액", "지급처 식별키")
+        lookup = _lookup_tabular_record(
+            matrix,
+            document_type="hometax_withholding_statement",
+            required_fields=required,
+        )
+        record = lookup.record
+        missing = [key for key in required if key in lookup.missing_required_fields or not str(record.get(key) or "").strip()]
         if missing:
             return _needs_review(
                 source_system="hometax",
@@ -159,7 +366,7 @@ def parse_hometax_withholding_statement(envelope: OfficialDataFileEnvelope) -> O
                 parser_name=parser_name,
                 error_code="missing_required_fields",
                 detail=f"필수 헤더 또는 값이 부족해요: {', '.join(missing)}",
-                partial_payload={"observed_headers": list(record.keys()), "missing_required_fields": missing},
+                partial_payload={"observed_headers": lookup.observed_headers, "missing_required_fields": missing},
             )
         verified_reference_date = _parse_date(record.get("기준일"))
         period_start = _parse_date(record.get("귀속기간시작"))
@@ -225,9 +432,14 @@ def parse_hometax_business_card_usage(envelope: OfficialDataFileEnvelope) -> Off
     parser_name = "parse_hometax_business_card_usage"
     try:
         matrix = extract_matrix(envelope)
-        record = _tabular_single_record(matrix)
-        required = ["문서명", "발급기관", "기준일", "사용기간시작", "사용기간종료", "총 사용금액", "사업자 식별키"]
-        missing = [key for key in required if not str(record.get(key) or "").strip()]
+        required = ("문서명", "발급기관", "기준일", "사용기간시작", "사용기간종료", "총 사용금액", "사업자 식별키")
+        lookup = _lookup_tabular_record(
+            matrix,
+            document_type="hometax_business_card_usage",
+            required_fields=required,
+        )
+        record = lookup.record
+        missing = [key for key in required if key in lookup.missing_required_fields or not str(record.get(key) or "").strip()]
         if missing:
             return _needs_review(
                 source_system="hometax",
@@ -236,7 +448,7 @@ def parse_hometax_business_card_usage(envelope: OfficialDataFileEnvelope) -> Off
                 parser_name=parser_name,
                 error_code="missing_required_fields",
                 detail=f"필수 헤더 또는 값이 부족해요: {', '.join(missing)}",
-                partial_payload={"observed_headers": list(record.keys()), "missing_required_fields": missing},
+                partial_payload={"observed_headers": lookup.observed_headers, "missing_required_fields": missing},
             )
         verified_reference_date = _parse_date(record.get("기준일"))
         period_start = _parse_date(record.get("사용기간시작"))
@@ -305,9 +517,14 @@ def parse_hometax_tax_payment_history(envelope: OfficialDataFileEnvelope) -> Off
         record: dict[str, str]
         if envelope.ext in {".csv", ".xlsx"}:
             matrix = extract_matrix(envelope)
-            record = _tabular_single_record(matrix)
-            required = ["문서명", "발급기관", "조회일", "세목", "납부일", "납부세액 합계", "귀속기간시작", "귀속기간종료"]
-            missing = [key for key in required if not str(record.get(key) or "").strip()]
+            required = ("문서명", "발급기관", "조회일", "세목", "납부일", "납부세액 합계", "귀속기간시작", "귀속기간종료")
+            lookup = _lookup_tabular_record(
+                matrix,
+                document_type="hometax_tax_payment_history",
+                required_fields=required,
+            )
+            record = lookup.record
+            missing = [key for key in required if key in lookup.missing_required_fields or not str(record.get(key) or "").strip()]
             if missing:
                 return _needs_review(
                     source_system="hometax",
@@ -316,7 +533,7 @@ def parse_hometax_tax_payment_history(envelope: OfficialDataFileEnvelope) -> Off
                     parser_name=parser_name,
                     error_code="missing_required_fields",
                     detail=f"필수 헤더 또는 값이 부족해요: {', '.join(missing)}",
-                    partial_payload={"observed_headers": list(record.keys()), "missing_required_fields": missing},
+                    partial_payload={"observed_headers": lookup.observed_headers, "missing_required_fields": missing},
                 )
             verified_reference_date = _parse_date(record.get("조회일") or record.get("기준일"))
             payment_date = _parse_date(record.get("납부일") or record.get("최근 납부일"))
@@ -371,9 +588,10 @@ def parse_hometax_tax_payment_history(envelope: OfficialDataFileEnvelope) -> Off
             )
 
         text = extract_preview_text(envelope)
-        doc_name = "세금 납부내역 조회"
-        issuer = "국세청"
-        if doc_name not in text or issuer not in text:
+        if not _contains_variant(text, DOCUMENT_TITLE_VARIANTS["hometax_tax_payment_history"]) or not _contains_variant(
+            text,
+            DOCUMENT_ISSUER_VARIANTS["hometax_tax_payment_history"],
+        ):
             return _needs_review(
                 source_system="hometax",
                 document_type="hometax_tax_payment_history",
@@ -382,21 +600,15 @@ def parse_hometax_tax_payment_history(envelope: OfficialDataFileEnvelope) -> Off
                 error_code="document_header_mismatch",
                 detail="문서명이나 발급기관을 확실히 읽지 못했어요.",
                 partial_payload={
-                    "document_name_marker_found": bool(doc_name in text),
-                    "issuer_marker_found": bool(issuer in text),
+                    "document_name_marker_found": bool(_contains_variant(text, DOCUMENT_TITLE_VARIANTS["hometax_tax_payment_history"])),
+                    "issuer_marker_found": bool(_contains_variant(text, DOCUMENT_ISSUER_VARIANTS["hometax_tax_payment_history"])),
                 },
             )
-        reference_match = re.search(r"(조회일|기준일)\s*[:：]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})", text)
-        payment_match = re.search(r"납부일\s*[:：]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})", text)
-        total_match = re.search(r"납부세액\s*합계\s*[:：]\s*([0-9,]+)원", text)
-        tax_type_match = re.search(r"세목\s*[:：]\s*([^\n]+)", text)
-        period_match = re.search(r"(귀속기간|대상기간)\s*[:：]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})\s*[~\-]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})", text)
-        verified_reference_date = _parse_date(reference_match.group(2) if reference_match else None)
-        payment_date = _parse_date(payment_match.group(1) if payment_match else None)
-        paid_total_krw = _parse_int_krw(total_match.group(1) if total_match else None)
-        period_start = _parse_date(period_match.group(2) if period_match else None)
-        period_end = _parse_date(period_match.group(3) if period_match else None)
-        tax_type_summary = str(tax_type_match.group(1) if tax_type_match else "").strip()
+        verified_reference_date = _find_labeled_date(text, ("조회일", "기준일"))
+        payment_date = _find_labeled_date(text, ("납부일", "최근 납부일"))
+        paid_total_krw = _find_labeled_amount(text, ("납부세액 합계", "납부세액", "납부금액 합계"))
+        tax_type_summary = _find_labeled_text(text, ("세목", "세목 요약", "세목명"))
+        period_start, period_end = _find_labeled_period(text, ("귀속기간", "대상기간"))
         if not verified_reference_date or not payment_date or paid_total_krw is None or not tax_type_summary:
             return _needs_review(
                 source_system="hometax",
@@ -414,7 +626,7 @@ def parse_hometax_tax_payment_history(envelope: OfficialDataFileEnvelope) -> Off
             )
         payload = {
             "issuer_name": "국세청 홈택스",
-            "document_name": doc_name,
+            "document_name": "세금 납부내역 조회",
             "verified_reference_date": verified_reference_date.isoformat(),
             "latest_payment_date": payment_date.isoformat(),
             "document_period_start": period_start.isoformat() if period_start else None,
@@ -433,7 +645,7 @@ def parse_hometax_tax_payment_history(envelope: OfficialDataFileEnvelope) -> Off
             extracted_payload=payload,
             extracted_key_summary=_result_summary(
                 issuer="국세청 홈택스",
-                document_name=doc_name,
+                document_name="세금 납부내역 조회",
                 verified_reference_date=verified_reference_date,
                 period_start=period_start,
                 period_end=period_end,
@@ -441,7 +653,7 @@ def parse_hometax_tax_payment_history(envelope: OfficialDataFileEnvelope) -> Off
                 primary_key_label="세목 요약",
                 primary_key_value=tax_type_summary,
             ),
-            document_issued_at=_parse_datetime(reference_match.group(2) if reference_match else None),
+            document_issued_at=_parse_datetime(verified_reference_date.isoformat()),
             document_period_start=period_start,
             document_period_end=period_end,
             verified_reference_date=verified_reference_date,
@@ -462,9 +674,10 @@ def parse_nhis_payment_confirmation(envelope: OfficialDataFileEnvelope) -> Offic
     parser_name = "parse_nhis_payment_confirmation"
     try:
         text = extract_preview_text(envelope)
-        doc_name = "보험료 납부확인서"
-        issuer = "국민건강보험공단"
-        if doc_name not in text or issuer not in text:
+        if not _contains_variant(text, DOCUMENT_TITLE_VARIANTS["nhis_payment_confirmation"]) or not _contains_variant(
+            text,
+            DOCUMENT_ISSUER_VARIANTS["nhis_payment_confirmation"],
+        ):
             return _needs_review(
                 source_system="nhis",
                 document_type="nhis_payment_confirmation",
@@ -473,21 +686,15 @@ def parse_nhis_payment_confirmation(envelope: OfficialDataFileEnvelope) -> Offic
                 error_code="document_header_mismatch",
                 detail="문서명이나 발급기관을 확실히 읽지 못했어요.",
                 partial_payload={
-                    "document_name_marker_found": bool(doc_name in text),
-                    "issuer_marker_found": bool(issuer in text),
+                    "document_name_marker_found": bool(_contains_variant(text, DOCUMENT_TITLE_VARIANTS["nhis_payment_confirmation"])),
+                    "issuer_marker_found": bool(_contains_variant(text, DOCUMENT_ISSUER_VARIANTS["nhis_payment_confirmation"])),
                 },
             )
-        issued_match = re.search(r"발급일\s*[:：]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})", text)
-        period_match = re.search(r"납부대상기간\s*[:：]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})\s*[~\-]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})", text)
-        total_match = re.search(r"납부보험료\s*합계\s*[:：]\s*([0-9,]+)원", text)
-        insured_match = re.search(r"가입자\s*식별키\s*[:：]\s*([A-Z0-9\-*]+)", text)
-        member_type_match = re.search(r"가입자\s*구분\s*[:：]\s*([^\n]+)", text)
-        issued_at = _parse_datetime(issued_match.group(1) if issued_match else None)
-        period_start = _parse_date(period_match.group(1) if period_match else None)
-        period_end = _parse_date(period_match.group(2) if period_match else None)
-        total_amount_krw = _parse_int_krw(total_match.group(1) if total_match else None)
-        insured_key = str(insured_match.group(1) if insured_match else "").strip()
-        member_type = str(member_type_match.group(1) if member_type_match else "").strip()
+        issued_at = _find_labeled_datetime(text, ("발급일", "기준일"))
+        period_start, period_end = _find_labeled_period(text, ("납부대상기간", "납부 대상 기간", "대상기간"))
+        total_amount_krw = _find_labeled_amount(text, ("납부보험료 합계", "보험료 합계", "최근 공식 납부금액"))
+        insured_key = _find_labeled_text(text, ("가입자 식별키", "가입자식별키", "가입자 참조"))
+        member_type = _find_labeled_text(text, ("가입자 구분", "가입자구분", "가입자 유형"))
         if not issued_at or not period_start or not period_end or total_amount_krw is None or not insured_key:
             return _needs_review(
                 source_system="nhis",
@@ -504,8 +711,8 @@ def parse_nhis_payment_confirmation(envelope: OfficialDataFileEnvelope) -> Offic
                 },
             )
         payload = {
-            "issuer_name": issuer,
-            "document_name": doc_name,
+            "issuer_name": "국민건강보험공단",
+            "document_name": "보험료 납부확인서",
             "verified_reference_date": issued_at.date().isoformat(),
             "document_period_start": period_start.isoformat(),
             "document_period_end": period_end.isoformat(),
@@ -523,8 +730,8 @@ def parse_nhis_payment_confirmation(envelope: OfficialDataFileEnvelope) -> Offic
             parse_status=PARSE_STATUS_PARSED,
             extracted_payload=payload,
             extracted_key_summary=_result_summary(
-                issuer=issuer,
-                document_name=doc_name,
+                issuer="국민건강보험공단",
+                document_name="보험료 납부확인서",
                 verified_reference_date=issued_at.date(),
                 period_start=period_start,
                 period_end=period_end,
@@ -553,9 +760,10 @@ def parse_nhis_eligibility_status(envelope: OfficialDataFileEnvelope) -> Officia
     parser_name = "parse_nhis_eligibility_status"
     try:
         text = extract_preview_text(envelope)
-        doc_name = "자격득실확인서"
-        issuer = "국민건강보험공단"
-        if doc_name not in text or issuer not in text:
+        if not _contains_variant(text, DOCUMENT_TITLE_VARIANTS["nhis_eligibility_status"]) or not _contains_variant(
+            text,
+            DOCUMENT_ISSUER_VARIANTS["nhis_eligibility_status"],
+        ):
             return _needs_review(
                 source_system="nhis",
                 document_type="nhis_eligibility_status",
@@ -564,22 +772,16 @@ def parse_nhis_eligibility_status(envelope: OfficialDataFileEnvelope) -> Officia
                 error_code="document_header_mismatch",
                 detail="문서명이나 발급기관을 확실히 읽지 못했어요.",
                 partial_payload={
-                    "document_name_marker_found": bool(doc_name in text),
-                    "issuer_marker_found": bool(issuer in text),
+                    "document_name_marker_found": bool(_contains_variant(text, DOCUMENT_TITLE_VARIANTS["nhis_eligibility_status"])),
+                    "issuer_marker_found": bool(_contains_variant(text, DOCUMENT_ISSUER_VARIANTS["nhis_eligibility_status"])),
                 },
             )
-        reference_match = re.search(r"(기준일|발급일)\s*[:：]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})", text)
-        subscriber_type_match = re.search(r"(가입자 유형|가입자 구분)\s*[:：]\s*([^\n]+)", text)
-        status_match = re.search(r"(자격 상태|자격 현황)\s*[:：]\s*([^\n]+)", text)
-        start_match = re.search(r"(취득일|자격취득일)\s*[:：]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})", text)
-        end_match = re.search(r"(상실일|자격상실일)\s*[:：]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})", text)
-        changed_match = re.search(r"(최근 변동일|변동일)\s*[:：]\s*([0-9]{4}[./-][0-9]{2}[./-][0-9]{2})", text)
-        verified_reference_date = _parse_date(reference_match.group(2) if reference_match else None)
-        subscriber_type = str(subscriber_type_match.group(2) if subscriber_type_match else "").strip()
-        eligibility_status = str(status_match.group(2) if status_match else "").strip()
-        eligibility_start_date = _parse_date(start_match.group(2) if start_match else None)
-        eligibility_end_date = _parse_date(end_match.group(2) if end_match else None)
-        latest_status_change_date = _parse_date(changed_match.group(2) if changed_match else None)
+        verified_reference_date = _find_labeled_date(text, ("기준일", "발급일"))
+        subscriber_type = _find_labeled_text(text, ("가입자 유형", "가입자 구분", "가입자구분"))
+        eligibility_status = _find_labeled_text(text, ("자격 상태", "자격 현황", "자격상태", "자격현황"))
+        eligibility_start_date = _find_labeled_date(text, ("취득일", "자격취득일"))
+        eligibility_end_date = _find_labeled_date(text, ("상실일", "자격상실일"))
+        latest_status_change_date = _find_labeled_date(text, ("최근 변동일", "변동일"))
         if not verified_reference_date or not subscriber_type or not eligibility_status:
             return _needs_review(
                 source_system="nhis",
@@ -595,8 +797,8 @@ def parse_nhis_eligibility_status(envelope: OfficialDataFileEnvelope) -> Officia
                 },
             )
         payload = {
-            "issuer_name": issuer,
-            "document_name": doc_name,
+            "issuer_name": "국민건강보험공단",
+            "document_name": "자격득실확인서",
             "verified_reference_date": verified_reference_date.isoformat(),
             "subscriber_type": subscriber_type,
             "eligibility_status": eligibility_status,
@@ -613,8 +815,8 @@ def parse_nhis_eligibility_status(envelope: OfficialDataFileEnvelope) -> Officia
             parse_status=PARSE_STATUS_PARSED,
             extracted_payload=payload,
             extracted_key_summary=_result_summary(
-                issuer=issuer,
-                document_name=doc_name,
+                issuer="국민건강보험공단",
+                document_name="자격득실확인서",
                 verified_reference_date=verified_reference_date,
                 period_start=eligibility_start_date,
                 period_end=eligibility_end_date,
@@ -622,7 +824,7 @@ def parse_nhis_eligibility_status(envelope: OfficialDataFileEnvelope) -> Officia
                 primary_key_label="자격 상태",
                 primary_key_value=eligibility_status,
             ),
-            document_issued_at=_parse_datetime(reference_match.group(2) if reference_match else None),
+            document_issued_at=_parse_datetime(verified_reference_date.isoformat()),
             document_period_start=eligibility_start_date,
             document_period_end=eligibility_end_date,
             verified_reference_date=verified_reference_date,

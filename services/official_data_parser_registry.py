@@ -15,7 +15,10 @@ from services.official_data_extractors import (
     pdf_looks_like_scanned_image,
 )
 from services.official_data_parsers import (
+    DOCUMENT_ISSUER_VARIANTS,
+    DOCUMENT_TITLE_VARIANTS,
     OFFICIAL_DATA_PARSER_VERSION,
+    TABULAR_HEADER_ALIASES,
     parse_hometax_business_card_usage,
     parse_hometax_tax_payment_history,
     parse_hometax_withholding_statement,
@@ -41,7 +44,9 @@ SUPPORTED_DOCUMENT_SPECS: dict[str, dict[str, Any]] = {
         "display_name": "이미 빠진 세금/원천징수 자료",
         "supported_extensions": {".csv", ".xlsx"},
         "required_headers": {"문서명", "발급기관", "기준일", "귀속기간시작", "귀속기간종료", "총 원천징수세액", "지급처 식별키"},
-        "must_contain": {"원천징수", "국세청"},
+        "header_aliases": TABULAR_HEADER_ALIASES["hometax_withholding_statement"],
+        "title_variants": DOCUMENT_TITLE_VARIANTS["hometax_withholding_statement"],
+        "issuer_variants": DOCUMENT_ISSUER_VARIANTS["hometax_withholding_statement"],
         "parser": parse_hometax_withholding_statement,
         "guide_anchor": "hometax",
     },
@@ -50,7 +55,9 @@ SUPPORTED_DOCUMENT_SPECS: dict[str, dict[str, Any]] = {
         "display_name": "사업용 카드 사용내역",
         "supported_extensions": {".csv", ".xlsx"},
         "required_headers": {"문서명", "발급기관", "기준일", "사용기간시작", "사용기간종료", "총 사용금액", "사업자 식별키"},
-        "must_contain": {"사업용", "신용카드"},
+        "header_aliases": TABULAR_HEADER_ALIASES["hometax_business_card_usage"],
+        "title_variants": DOCUMENT_TITLE_VARIANTS["hometax_business_card_usage"],
+        "issuer_variants": DOCUMENT_ISSUER_VARIANTS["hometax_business_card_usage"],
         "parser": parse_hometax_business_card_usage,
         "guide_anchor": "hometax",
     },
@@ -59,7 +66,9 @@ SUPPORTED_DOCUMENT_SPECS: dict[str, dict[str, Any]] = {
         "display_name": "홈택스 납부내역",
         "supported_extensions": {".csv", ".xlsx", ".pdf"},
         "required_headers": {"문서명", "발급기관", "조회일", "세목", "납부일", "납부세액 합계", "귀속기간시작", "귀속기간종료"},
-        "must_contain": {"납부", "국세청", "세목"},
+        "header_aliases": TABULAR_HEADER_ALIASES["hometax_tax_payment_history"],
+        "title_variants": DOCUMENT_TITLE_VARIANTS["hometax_tax_payment_history"],
+        "issuer_variants": DOCUMENT_ISSUER_VARIANTS["hometax_tax_payment_history"],
         "partial_tokens": {"납부", "세목", "조회일", "납부세액"},
         "parser": parse_hometax_tax_payment_history,
         "guide_anchor": "hometax",
@@ -68,7 +77,8 @@ SUPPORTED_DOCUMENT_SPECS: dict[str, dict[str, Any]] = {
         "source_system": "nhis",
         "display_name": "건보료 납부확인서",
         "supported_extensions": {".pdf"},
-        "must_contain": {"보험료 납부확인서", "국민건강보험공단"},
+        "title_variants": DOCUMENT_TITLE_VARIANTS["nhis_payment_confirmation"],
+        "issuer_variants": DOCUMENT_ISSUER_VARIANTS["nhis_payment_confirmation"],
         "partial_tokens": {"보험료", "납부", "가입자 구분"},
         "parser": parse_nhis_payment_confirmation,
         "guide_anchor": "nhis",
@@ -77,7 +87,8 @@ SUPPORTED_DOCUMENT_SPECS: dict[str, dict[str, Any]] = {
         "source_system": "nhis",
         "display_name": "NHIS 자격 상태 자료",
         "supported_extensions": {".pdf"},
-        "must_contain": {"자격득실확인서", "국민건강보험공단"},
+        "title_variants": DOCUMENT_TITLE_VARIANTS["nhis_eligibility_status"],
+        "issuer_variants": DOCUMENT_ISSUER_VARIANTS["nhis_eligibility_status"],
         "partial_tokens": {"자격", "취득일", "상실일", "가입자 유형"},
         "parser": parse_nhis_eligibility_status,
         "guide_anchor": "nhis",
@@ -125,41 +136,104 @@ def _preview_headers(envelope: OfficialDataFileEnvelope) -> set[str]:
     matrix = extract_matrix(envelope)
     if not matrix:
         return set()
-    return {str(x or "").strip() for x in matrix[0] if str(x or "").strip()}
+    return {str(x or "").strip() for row in matrix[:3] for x in row if str(x or "").strip()}
+
+
+def _normalize_fragment(value: str | None) -> str:
+    text = str(value or "").strip().lower()
+    return "".join(ch for ch in text if ch.isalnum() or ("가" <= ch <= "힣"))
+
+
+def _contains_variant(text: str, variants: tuple[str, ...]) -> bool:
+    normalized = _normalize_fragment(text)
+    return any(_normalize_fragment(variant) in normalized for variant in variants if str(variant or "").strip())
+
+
+def _header_matches_alias(header: str, alias: str) -> bool:
+    header_norm = _normalize_fragment(header)
+    alias_norm = _normalize_fragment(alias)
+    if not header_norm or not alias_norm:
+        return False
+    return header_norm == alias_norm or header_norm.startswith(alias_norm)
+
+
+def _tabular_alias_match_count(envelope: OfficialDataFileEnvelope, spec: dict[str, Any]) -> int:
+    matrix = extract_matrix(envelope)
+    if not matrix:
+        return 0
+    alias_map = dict(spec.get("header_aliases") or {})
+    required_headers = set(spec.get("required_headers") or set())
+    scoped_alias_map = {key: value for key, value in alias_map.items() if key in required_headers} or alias_map
+    if not scoped_alias_map:
+        return 0
+    best_score = 0
+    for row in matrix[:3]:
+        headers = [str(cell or "").strip() for cell in row]
+        score = 0
+        for aliases in scoped_alias_map.values():
+            if any(any(_header_matches_alias(header, alias) for alias in aliases) for header in headers):
+                score += 1
+        best_score = max(best_score, score)
+    return best_score
 
 
 def _matches_tabular_spec(envelope: OfficialDataFileEnvelope, spec: dict[str, Any], preview_text: str) -> bool:
-    headers = _preview_headers(envelope)
+    alias_map = dict(spec.get("header_aliases") or {})
     required_headers = set(spec.get("required_headers") or set())
+    if alias_map:
+        return _tabular_alias_match_count(envelope, spec) >= len(required_headers or alias_map)
+    headers = _preview_headers(envelope)
     if required_headers:
         return required_headers.issubset(headers)
-    must_contain = set(spec.get("must_contain") or set())
-    return bool(must_contain and all(token in preview_text for token in must_contain))
+    title_variants = tuple(spec.get("title_variants") or ())
+    issuer_variants = tuple(spec.get("issuer_variants") or ())
+    return bool(
+        title_variants
+        and issuer_variants
+        and _contains_variant(preview_text, title_variants)
+        and _contains_variant(preview_text, issuer_variants)
+    )
 
 
 def _matches_pdf_spec(preview_text: str, spec: dict[str, Any]) -> bool:
-    must_contain = set(spec.get("must_contain") or set())
-    return bool(must_contain and all(token in preview_text for token in must_contain))
+    title_variants = tuple(spec.get("title_variants") or ())
+    issuer_variants = tuple(spec.get("issuer_variants") or ())
+    return bool(
+        title_variants
+        and issuer_variants
+        and _contains_variant(preview_text, title_variants)
+        and _contains_variant(preview_text, issuer_variants)
+    )
 
 
 def _tabular_partial_match_score(envelope: OfficialDataFileEnvelope, spec: dict[str, Any], preview_text: str) -> int:
-    headers = _preview_headers(envelope)
     required_headers = set(spec.get("required_headers") or set())
-    overlap = 0
-    if required_headers:
+    alias_score = _tabular_alias_match_count(envelope, spec)
+    overlap = alias_score
+    if not overlap and required_headers:
+        headers = _preview_headers(envelope)
         overlap = len(required_headers & headers)
-    partial_tokens = set(spec.get("partial_tokens") or set(spec.get("must_contain") or set()))
-    token_hits = sum(1 for token in partial_tokens if token in preview_text)
+    partial_tokens = set(spec.get("partial_tokens") or set())
+    token_hits = sum(1 for token in partial_tokens if _contains_variant(preview_text, (token,)))
     if required_headers and 0 < overlap < len(required_headers):
         return overlap + token_hits
-    if not required_headers and 0 < token_hits < len(must_contain):
-        return token_hits
+    title_variants = tuple(spec.get("title_variants") or ())
+    issuer_variants = tuple(spec.get("issuer_variants") or ())
+    text_hits = int(bool(title_variants and _contains_variant(preview_text, title_variants))) + int(
+        bool(issuer_variants and _contains_variant(preview_text, issuer_variants))
+    )
+    if not required_headers and text_hits:
+        return text_hits + token_hits
     return 0
 
 
 def _pdf_partial_match_score(preview_text: str, spec: dict[str, Any]) -> int:
     partial_tokens = set(spec.get("partial_tokens") or set(spec.get("must_contain") or set()))
-    token_hits = sum(1 for token in partial_tokens if token in preview_text)
+    token_hits = sum(1 for token in partial_tokens if _contains_variant(preview_text, (token,)))
+    title_variants = tuple(spec.get("title_variants") or ())
+    issuer_variants = tuple(spec.get("issuer_variants") or ())
+    token_hits += int(bool(title_variants and _contains_variant(preview_text, title_variants)))
+    token_hits += int(bool(issuer_variants and _contains_variant(preview_text, issuer_variants)))
     if token_hits > 0:
         return token_hits
     return 0
@@ -276,7 +350,14 @@ def identify_official_data_document(envelope: OfficialDataFileEnvelope, *, docum
             guide_anchor=spec.get("guide_anchor"),
         )
 
-    known_source_hint = any(token in preview_text for token in ("국세청", "홈택스", "국민건강보험공단", "보험료"))
+    known_source_hint = any(
+        _contains_variant(preview_text, variants)
+        for variants in (
+            ("국세청", "홈택스", "국세청 홈택스"),
+            ("국민건강보험공단",),
+            ("보험료",),
+        )
+    )
     if known_source_hint:
         return OfficialDataRegistryDecision(
             registry_status=REGISTRY_STATUS_NEEDS_REVIEW,

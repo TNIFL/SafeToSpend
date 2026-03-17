@@ -1577,3 +1577,21 @@ PYTHONPATH=. .venv/bin/python scripts/remediate_sensitive_identifiers.py --limit
   - 금지 표현(`확정`, `보증`, `100% 정확`)이 새 verification 경로에도 들어가지 않았는지
 - 실패 시 원칙
   - baseline 브랜치/DB가 맞더라도 위 규칙이 깨지면 verification 후속 구현을 시작하지 말고 service-layer 판정부터 다시 점검할 것
+
+## 53) official_data parser/registry 보정 회귀
+- 목적
+  - 같은 공식 문서의 소폭 변형을 더 안정적으로 살리되, 핵심 구조가 부족한 문서는 계속 `needs_review/unsupported`로 닫는지 확인
+- baseline 확인
+  - `git status --short --branch`
+  - `SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_official_data_trust_remediation_1ce66d5_v20260317' FLASK_APP=app.py .venv/bin/flask db heads`
+  - `SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_official_data_trust_remediation_1ce66d5_v20260317' FLASK_APP=app.py .venv/bin/flask db current`
+  - `SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_official_data_trust_remediation_1ce66d5_v20260317' FLASK_APP=app.py .venv/bin/flask db upgrade`
+- 회귀 명령
+  - `PYTHONPATH=. .venv/bin/python -m unittest tests.test_official_data_parser_registry tests.test_official_data_parsers tests.test_official_data_upload tests.test_official_data_upload_routes`
+  - `PYTHONPATH=. .venv/bin/python -m unittest tests.test_official_data_effects tests.test_official_data_effects_integration tests.test_nhis_effects`
+  - `PYTHONPATH=. .venv/bin/python -m py_compile services/official_data_parser_registry.py services/official_data_parsers.py services/official_data_upload.py tests/test_official_data_parser_registry.py tests/test_official_data_parsers.py tests/test_official_data_upload.py tests/test_official_data_upload_routes.py`
+- 확인 포인트
+  - 제목/공백/구두점 차이만 있는 fixture는 같은 document_type으로 식별되는지
+  - 헤더가 1~3행 밀린 tabular fixture를 parsed까지 올릴 수 있는지
+  - 기관명/핵심 날짜/금액/세목이 빠진 fixture는 `parsed`로 승격되지 않는지
+  - upload 결과가 `parsed / needs_review / unsupported` 경계와 설명 문구를 같이 유지하는지
