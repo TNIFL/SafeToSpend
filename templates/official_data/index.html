@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}공식자료 업로드 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <section class="card pad">
+    <div class="row" style="justify-content:space-between; gap:12px; align-items:flex-start;">
+      <div>
+        <div class="h2">공식자료 업로드</div>
+        <div class="small-note muted2" style="margin-top:4px;">
+          홈택스/건강보험공단 자료를 일반 증빙과 분리해서 올리는 전용 채널입니다.
+        </div>
+      </div>
+      <div class="row" style="gap:8px; flex-wrap:wrap;">
+        <a class="btn small ghost" href="{{ url_for('web_package.page') }}">세무사 패키지</a>
+        <a class="btn small" href="{{ url_for('web_vault.index') }}">증빙 보관함</a>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="grid cols-2">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>올릴 수 있는 자료</span>
+          <span class="badge">v1 범위</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          - 홈택스 원천징수 관련 문서: CSV/XLSX<br>
+          - 홈택스 납부내역: CSV/XLSX<br>
+          - 건강보험 납부확인서: 텍스트 추출 가능한 PDF<br>
+          - 건강보험 자격 관련 문서: 텍스트 추출 가능한 PDF
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">
+          일반 증빙, 사용자가 직접 만든 참고 파일, 스캔 이미지 자료는 이 채널이 아니라 증빙 보관함 또는 다른 경로로 관리해야 합니다.
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>처리 원칙</span>
+          <span class="badge warn">보수 판정</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          - 반영 가능: 핵심 항목을 읽을 수 있는 공식자료<br>
+          - 검토 필요: 공식자료로 보이지만 핵심 항목이 불완전한 자료<br>
+          - 미지원 형식: 현재 v1에서 읽지 않는 자료 형식 또는 문서 유형<br>
+          - 읽기 실패: 파일은 받았지만 구조를 읽는 중 오류가 난 자료
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">
+          공식자료 채널은 도입되지만, 현재 세무사 패키지 v1에는 아직 자동 포함되지 않습니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <form method="POST" action="{{ url_for('web_official_data.upload') }}" enctype="multipart/form-data">
+      <div class="row" style="gap:8px; align-items:flex-end; flex-wrap:wrap;">
+        <label class="field" style="min-width:280px;">
+          <span class="label">공식자료 파일</span>
+          <input type="file" name="file" accept=".pdf,.csv,.xlsx,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+        </label>
+        <button class="btn primary" type="submit">공식자료 업로드</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card pad" style="margin-top:12px;">
+    <div class="cardTitle">
+      <span>최근 업로드</span>
+      <span class="badge">{{ documents|length }}건</span>
+    </div>
+
+    <div style="height:12px;"></div>
+
+    {% if documents %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>업로드시각</th>
+            <th>문서종류</th>
+            <th>기관명</th>
+            <th>기준일</th>
+            <th>읽기상태</th>
+            <th>신뢰등급</th>
+            <th>파일</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in documents %}
+            <tr>
+              <td class="mono">{{ doc.created_at }}</td>
+              <td><a href="{{ url_for('web_official_data.detail', document_id=doc.id) }}">{{ doc.document_type_label }}</a></td>
+              <td>{{ doc.source_authority }}</td>
+              <td class="mono">{{ doc.reference_date }}</td>
+              <td>{{ doc.parse_status_label }}</td>
+              <td>{{ doc.trust_grade_label }}</td>
+              <td>{{ doc.original_filename }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="h2">아직 업로드된 공식자료가 없어요</div>
+        <div class="p" style="margin-top:8px;">위 업로드 폼에서 홈택스/건강보험 자료를 올리면 여기에서 상태를 확인할 수 있습니다.</div>
+      </div>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}

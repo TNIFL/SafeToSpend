@@ -34,6 +34,10 @@
              href="{{ url_for('web_vault.index') }}">
             증빙 자료 보관함
           </a>
+          <a class="nav-link {{ 'active' if (request.endpoint or '').startswith('web_official_data.') else '' }}"
+             href="{{ url_for('web_official_data.index') }}">
+            공식자료 업로드
+          </a>
           {% endif %}
 
       {% if session.get('user_id') %}

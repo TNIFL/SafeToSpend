@@ -6,6 +6,7 @@ from routes.web.inbox import web_inbox_bp
 from routes.web.auth import web_auth_bp  # 네 프로젝트에 이미 있다고 가정
 from routes.web.bank import web_bank_bp
 from routes.web.web_calendar import web_calendar_bp
+from routes.web.official_data import web_official_data_bp
 
 # ✅ 증빙 자료 보관함 / 세무사 전달 패키지
 from routes.web.vault import web_vault_bp
@@ -25,6 +26,7 @@ def register_blueprints(app):
     app.register_blueprint(web_auth_bp)
     app.register_blueprint(web_bank_bp)
     app.register_blueprint(web_calendar_bp)
+    app.register_blueprint(web_official_data_bp)
 
     # ✅ new
     app.register_blueprint(web_vault_bp)

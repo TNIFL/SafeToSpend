@@ -37,7 +37,9 @@ def create_app():
     app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "0") == "1"
     
     app.config["EVIDENCE_UPLOAD_DIR"] = os.getenv("EVIDENCE_UPLOAD_DIR") or str(BASE_DIR / "uploads" / "evidence")
+    app.config["OFFICIAL_DATA_UPLOAD_DIR"] = os.getenv("OFFICIAL_DATA_UPLOAD_DIR") or str(BASE_DIR / "uploads" / "official_data")
     app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_UPLOAD_BYTES") or (20 * 1024 * 1024))
+    app.config["OFFICIAL_DATA_MAX_BYTES"] = int(os.getenv("OFFICIAL_DATA_MAX_BYTES") or app.config["MAX_CONTENT_LENGTH"])
     
     @app.cli.command("purge-evidence")
     def purge_evidence_cmd():

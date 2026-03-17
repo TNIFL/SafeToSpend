@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}공식자료 처리 결과 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container">
+  <section class="card pad">
+    <div class="row" style="justify-content:space-between; gap:12px; align-items:flex-start;">
+      <div>
+        <div class="h2">공식자료 처리 결과</div>
+        <div class="small-note muted2" style="margin-top:4px;">업로드한 공식자료를 현재 범위에서 읽은 결과입니다.</div>
+      </div>
+      <div class="row" style="gap:8px; flex-wrap:wrap;">
+        <a class="btn small ghost" href="{{ url_for('web_official_data.index') }}">목록으로</a>
+        <a class="btn small" href="{{ url_for('web_official_data.download', document_id=document.id) }}">원본 파일 받기</a>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="grid cols-2">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>기본 정보</span>
+          <span class="badge {% if document.parse_status == 'parsed' %}good{% elif document.parse_status == 'needs_review' %}warn{% else %}bad{% endif %}">{{ document.parse_status_label }}</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.8;">
+          문서종류: <b style="color:var(--text)">{{ document.document_type_label }}</b><br>
+          기관명: <b style="color:var(--text)">{{ document.source_authority }}</b><br>
+          기준일: <b style="color:var(--text)">{{ document.reference_date }}</b><br>
+          검증상태: <b style="color:var(--text)">{{ document.verification_status_label }}</b><br>
+          구조확인: <b style="color:var(--text)">{{ document.structure_validation_label }}</b><br>
+          신뢰등급: <b style="color:var(--text)">{{ document.trust_grade_label }}</b><br>
+          원본 파일명: <b style="color:var(--text)">{{ document.original_filename }}</b>
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>현재 판단</span>
+          <span class="badge">v1</span>
+        </div>
+        <div class="p" style="margin-top:10px;">
+          {{ document.status_reason }}
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">
+          공식자료 채널은 도입되었지만, 현재 세무사 패키지 v1에는 아직 포함되지 않습니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+      <div class="cardTitle">
+        <span>핵심 추출값 요약</span>
+        <span class="badge">{{ document.parser_version }}</span>
+      </div>
+      {% if document.summary_items %}
+        <table class="table" style="margin-top:10px;">
+          <thead>
+            <tr>
+              <th>항목</th>
+              <th>값</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in document.summary_items %}
+              <tr>
+                <td>{{ item.label }}</td>
+                <td>{{ item.value }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="small-note muted2" style="margin-top:10px;">
+          현재 추출된 핵심 항목이 없거나, 검토가 필요한 상태입니다.
+        </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

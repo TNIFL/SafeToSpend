@@ -235,6 +235,51 @@ class EvidenceItem(db.Model):
     )
 
 
+class OfficialDataDocument(db.Model):
+    __tablename__ = "official_data_documents"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_pk = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    document_type = db.Column(db.String(64), nullable=True)
+    source_authority = db.Column(db.String(120), nullable=True)
+
+    raw_file_key = db.Column(db.String(512), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(120), nullable=False)
+    size_bytes = db.Column(db.Integer, nullable=False)
+    sha256 = db.Column(db.String(64), nullable=False)
+
+    reference_date = db.Column(Date, nullable=True)
+
+    parse_status = db.Column(db.String(24), nullable=False, default="needs_review")
+    verification_status = db.Column(db.String(24), nullable=False, default="not_verified")
+    structure_validation_status = db.Column(db.String(24), nullable=False, default="unknown")
+    trust_grade = db.Column(db.String(8), nullable=False, default="D")
+
+    extracted_key_summary_json = db.Column(JSONB, nullable=True)
+    parser_version = db.Column(db.String(32), nullable=False, default="official-data-v1")
+
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("parse_status IN ('parsed','needs_review','unsupported','failed')", name="ck_official_data_parse_status"),
+        CheckConstraint(
+            "verification_status IN ('not_verified','verified','verification_failed')",
+            name="ck_official_data_verification_status",
+        ),
+        CheckConstraint(
+            "structure_validation_status IN ('passed','needs_review','unsupported','failed','unknown')",
+            name="ck_official_data_structure_validation_status",
+        ),
+        CheckConstraint("trust_grade IN ('A','B','C','D')", name="ck_official_data_trust_grade"),
+        Index("idx_official_data_user_created", "user_pk", "created_at"),
+        Index("idx_official_data_user_parse", "user_pk", "parse_status"),
+        Index("idx_official_data_user_reference", "user_pk", "reference_date"),
+    )
+
+
 class WeeklyTask(db.Model):
     __tablename__ = "weekly_tasks"
 

@@ -18,6 +18,7 @@
         <a class="btn small ghost" href="{{ url_for('web_package.page', month=next_month) }}">▶</a>
       </div>
 
+      <a class="btn ghost" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>
       <a class="btn ghost" href="{{ url_for('web_vault.index', month=month_key) }}">증빙 보관함</a>
       <a class="btn primary" href="{{ url_for('web_package.download', month=month_key) }}">ZIP 다운로드</a>
     </div>
