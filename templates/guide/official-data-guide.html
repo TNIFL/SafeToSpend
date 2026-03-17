@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}공식 자료 가져오기 안내 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap" style="max-width:1040px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">{{ title }}</div>
+      <div class="p">{{ summary }}</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_calendar.tax_buffer') }}">세금보관함 보기</a>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="h2" style="font-size:1.02rem;">빠르게 찾기</div>
+    <div class="small-note muted2" style="margin-top:6px;">공식 사이트 바로가기와, 링크가 안 열릴 때 따라갈 메뉴 경로, 자료를 올리면 어떤 숫자가 좋아지는지까지 같이 정리했어요.</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:12px;">
+      {% for section in sections %}
+        <a href="#{{ section.id }}" style="display:block; text-decoration:none; color:inherit; border:1px solid var(--line); border-radius:14px; padding:14px; background:#fff;">
+          <div style="font-weight:800;">{{ section.title }}</div>
+          <div class="small-note muted2" style="margin-top:6px;">{{ section.summary }}</div>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% include "partials/official_data_upload_notice.html" %}
+
+  {% for section in sections %}
+    <div id="{{ section.id }}" class="card pad" style="margin-bottom:12px;">
+      <div class="h2" style="font-size:1.02rem;">{{ section.title }}</div>
+      <div class="small-note muted2" style="margin-top:6px;">{{ section.summary }}</div>
+      <div style="display:grid; gap:10px; margin-top:12px;">
+        {% for item in section["items"] %}
+          <div style="border:1px solid var(--line); border-radius:12px; padding:12px; background:#fff;">
+            <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start;">
+              <div style="min-width:240px; flex:1;">
+                <div style="font-weight:800;">{{ item.easy_name }}</div>
+                <div class="small-note muted2" style="margin-top:6px;">{{ item.purpose }}</div>
+                <div class="small-note" style="margin-top:8px;"><b>실패 시 메뉴 경로:</b> {{ item.menu_path }}</div>
+                <div class="small-note muted2" style="margin-top:6px;">{{ item.caution }}</div>
+                <div class="small-note muted2" style="margin-top:6px;">저장 기본안: {{ item.storage_default }}</div>
+              </div>
+              <div style="display:grid; gap:8px; min-width:200px;">
+                <a class="btn small primary" href="{{ item.shortcut_url }}" target="_blank" rel="noopener">{{ item.shortcut_label }}</a>
+                {% if item.help_url %}
+                  <a class="btn small ghost" href="{{ item.help_url }}" target="_blank" rel="noopener">공식 도움말 보기</a>
+                {% endif %}
+                {% if item.upload_document_type %}
+                  <a class="btn small ghost" href="{{ url_for('web_official_data.upload_page', document_type=item.upload_document_type) }}">이 자료 바로 올리기</a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+
+  {% include "partials/official_data_storage_notice.html" %}
+
+  <div class="card pad">
+    <div class="h2" style="font-size:1.02rem;">공식 근거</div>
+    <div style="display:grid; gap:10px; margin-top:12px;">
+      {% for source in sources %}
+        <div style="border:1px solid var(--line); border-radius:12px; padding:12px; background:#fff;">
+          <a href="{{ source.url }}" target="_blank" rel="noopener" style="font-weight:800; color:inherit;">{{ source.title }}</a>
+          <div class="small-note muted2" style="margin-top:6px;">{{ source.note }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

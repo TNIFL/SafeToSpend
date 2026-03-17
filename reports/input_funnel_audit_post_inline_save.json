@@ -1,0 +1,250 @@
+{
+  "window_days": 30,
+  "query_limit": 5000,
+  "user_pk": null,
+  "input_funnel_rows": 28,
+  "tax_funnel": {
+    "events": [
+      {
+        "event": "tax_inline_income_classification_shown",
+        "count": 0
+      },
+      {
+        "event": "tax_inline_income_classification_saved",
+        "count": 0
+      },
+      {
+        "event": "tax_basic_next_step_viewed",
+        "count": 0
+      },
+      {
+        "event": "tax_basic_next_step_saved",
+        "count": 0
+      },
+      {
+        "event": "tax_recovery_completed",
+        "count": 0
+      }
+    ],
+    "conversions": [
+      {
+        "event": "tax_inline_income_classification_shown",
+        "count": 0,
+        "from_previous_percent": 0.0
+      },
+      {
+        "event": "tax_inline_income_classification_saved",
+        "count": 0,
+        "from_previous_percent": 0.0
+      },
+      {
+        "event": "tax_basic_next_step_viewed",
+        "count": 0,
+        "from_previous_percent": 0.0
+      },
+      {
+        "event": "tax_basic_next_step_saved",
+        "count": 0,
+        "from_previous_percent": 0.0
+      },
+      {
+        "event": "tax_recovery_completed",
+        "count": 0,
+        "from_previous_percent": 0.0
+      }
+    ]
+  },
+  "tax_cta_funnel": {
+    "events": [
+      {
+        "event": "tax_recovery_cta_shown",
+        "count": 24
+      },
+      {
+        "event": "tax_recovery_cta_clicked",
+        "count": 1
+      }
+    ],
+    "conversions": [
+      {
+        "event": "tax_recovery_cta_shown",
+        "count": 24,
+        "from_previous_percent": 100.0
+      },
+      {
+        "event": "tax_recovery_cta_clicked",
+        "count": 1,
+        "from_previous_percent": 4.17
+      }
+    ]
+  },
+  "nhis_funnel": {
+    "events": [
+      {
+        "event": "nhis_inline_membership_type_shown",
+        "count": 0
+      },
+      {
+        "event": "nhis_inline_membership_type_saved",
+        "count": 0
+      },
+      {
+        "event": "nhis_detail_next_step_viewed",
+        "count": 0
+      },
+      {
+        "event": "nhis_detail_next_step_saved",
+        "count": 0
+      },
+      {
+        "event": "nhis_recovery_completed",
+        "count": 0
+      }
+    ],
+    "conversions": [
+      {
+        "event": "nhis_inline_membership_type_shown",
+        "count": 0,
+        "from_previous_percent": 0.0
+      },
+      {
+        "event": "nhis_inline_membership_type_saved",
+        "count": 0,
+        "from_previous_percent": 0.0
+      },
+      {
+        "event": "nhis_detail_next_step_viewed",
+        "count": 0,
+        "from_previous_percent": 0.0
+      },
+      {
+        "event": "nhis_detail_next_step_saved",
+        "count": 0,
+        "from_previous_percent": 0.0
+      },
+      {
+        "event": "nhis_recovery_completed",
+        "count": 0,
+        "from_previous_percent": 0.0
+      }
+    ]
+  },
+  "nhis_cta_funnel": {
+    "events": [
+      {
+        "event": "nhis_recovery_cta_shown",
+        "count": 0
+      },
+      {
+        "event": "nhis_recovery_cta_clicked",
+        "count": 0
+      }
+    ],
+    "conversions": [
+      {
+        "event": "nhis_recovery_cta_shown",
+        "count": 0,
+        "from_previous_percent": 0.0
+      },
+      {
+        "event": "nhis_recovery_cta_clicked",
+        "count": 0,
+        "from_previous_percent": 0.0
+      }
+    ]
+  },
+  "summary": {
+    "primary_metric": "inline_save_funnel",
+    "tax_inline_shown": 0,
+    "tax_inline_saved": 0,
+    "tax_recovery_completed": 0,
+    "nhis_inline_shown": 0,
+    "nhis_inline_saved": 0,
+    "nhis_recovery_completed": 0,
+    "tax_inline_save_rate_from_shown_percent": 0.0,
+    "nhis_inline_save_rate_from_shown_percent": 0.0
+  },
+  "unique_users_by_event": {
+    "nhis_detail_step_viewed": 1,
+    "tax_recovery_cta_clicked": 1,
+    "tax_recovery_cta_shown": 1
+  },
+  "reason_distribution": [
+    {
+      "reason_code": "proxy_from_annual_income",
+      "count": 24
+    },
+    {
+      "reason_code": "ok",
+      "count": 3
+    },
+    {
+      "reason_code": "missing_income_classification",
+      "count": 1
+    }
+  ],
+  "accuracy_level_before_distribution": [
+    {
+      "accuracy_level_before": "limited",
+      "count": 24
+    },
+    {
+      "accuracy_level_before": "high_confidence",
+      "count": 3
+    },
+    {
+      "accuracy_level_before": "blocked",
+      "count": 1
+    }
+  ],
+  "accuracy_level_after_distribution": [
+    {
+      "accuracy_level_after": "limited",
+      "count": 24
+    },
+    {
+      "accuracy_level_after": "high_confidence",
+      "count": 3
+    },
+    {
+      "accuracy_level_after": "blocked",
+      "count": 1
+    }
+  ],
+  "screen_distribution": [
+    {
+      "screen": "tax_buffer",
+      "count": 14
+    },
+    {
+      "screen": "overview",
+      "count": 10
+    },
+    {
+      "screen": "nhis",
+      "count": 3
+    },
+    {
+      "screen": "tax_profile",
+      "count": 1
+    }
+  ],
+  "route_distribution": [
+    {
+      "route": "web_calendar.tax_buffer",
+      "count": 14
+    },
+    {
+      "route": "web_overview.overview",
+      "count": 10
+    },
+    {
+      "route": "web_profile.nhis_page",
+      "count": 3
+    },
+    {
+      "route": "web_profile.tax_profile",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}관리자 홈 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <div class="page-head-main">
+      <h1>관리자 홈</h1>
+      <p class="muted2">운영 상태를 확인하고 문의/데이터 관리 화면으로 이동할 수 있어요.</p>
+    </div>
+  </div>
+
+  <section class="card pad" style="display:grid;gap:10px;">
+    <a class="btn ghost" href="{{ url_for('web_admin.admin_ops') }}">운영 지표 대시보드</a>
+    <a class="btn ghost" href="{{ url_for('web_admin.admin_support') }}">문의 관리</a>
+    <a class="btn ghost" href="{{ url_for('web_profile.admin_assets_data') }}">자산 데이터 진단</a>
+    <a class="btn ghost" href="{{ url_for('web_profile.admin_nhis_rates') }}">건보 기준 진단</a>
+  </section>
+</div>
+{% endblock %}

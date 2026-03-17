@@ -1,0 +1,1610 @@
+{% extends "base.html" %}
+{% block title %}자산 정보 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .asset-wrap{max-width:1140px;margin:0 auto;padding:24px 16px 56px;}
+  .asset-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;align-items:start;}
+  .asset-card{padding:16px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:var(--shadow-sm);}
+  .asset-col{display:grid;gap:12px;}
+  .asset-title{margin:0;font-size:1.1rem;font-weight:950;letter-spacing:-.35px;}
+  .asset-sub{margin-top:6px;color:var(--muted);font-size:.9rem;line-height:1.55;}
+  .asset-sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .asset-sec-head h3{margin:0;font-size:.98rem;font-weight:950;}
+  .asset-block{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);margin-top:10px;}
+  .asset-block h3{margin:0;font-size:.95rem;font-weight:900;}
+  .asset-fields{display:grid;gap:10px;margin-top:10px;}
+  .asset-inline{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .asset-field{display:grid;gap:6px;}
+  .asset-label{font-size:.84rem;font-weight:900;color:var(--muted-2);}
+  .asset-input,.asset-select{width:100%;height:42px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text);outline:none;}
+  .asset-input:focus,.asset-select:focus{border-color:rgba(37,99,235,.42);box-shadow:0 0 0 4px rgba(37,99,235,.10);}
+  .asset-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;}
+  .asset-kpis{display:grid;gap:8px;}
+  .asset-kpi{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);}
+  .asset-kpi .k{font-size:.78rem;color:var(--muted);font-weight:850;}
+  .asset-kpi .v{margin-top:4px;font-size:1.2rem;font-weight:950;letter-spacing:-.4px;}
+  .asset-note{margin-top:8px;padding:10px 12px;border-radius:12px;border:1px solid rgba(15,23,42,.08);background:rgba(148,163,184,.08);font-size:.86rem;color:#334155;}
+  .asset-note.warn{border-color:rgba(245,158,11,.26);background:rgba(245,158,11,.12);color:#92400e;}
+  .asset-note.ok{border-color:rgba(22,163,74,.26);background:rgba(22,163,74,.10);color:#166534;}
+  .asset-pill{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;border:1px solid var(--line);font-size:.78rem;font-weight:900;}
+  .asset-pill.good{border-color:rgba(22,163,74,.26);background:rgba(22,163,74,.10);color:#166534;}
+  .asset-pill.warn{border-color:rgba(245,158,11,.26);background:rgba(245,158,11,.10);color:#92400e;}
+  .asset-hero{padding:14px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%);}
+  .asset-hero-label{font-size:.82rem;font-weight:900;color:var(--muted-2);}
+  .asset-hero-value{margin-top:4px;font-size:2rem;font-weight:950;letter-spacing:-.7px;line-height:1.1;color:#0f172a;}
+  .asset-hero-sub{margin-top:6px;font-size:.8rem;color:var(--muted);}
+  .asset-whatis-box{margin-top:0;}
+  .asset-whatis-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .asset-whatis-title{margin:0;font-size:.92rem;font-weight:900;}
+  .asset-whatis-desc{margin-top:6px;font-size:.82rem;color:var(--muted);}
+  .asset-whatis-actions{display:grid;gap:8px;margin-top:10px;}
+  .asset-whatis-item{display:grid;gap:4px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fff;}
+  .asset-whatis-item .btn{justify-content:flex-start;padding:8px 10px;min-height:34px;font-size:.78rem;}
+  .asset-whatis-item .btn.is-active{border-color:rgba(37,99,235,.45);background:rgba(37,99,235,.08);color:#1d4ed8;}
+  .asset-whatis-item-help{font-size:.77rem;color:var(--muted);}
+  .asset-whatis-result{margin-top:10px;font-size:.84rem;}
+  .asset-whatis-result-detail{margin-top:4px;font-size:.78rem;color:#166534;}
+  .asset-kpi-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .asset-kpi-mini{padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;}
+  .asset-kpi-mini .k{font-size:.73rem;color:var(--muted);font-weight:850;}
+  .asset-kpi-mini .v{margin-top:3px;font-size:.95rem;font-weight:900;letter-spacing:-.25px;}
+  .asset-breakdown{display:grid;gap:4px;}
+  .asset-breakdown-line{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.84rem;color:#334155;}
+  .asset-breakdown-line b{font-weight:900;color:#0f172a;}
+  .asset-diagnosis{font-size:.84rem;color:#334155;line-height:1.5;}
+  .asset-meta-notes{display:grid;gap:6px;margin-top:8px;}
+  .basis-panel{margin-top:8px;border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;}
+  .basis-panel > summary{cursor:pointer;list-style:none;padding:9px 12px;font-weight:900;font-size:.84rem;color:var(--muted-2);background:rgba(148,163,184,.08);}
+  .basis-panel > summary::-webkit-details-marker{display:none;}
+  .basis-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 12px;}
+  .basis-k{font-size:.75rem;font-weight:900;color:var(--muted);margin-bottom:4px;}
+  .basis-v{font-size:.81rem;color:var(--muted-2);line-height:1.5;display:grid;gap:2px;}
+  .basis-empty{padding:10px 12px;font-size:.82rem;color:var(--muted);}
+  .asset-add-wrap{margin-top:8px;}
+  .asset-add-toggle{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .asset-add-draft{display:none;}
+  .asset-add-draft.show{display:block;}
+  .asset-hidden{display:none !important;}
+  .asset-rent-fields{display:none;}
+  .asset-rent-fields.show{display:grid;}
+  .asset-mode-field{display:none;}
+  .asset-mode-field.show{display:grid;}
+  .asset-toggle-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .asset-home-body.collapsed{display:none;}
+  .asset-history-row{margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;}
+  .asset-history-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;}
+  .asset-history-remove{height:42px;min-width:42px;}
+  .asset-hybrid-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .asset-hybrid-toggle label{display:inline-flex;align-items:center;gap:8px;font-weight:900;color:#0f172a;}
+  .asset-hybrid-toggle input[type='checkbox']{width:16px;height:16px;}
+  .asset-hybrid-body{margin-top:10px;padding:12px;border:1px dashed rgba(15,23,42,.18);border-radius:12px;background:#fff;}
+  .asset-hybrid-body.collapsed{display:none;}
+  .asset-hybrid-guide{display:grid;gap:4px;margin:8px 0 10px;font-size:.82rem;color:#334155;line-height:1.5;}
+  .asset-hybrid-guide b{font-weight:900;color:#0f172a;}
+  .asset-field-help{font-size:.75rem;color:var(--muted);}
+  .asset-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:.75rem;font-weight:900;border:1px solid var(--line);}
+  .asset-badge.auto{color:#1d4ed8;background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.2);}
+  .asset-badge.manual{color:#0f766e;background:rgba(20,184,166,.10);border-color:rgba(20,184,166,.2);}
+  .asset-guide{background:linear-gradient(180deg,#f8fafc 0%, #ffffff 100%);}
+  .asset-guide > summary{cursor:pointer;list-style:none;font-size:.86rem;font-weight:900;color:#0f172a;}
+  .asset-guide > summary::-webkit-details-marker{display:none;}
+  .asset-guide > summary::after{content:"열기";margin-left:8px;font-size:.74rem;color:var(--muted);}
+  .asset-guide[open] > summary::after{content:"닫기";}
+  .asset-guide-body{max-height:0;overflow:hidden;transition:max-height .24s ease;padding-top:0;}
+  .asset-guide[open] .asset-guide-body{max-height:360px;padding-top:10px;}
+  .asset-guide-list{display:grid;gap:8px;font-size:.81rem;color:#334155;line-height:1.45;}
+  .asset-guide-list b{color:#0f172a;}
+  .asset-inline-status{position:fixed;right:20px;top:84px;z-index:60;max-width:min(420px,calc(100vw - 24px));padding:10px 12px;border-radius:12px;background:rgba(15,23,42,.92);color:#fff;font-size:.85rem;font-weight:700;box-shadow:0 16px 32px rgba(2,6,23,.35);display:none;}
+  .asset-inline-status.show{display:block;}
+  .asset-inline-status.ok{background:rgba(22,163,74,.92);}
+  .asset-inline-status.err{background:rgba(239,68,68,.92);}
+  @media (max-width:980px){
+    .asset-grid{grid-template-columns:1fr;}
+    .asset-inline{grid-template-columns:1fr;}
+    .basis-grid{grid-template-columns:1fr;}
+    .asset-history-grid{grid-template-columns:1fr 1fr;}
+    .asset-history-remove{width:100%;}
+    .asset-hero-value{font-size:1.75rem;}
+    .asset-kpi-row{grid-template-columns:1fr;}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="asset-wrap">
+  {% set current_month_label = month_key or '-' %}
+  {% set november_month_label = (current_month_label[:4] ~ '-11') if current_month_label and (current_month_label|length >= 4) else '11월' %}
+  {% set nhis_pay_note = "건보료는 매월 납부해요. (보통 다음 달 10일까지)" %}
+  {% set nhis_reflect_note = "수익은 지난달 기준이 아니라, 보통 신고된 소득/재산 자료가 반영돼요. (추정)" %}
+  {% set nhis_nov_note = "그래서 11월은 ‘내는 달’이 아니라 ‘월 보험료가 바뀌기 쉬운 달’이에요. (추정)" %}
+  <div class="page-head">
+    <div class="page-head-main">
+      <h1 class="asset-title">자산 정보 입력 (보조 화면)</h1>
+      <div class="asset-sub">기본 입력 화면은 건보료(추정) 통합 화면으로 이동했어요. 이 화면은 보조 편집용으로만 유지됩니다.</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_profile.nhis_page', month=month_key) }}#asset-diagnosis">통합 화면으로 이동</a>
+      <a class="btn ghost" href="{{ url_for('web_profile.assets_quiz', step=1, month=month_key) }}">자산 진단(30초)</a>
+      <a class="btn" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금보관함</a>
+    </div>
+  </div>
+
+  <div class="asset-note warn" style="margin-top:10px;">이 경로는 보조 화면입니다. 최신 결과/저장은 <b>건보료(추정) 통합 화면</b>을 기준으로 확인해 주세요.</div>
+
+  {% if dataset_warning %}
+    <div class="asset-note warn" style="margin-top:10px;">{{ dataset_warning }}</div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('web_profile.assets_page', month=month_key, skip_quiz=1) }}" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="month" value="{{ month_key }}">
+    <div class="asset-grid" style="margin-top:12px;">
+      <section class="asset-card asset-col">
+        <div class="asset-block" style="margin-top:0;">
+          <div class="asset-sec-head">
+            <h3>부동산/거주</h3>
+          </div>
+          <div class="asset-sub">현재 거주와 보유 주택을 분리해 관리하면 추정 정확도가 더 올라가요.</div>
+          <div class="asset-fields">
+            {% set assets_items = (assets_ctx['items'] if assets_ctx and ('items' in assets_ctx) else {}) %}
+            {% set current_rent_item = assets_items.get('rent') if assets_items else {} %}
+            {% set current_rent_input = current_rent_item.input if current_rent_item and current_rent_item.input else {} %}
+            {% set current_rent_deposit = (current_rent_input.rent_deposit_krw if current_rent_input else none) %}
+            {% set current_rent_monthly = (current_rent_input.rent_monthly_krw if current_rent_input else none) %}
+            {% set current_housing_mode = assets_ctx.profile.housing_mode if assets_ctx and assets_ctx.profile and assets_ctx.profile.housing_mode else 'unknown' %}
+            {% if current_housing_mode not in ['own', 'jeonse', 'rent', 'none', 'unknown'] %}
+              {% set current_housing_mode = 'unknown' %}
+            {% endif %}
+            {% if current_housing_mode in ['unknown', 'none'] %}
+              {% if current_rent_monthly|int > 0 %}
+                {% set current_housing_mode = 'rent' %}
+              {% elif current_rent_deposit|int > 0 %}
+                {% set current_housing_mode = 'jeonse' %}
+              {% endif %}
+            {% endif %}
+            <label class="asset-field">
+              <span class="asset-label">현재 거주 형태</span>
+              <select class="asset-select" name="housing_mode" id="current-housing-mode">
+                <option value="unknown" {% if current_housing_mode == 'unknown' %}selected{% endif %}>모름</option>
+                <option value="own" {% if current_housing_mode == 'own' %}selected{% endif %}>자가</option>
+                <option value="jeonse" {% if current_housing_mode == 'jeonse' %}selected{% endif %}>전세</option>
+                <option value="rent" {% if current_housing_mode == 'rent' %}selected{% endif %}>월세</option>
+                <option value="none" {% if current_housing_mode == 'none' %}selected{% endif %}>해당 없음</option>
+              </select>
+            </label>
+            <div class="asset-inline asset-rent-fields{% if current_housing_mode in ['jeonse','rent'] %} show{% endif %}" id="current-rent-fields">
+              <label class="asset-field asset-mode-field{% if current_housing_mode == 'jeonse' %} show{% endif %}" data-current-mode-field="jeonse">
+                <span class="asset-label">현재 거주 전세금(원)</span>
+                <input class="asset-input" type="text" name="rent_deposit_krw" data-current-rent-input="jeonse" value="{{ current_rent_deposit if current_rent_deposit is not none else '' }}" placeholder="예: 30000000">
+              </label>
+              <label class="asset-field asset-mode-field{% if current_housing_mode == 'rent' %} show{% endif %}" data-current-mode-field="rent">
+                <span class="asset-label">현재 거주 월세(원)</span>
+                <input class="asset-input" type="text" name="rent_monthly_krw" data-current-rent-input="rent" value="{{ current_rent_monthly if current_rent_monthly is not none else '' }}" placeholder="예: 700000">
+              </label>
+            </div>
+            <div class="asset-note{% if current_housing_mode in ['jeonse','rent'] %} asset-hidden{% endif %}" id="current-rent-note">전세/월세를 선택하면 보증금·월세 입력란이 열려요.</div>
+          </div>
+        </div>
+
+        {% set home_panel_collapsed = current_housing_mode != 'own' %}
+        <div class="asset-block">
+          <div class="asset-sec-head">
+            <h3>보유 주택</h3>
+            <div class="asset-toggle-group">
+              <button type="button" class="btn ghost" id="btn-toggle-home-panel" aria-expanded="{{ 'false' if home_panel_collapsed else 'true' }}">
+                {{ '펼치기' if home_panel_collapsed else '접기' }}
+              </button>
+              <button type="button" class="btn ghost" id="btn-show-add-home">+ 추가</button>
+            </div>
+          </div>
+          <div class="asset-note{% if not home_panel_collapsed %} asset-hidden{% endif %}" id="home-panel-note">
+            현재 거주 형태가 자가가 아니면 보유 주택 입력을 접어둘 수 있어요. 필요할 때 펼쳐서 입력하세요.
+          </div>
+          <div class="asset-home-body{% if home_panel_collapsed %} collapsed{% endif %}" id="home-panel-body">
+            <div class="asset-sub">목록에서 바로 추가/수정/삭제할 수 있어요.</div>
+            {% if assets_ctx.home_list %}
+              {% for home in assets_ctx.home_list %}
+                {% set hm = (home.input.rental_mode if home.input else 'unknown') %}
+                <div class="asset-block asset-inline-form" data-post-url="{{ url_for('web_profile.assets_page', month=month_key, skip_quiz=1) }}" style="margin-top:8px;">
+                  <input type="hidden" name="item_id" value="{{ home.id }}">
+                  <input type="hidden" name="home_item_id" value="{{ home.id }}">
+                  <div class="asset-inline">
+                    <label class="asset-field">
+                      <span class="asset-label">주소</span>
+                      <input class="asset-input" type="text" name="item_home_address" value="{{ home.input.address_text if home.input else '' }}">
+                    </label>
+                    <label class="asset-field">
+                      <span class="asset-label">주택 유형</span>
+                      {% set ht = (home.input.home_type if home.input else '') %}
+                      <select class="asset-select" name="item_home_type">
+                        <option value="">모름</option>
+                        <option value="apartment" {% if ht == 'apartment' %}selected{% endif %}>아파트</option>
+                        <option value="villa" {% if ht == 'villa' %}selected{% endif %}>빌라/연립</option>
+                        <option value="house" {% if ht == 'house' %}selected{% endif %}>단독주택</option>
+                        <option value="officetel" {% if ht == 'officetel' %}selected{% endif %}>오피스텔</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="asset-inline">
+                    <label class="asset-field">
+                      <span class="asset-label">전용면적(㎡)</span>
+                      <input class="asset-input" type="text" name="item_home_area_sqm" value="{{ home.input.area_sqm if home.input and home.input.area_sqm is not none else '' }}">
+                    </label>
+                    <label class="asset-field">
+                      <span class="asset-label">임대 형태</span>
+                      <select class="asset-select" name="item_home_rental_mode" data-home-rent-mode>
+                        <option value="unknown" {% if hm == 'unknown' %}selected{% endif %}>모름</option>
+                        <option value="own_use" {% if hm == 'own_use' %}selected{% endif %}>직접거주</option>
+                        <option value="jeonse" {% if hm == 'jeonse' %}selected{% endif %}>전세</option>
+                        <option value="rent" {% if hm == 'rent' %}selected{% endif %}>월세</option>
+                        <option value="vacant" {% if hm == 'vacant' %}selected{% endif %}>공실</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="asset-inline asset-rent-fields{% if hm in ['jeonse','rent'] %} show{% endif %}" data-home-rent-fields>
+                    <label class="asset-field asset-mode-field{% if hm == 'jeonse' %} show{% endif %}" data-home-mode-field="jeonse">
+                      <span class="asset-label">전세금(원)</span>
+                      <input class="asset-input" type="text" name="item_home_rent_deposit_krw" data-home-rent-input="jeonse" value="{{ home.input.rent_deposit_krw if home.input and home.input.rent_deposit_krw is not none else '' }}">
+                    </label>
+                    <label class="asset-field asset-mode-field{% if hm == 'rent' %} show{% endif %}" data-home-mode-field="rent">
+                      <span class="asset-label">월세(원)</span>
+                      <input class="asset-input" type="text" name="item_home_rent_monthly_krw" data-home-rent-input="rent" value="{{ home.input.rent_monthly_krw if home.input and home.input.rent_monthly_krw is not none else '' }}">
+                    </label>
+                  </div>
+                  <div class="asset-actions">
+                    <button class="btn ghost" type="submit" name="action" value="update_item:{{ home.id }}" data-inline-submit="update_item">저장</button>
+                    <button class="btn ghost danger" type="submit" name="action" value="delete_item:{{ home.id }}" data-inline-submit="delete_item">삭제</button>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="asset-note" style="margin-top:8px;">등록된 보유 주택이 아직 없어요.</div>
+            {% endif %}
+
+            <div class="asset-add-wrap">
+              <div class="asset-block asset-add-draft asset-inline-form" id="home-add-draft" data-post-url="{{ url_for('web_profile.assets_page', month=month_key, skip_quiz=1) }}" data-inline-action="add_home_item" style="margin-top:8px;">
+                <div class="asset-note ok" style="margin-top:0;">아직 저장 전 · 입력 후 저장을 눌러 주세요.</div>
+                <h3 style="margin:8px 0 0;font-size:.86rem;font-weight:900;">보유 주택 추가</h3>
+                <div class="asset-inline" style="margin-top:8px;">
+                  <input class="asset-input" type="text" name="add_home_address" placeholder="주소">
+                  <select class="asset-select" name="add_home_type">
+                    <option value="">유형 선택</option>
+                    <option value="apartment">아파트</option>
+                    <option value="villa">빌라/연립</option>
+                    <option value="house">단독주택</option>
+                    <option value="officetel">오피스텔</option>
+                  </select>
+                </div>
+                <div class="asset-inline" style="margin-top:8px;">
+                  <input class="asset-input" type="text" name="add_home_area_sqm" placeholder="면적(㎡)">
+                  <select class="asset-select" name="add_home_rental_mode" data-home-rent-mode>
+                    <option value="unknown">임대 형태(선택)</option>
+                    <option value="own_use">직접거주</option>
+                    <option value="jeonse">전세</option>
+                    <option value="rent">월세</option>
+                    <option value="vacant">공실</option>
+                  </select>
+                </div>
+                <div class="asset-inline asset-rent-fields" data-home-rent-fields style="margin-top:8px;">
+                  <label class="asset-field asset-mode-field" data-home-mode-field="jeonse">
+                    <span class="asset-label">전세금(원)</span>
+                    <input class="asset-input" type="text" name="add_home_rent_deposit_krw" data-home-rent-input="jeonse" placeholder="예: 30000000">
+                  </label>
+                  <label class="asset-field asset-mode-field" data-home-mode-field="rent">
+                    <span class="asset-label">월세(원)</span>
+                    <input class="asset-input" type="text" name="add_home_rent_monthly_krw" data-home-rent-input="rent" placeholder="예: 700000">
+                  </label>
+                </div>
+                <div class="asset-actions">
+                  <button class="btn ghost" type="submit" name="action" value="add_home_item" data-inline-submit="add_home_item">저장</button>
+                  <button class="btn ghost" type="button" id="btn-cancel-add-home">취소</button>
+                </div>
+              </div>
+            </div>
+            {% set basis_title = '부동산 근거 보기' %}
+            {% set feedback_items = (feedback['items'] if feedback and ('items' in feedback) else {}) %}
+            {% set basis_item = feedback_items.get('home') %}
+            {% include 'components/basis_panel.html' %}
+          </div>
+        </div>
+
+        <div class="asset-block">
+          <div class="asset-sec-head">
+            <h3>차량 보유</h3>
+            <button type="button" class="btn ghost" id="btn-show-add-car">+ 추가</button>
+          </div>
+          <div class="asset-fields">
+            <label class="asset-field">
+              <span class="asset-label">차량 보유 여부</span>
+              <select class="asset-select" name="has_car">
+                <option value="" {% if assets_ctx.profile.has_car is none %}selected{% endif %}>모름</option>
+                <option value="yes" {% if assets_ctx.profile.has_car is sameas true %}selected{% endif %}>있음</option>
+                <option value="no" {% if assets_ctx.profile.has_car is sameas false %}selected{% endif %}>없음</option>
+              </select>
+            </label>
+          </div>
+          {% if assets_ctx.car_list %}
+            {% for car in assets_ctx.car_list %}
+              <div class="asset-block asset-inline-form" data-post-url="{{ url_for('web_profile.assets_page', month=month_key, skip_quiz=1) }}" style="margin-top:8px;">
+                <input type="hidden" name="item_id" value="{{ car.id }}">
+                <input type="hidden" name="car_item_id" value="{{ car.id }}">
+                <div class="asset-inline">
+                  <label class="asset-field">
+                    <span class="asset-label">브랜드</span>
+                    <input class="asset-input" type="text" name="item_car_brand" value="{{ car.input.brand if car.input else '' }}">
+                  </label>
+                  <label class="asset-field">
+                    <span class="asset-label">차종</span>
+                    <input class="asset-input" type="text" name="item_car_model" value="{{ car.input.model if car.input else '' }}">
+                  </label>
+                </div>
+                <label class="asset-field">
+                  <span class="asset-label">연식</span>
+                  <input class="asset-input" type="text" name="item_car_year" value="{{ car.input.year if car.input and car.input.year is not none else '' }}">
+                </label>
+                <div class="asset-actions">
+                  <button class="btn ghost" type="submit" name="action" value="update_item:{{ car.id }}" data-inline-submit="update_item">저장</button>
+                  <button class="btn ghost danger" type="submit" name="action" value="delete_item:{{ car.id }}" data-inline-submit="delete_item">삭제</button>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="asset-note" style="margin-top:8px;">등록된 차량이 아직 없어요.</div>
+          {% endif %}
+
+          <div class="asset-add-wrap">
+            <div class="asset-block asset-add-draft asset-inline-form" id="car-add-draft" data-post-url="{{ url_for('web_profile.assets_page', month=month_key, skip_quiz=1) }}" data-inline-action="add_car_item" style="margin-top:8px;">
+              <div class="asset-note ok" style="margin-top:0;">아직 저장 전 · 입력 후 저장을 눌러 주세요.</div>
+              <h3 style="margin:8px 0 0;font-size:.86rem;font-weight:900;">차량 추가</h3>
+              <div class="asset-inline" style="margin-top:8px;">
+                <input class="asset-input" type="text" name="add_car_brand" placeholder="브랜드">
+                <input class="asset-input" type="text" name="add_car_model" placeholder="차종">
+              </div>
+              <div class="asset-inline" style="margin-top:8px;">
+                <input class="asset-input" type="text" name="add_car_year" placeholder="연식">
+                <div></div>
+              </div>
+              <div class="asset-actions">
+                <button class="btn ghost" type="submit" name="action" value="add_car_item" data-inline-submit="add_car_item">저장</button>
+                <button class="btn ghost" type="button" id="btn-cancel-add-car">취소</button>
+              </div>
+            </div>
+          </div>
+          {% set basis_title = '차량 근거 보기' %}
+          {% set feedback_items = (feedback['items'] if feedback and ('items' in feedback) else {}) %}
+          {% set basis_item = feedback_items.get('car') %}
+          {% include 'components/basis_panel.html' %}
+
+          {% include 'components/assets_user_input_sections.html' %}
+        </div>
+      </section>
+
+      <aside class="asset-card asset-col">
+      {% set nhis_compare = feedback.nhis_compare if feedback and feedback.nhis_compare else {} %}
+      {% set estimate_member_type = (feedback.nhis_estimate.member_type if feedback and feedback.nhis_estimate and feedback.nhis_estimate.member_type else 'unknown') %}
+      {% set nhis_income_source = feedback.nhis_income_source if feedback and feedback.nhis_income_source else {} %}
+      {% set tax_income_source = feedback.tax_income_source if feedback and feedback.tax_income_source else {} %}
+      {% set nhis_whatis_payload = feedback.nhis_whatis_payload if feedback and feedback.nhis_whatis_payload else {} %}
+      {% set whatif_base = nhis_whatis_payload.get('base', {}) if nhis_whatis_payload else {} %}
+      {% set whatif_ui = nhis_whatis_payload.get('ui_flags', {}) if nhis_whatis_payload else {} %}
+      {% set current_income_breakdown = (feedback.nhis_estimate.income_premium_krw if feedback and feedback.nhis_estimate else 0)|int %}
+      {% set current_property_breakdown = (feedback.nhis_estimate.property_premium_krw if feedback and feedback.nhis_estimate else 0)|int %}
+      {% set current_ltc_breakdown = (feedback.nhis_estimate.ltc_est_krw if feedback and feedback.nhis_estimate else 0)|int %}
+      {% set current_total_breakdown = (feedback.current_nhis_est_krw if feedback else 0)|int %}
+      {% set property_base_after = whatif_base.get('property_base_after_deduction_krw', 0)|int %}
+      {% set annual_fin_now = whatif_base.get('annual_fin_income_krw', 0)|int %}
+      {% set diagnosis_text = "이번 금액은 소득/자산 입력을 함께 반영해 계산했어요(추정)." %}
+      {% if current_income_breakdown >= current_property_breakdown and current_income_breakdown >= current_ltc_breakdown %}
+        {% set diagnosis_text = "이번 금액은 소득 비중이 큰 편이에요(추정)." %}
+      {% elif current_property_breakdown >= current_income_breakdown and current_property_breakdown >= current_ltc_breakdown %}
+        {% set diagnosis_text = "이번 금액은 자산 비중이 큰 편이에요(추정)." %}
+      {% else %}
+        {% set diagnosis_text = "이번 금액은 장기요양 비율 영향이 함께 반영됐어요(추정)." %}
+      {% endif %}
+      {% if property_base_after <= 0 %}
+        {% set diagnosis_text = diagnosis_text + " 자산 영향이 작을 수 있어요(추정)." %}
+      {% endif %}
+      {% if annual_fin_now >= 8000000 and annual_fin_now <= 12000000 %}
+        {% set diagnosis_text = diagnosis_text + " 금융소득이 1,000만 전후라 반영 방식이 달라질 수 있어요(추정)." %}
+      {% endif %}
+
+      <h2 class="asset-title">즉시 피드백 (추정)</h2>
+      <div class="asset-hero">
+        <div class="asset-hero-label">월 예상 건보료(추정) · 현재 적용({{ current_month_label }})</div>
+        <div class="asset-hero-value" id="kpi-current-nhis">{{ "{:,}".format(feedback.current_nhis_est_krw|int) }}원</div>
+        <div class="asset-hero-sub">매달 납부 · 11월에 월 금액이 바뀔 수 있어요(추정)</div>
+      </div>
+
+      <div class="asset-block asset-whatis-box" id="nhis-whatis-root" data-whatis-ready="{{ '1' if nhis_whatis_payload.get('ready') else '0' }}" data-debug-nhis="{{ '1' if debug_nhis else '0' }}">
+        <script type="application/json" id="nhis-whatis-payload">{{ nhis_whatis_payload|tojson }}</script>
+        <div class="asset-whatis-head">
+          <h3 class="asset-whatis-title">바꿔보면 얼마 달라질까?</h3>
+          <button class="btn ghost asset-hidden" type="button" id="btn-whatis-reset">원래대로</button>
+        </div>
+        <div class="asset-whatis-desc">입력을 조금 바꿔서 ‘월 건보료 변화’를 미리 확인해요(추정).</div>
+        <div class="asset-whatis-actions">
+          <div class="asset-whatis-item">
+            <button class="btn ghost" type="button" data-whatis-action="deposit_plus_10m">보증금 1,000만 올리면</button>
+            <div class="asset-whatis-item-help">보증금이 커지면 재산 영향이 늘 수 있어요(추정).</div>
+          </div>
+          <div class="asset-whatis-item">
+            <button class="btn ghost" type="button" data-whatis-action="deposit_minus_10m">보증금 1,000만 내리면</button>
+            <div class="asset-whatis-item-help">보증금이 작아지면 재산 영향이 줄 수 있어요(추정).</div>
+          </div>
+          {% if annual_fin_now >= 8000000 and annual_fin_now <= 12000000 %}
+            <div class="asset-whatis-item">
+              <button class="btn ghost" type="button" data-whatis-action="fin_to_10m">금융소득 1,000만 기준으로 계산해보기</button>
+              <div class="asset-whatis-item-help">1,000만 전후에서 반영 방식이 달라질 수 있어요(추정).</div>
+            </div>
+          {% endif %}
+          {% if whatif_ui.get('show_monthly_rent_delta') %}
+            <div class="asset-whatis-item">
+              <button class="btn ghost" type="button" data-whatis-action="monthly_plus_100k">월세 10만 올리면</button>
+              <div class="asset-whatis-item-help">월세는 보증금처럼 평가에 반영될 수 있어요(추정).</div>
+            </div>
+            <div class="asset-whatis-item">
+              <button class="btn ghost" type="button" data-whatis-action="monthly_minus_100k">월세 10만 내리면</button>
+              <div class="asset-whatis-item-help">월세 변화도 월 건보료에 영향을 줄 수 있어요(추정).</div>
+            </div>
+          {% endif %}
+        </div>
+        <div class="asset-note" id="nhis-whatis-help">가정 결과는 저장되지 않아요. 입력을 저장하면 실제 추정에 반영돼요(추정).</div>
+        <div class="asset-note ok asset-whatis-result asset-hidden" id="nhis-whatis-result"></div>
+        <div class="asset-whatis-result-detail asset-hidden" id="nhis-whatis-result-detail"></div>
+        <div class="asset-note warn asset-hidden" id="nhis-whatis-error"></div>
+      </div>
+
+      <details class="basis-panel" open>
+        <summary>소득/자산/장기요양 분해</summary>
+        <div class="basis-grid">
+          <div class="asset-breakdown">
+            <div class="asset-breakdown-line"><span>소득 영향(추정)</span><b id="breakdown-income">{{ "{:,}".format(current_income_breakdown) }}원</b></div>
+            <div class="asset-breakdown-line"><span>자산 영향(추정)</span><b id="breakdown-property">{{ "{:,}".format(current_property_breakdown) }}원</b></div>
+            <div class="asset-breakdown-line"><span>장기요양(추정)</span><b id="breakdown-ltc">{{ "{:,}".format(current_ltc_breakdown) }}원</b></div>
+            <div class="asset-breakdown-line"><span>합계(추정)</span><b id="breakdown-total">{{ "{:,}".format(current_total_breakdown) }}원</b></div>
+          </div>
+          <div class="asset-kpi-row">
+            <div class="asset-kpi-mini">
+              <div class="k">현재({{ current_month_label }})</div>
+              <div class="v" id="kpi-current-summary">{{ "{:,}".format(feedback.current_nhis_est_krw|int) }}원</div>
+            </div>
+            <div class="asset-kpi-mini">
+              <div class="k">11월({{ november_month_label }})</div>
+              <div class="v" id="kpi-nov-nhis">{{ "{:,}".format(feedback.november_nhis_est_krw|int) }}원</div>
+            </div>
+            <div class="asset-kpi-mini">
+              <div class="k">차이 (추정)</div>
+              <div class="v" id="kpi-nov-diff">{{ "{:,}".format(feedback.november_diff_krw|int) }}원</div>
+            </div>
+            <div class="asset-kpi-mini">
+              <div class="k">세금 영향(추정)</div>
+              <div class="v" id="kpi-tax">{{ "{:,}".format(feedback.tax_due_est_krw|int) }}원</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="basis-panel" open>
+        <summary>왜 이렇게 나왔나요?</summary>
+        <div class="basis-grid">
+          <div>
+            <div class="asset-diagnosis" id="nhis-diagnosis-line">{{ diagnosis_text }}</div>
+            <div class="asset-meta-notes">
+              <div class="asset-note" style="margin-top:0;" id="feedback-note">{{ feedback.note }}</div>
+              <div class="asset-note" style="margin-top:0;" id="completion-note">
+                완료율 <b id="kpi-completion">{{ feedback.completion_ratio|int }}%</b>
+                {% if feedback.completion_ratio|int >= 80 %}
+                  <span class="asset-pill good" style="margin-left:6px;" id="kpi-completion-badge">완료</span>
+                {% else %}
+                  <span class="asset-pill warn" style="margin-left:6px;" id="kpi-completion-badge">추가 입력 권장</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="basis-v">
+            {% if estimate_member_type == 'employee' %}
+              <div>현재는 직장가입자 기준(월 보수 중심)으로 계산 중이에요(추정).</div>
+            {% elif estimate_member_type == 'dependent' %}
+              <div>현재는 피부양자 기준이라 별도 보험료가 0원에 가까울 수 있어요(추정).</div>
+            {% endif %}
+            {% if nhis_compare and nhis_compare.same_cycle_active %}
+              <div>선택한 달은 이미 11월 반영 기준이 적용된 기간이라 차이가 작거나 없을 수 있어요(추정).</div>
+            {% endif %}
+            {% if nhis_compare and nhis_compare.zero_diff_reason %}
+              {% set zero_diff_reason_text = (nhis_compare.zero_diff_reason|string)|trim %}
+              <div>{{ zero_diff_reason_text }}{% if '추정' not in zero_diff_reason_text %} (추정){% endif %}</div>
+            {% endif %}
+            <div>{{ nhis_pay_note }}</div>
+            <div>{{ nhis_reflect_note }}</div>
+            <div>{{ nhis_nov_note }}</div>
+          </div>
+        </div>
+        {% if nhis_compare and nhis_compare.fallback_used %}
+          {% set fallback_reason_messages = nhis_compare.fallback_reason_messages if nhis_compare.fallback_reason_messages else [] %}
+          {% if fallback_reason_messages is string %}
+            {% set fallback_reason_messages = [fallback_reason_messages] %}
+          {% endif %}
+          <div class="basis-grid" style="padding-top:0;">
+            <div class="asset-note warn" style="margin-top:0;">
+              {% if fallback_reason_messages %}
+                {% for msg in fallback_reason_messages[:3] %}
+                  {% set fallback_reason_text = (msg|string)|trim %}
+                  <div>• {{ fallback_reason_text }}{% if '추정' not in fallback_reason_text %} (추정){% endif %}</div>
+                {% endfor %}
+              {% else %}
+                <div>• 11월 반영 계산을 완전히 끝내지 못해 임시 기준으로 보여주고 있어요(추정).</div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+        {% set warning_messages = feedback.warnings if feedback and feedback.warnings else [] %}
+        {% if warning_messages is string %}
+          {% set warning_messages = [warning_messages] %}
+        {% endif %}
+        {% if warning_messages %}
+          <div class="basis-grid" style="padding-top:0;">
+            <div class="asset-note warn" style="margin-top:0;">
+              {% for msg in warning_messages[:3] %}
+                <div>• {{ msg }}</div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </details>
+
+      <details class="basis-panel" style="margin-top:10px;">
+        <summary>근거 보기(추정)<span class="asset-hidden">근거 보기 (추정)</span></summary>
+        <div class="basis-grid">
+          <div>
+            <div class="basis-k">현재 적용({{ current_month_label }})</div>
+            <div class="basis-v">
+              <div>① 소득 영향(추정): {{ "{:,}".format((feedback.nhis_estimate.income_premium_krw or 0)|int) }}원</div>
+              <div>③ 자산 영향(추정): {{ "{:,}".format((feedback.nhis_estimate.property_premium_krw or 0)|int) }}원</div>
+              <div>⑤ 장기요양(추정): {{ "{:,}".format((feedback.nhis_estimate.ltc_est_krw or 0)|int) }}원</div>
+              <div>⑥ 합계(추정): {{ "{:,}".format(feedback.current_nhis_est_krw|int) }}원</div>
+              <div>적용연도: 소득 {{ feedback.nhis_estimate.income_year_applied or '-' }} / 재산 {{ feedback.nhis_estimate.property_year_applied or '-' }}</div>
+              <div>사용한 소득 출처: {{ nhis_income_source.source_label if nhis_income_source and nhis_income_source.source_label else '자동 추정(연동)' }}</div>
+              <div>사용한 소득 연도: {{ nhis_income_source.used_year if nhis_income_source and nhis_income_source.used_year else (nhis_income_source.target_year if nhis_income_source and nhis_income_source.target_year else '-') }} 기준(추정)</div>
+              <div>신뢰도: {{ feedback.nhis_estimate.confidence_level or 'low' }}</div>
+            </div>
+          </div>
+          <div>
+            <div class="basis-k">11월 반영({{ november_month_label }})</div>
+            <div class="basis-v">
+              <div>건강보험료(추정): {{ "{:,}".format((feedback.nhis_november_estimate.health_est_krw or 0)|int) }}원</div>
+              <div>장기요양(추정): {{ "{:,}".format((feedback.nhis_november_estimate.ltc_est_krw or 0)|int) }}원</div>
+              <div>합계(추정): {{ "{:,}".format(feedback.november_nhis_est_krw|int) }}원</div>
+              <div>적용연도: 소득 {{ feedback.nhis_november_estimate.income_year_applied or '-' }} / 재산 {{ feedback.nhis_november_estimate.property_year_applied or '-' }}</div>
+              <div>세금 추정 소득 출처: {{ tax_income_source.source_label if tax_income_source and tax_income_source.source_label else '자동 추정(연동)' }}</div>
+              <div>세금 소득 연도: {{ tax_income_source.used_year if tax_income_source and tax_income_source.used_year else (tax_income_source.target_year if tax_income_source and tax_income_source.target_year else '-') }} 기준(추정)</div>
+              <div>세금은 월 기준 데이터를 연평균으로 환산해 추정해요(추정).</div>
+              <div>차이 (추정): {{ "{:,}".format(feedback.november_diff_krw|int) }}원</div>
+            </div>
+          </div>
+        </div>
+        <div class="basis-grid" style="padding-top:0;">
+          <div>
+            <div class="basis-k">공식 기준/단가</div>
+            <div class="basis-v">
+              <div>{{ feedback.nhis_snapshot.effective_year }}년 건강보험료율 {{ '%.2f'|format((feedback.nhis_snapshot.health_insurance_rate or 0) * 100) }}%</div>
+              <div>장기요양 비율 {{ '%.2f'|format((feedback.nhis_snapshot.long_term_care_ratio_of_health or 0) * 100) }}%</div>
+              <div>점수당 금액 {{ '{:,.1f}'.format(feedback.nhis_snapshot.regional_point_value or 0) }}원</div>
+              <div>마지막 업데이트: {{ feedback.nhis_snapshot.fetched_at_text or '-' }}</div>
+              <div>{{ feedback.nhis_snapshot.income_reference_rule or '-' }}</div>
+            </div>
+          </div>
+          <div>
+            <div class="basis-k">입력 반영 상태</div>
+            <div class="basis-v">
+              {% set income_on = (feedback.derived_nhis_profile.annual_income_krw|int > 0) or (feedback.derived_nhis_profile.salary_monthly_krw|int > 0) or (feedback.derived_nhis_profile.non_salary_annual_income_krw|int > 0) %}
+              {% set rent_on = (feedback.derived_nhis_profile.rent_deposit_krw|int > 0) or (feedback.derived_nhis_profile.rent_monthly_krw|int > 0) %}
+              {% set feedback_items = (feedback['items'] if feedback and ('items' in feedback) else {}) %}
+              {% set home_count = (feedback_items.get('home_list')|length) if feedback_items and feedback_items.get('home_list') else 0 %}
+              {% set car_count = (feedback_items.get('car_list')|length) if feedback_items and feedback_items.get('car_list') else 0 %}
+              <div>소득 입력: {{ "반영됨" if income_on else "미입력" }}</div>
+              <div>보유 주택: {{ home_count }}개</div>
+              <div>전월세 입력: {{ "반영됨" if rent_on else "미입력" }}</div>
+              <div>차량 입력: {{ car_count }}대</div>
+              {% if feedback.nhis_compare and feedback.nhis_compare.scale_warning_current %}
+                <div>주의: 현재 계산 단위(점수/원) 확인이 필요해요.</div>
+              {% endif %}
+              {% if feedback.nhis_compare and feedback.nhis_compare.scale_warning_november %}
+                <div>주의: 11월 계산 단위(점수/원) 확인이 필요해요.</div>
+              {% endif %}
+              {% if feedback.warnings %}
+                <div>오차 요인: {{ feedback.warnings[:2] | join(" · ") }}</div>
+              {% else %}
+                <div>오차 요인: 입력/공제/세대 구성에 따라 달라질 수 있어요.</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </details>
+
+      {% if debug_nhis and debug_payload %}
+      <details class="basis-panel" style="margin-top:10px;">
+        <summary>개발용 분해 보기</summary>
+        <div class="basis-grid">
+          <div>
+            <div class="basis-k">current ({{ current_month_label }})</div>
+            <div class="basis-v">
+              <div>① 소득월액(원): {{ debug_payload.current.income_monthly_krw }}</div>
+              <div>① 소득월액보험료(원): {{ debug_payload.current.income_premium_krw }}</div>
+              <div>전월세 평가액(원): {{ debug_payload.current.rent_eval_krw }} = (보증금 + 월세×40) × 0.30</div>
+              <div>재산 공제(원): {{ debug_payload.current.property_deduction_krw }}</div>
+              <div>공제 후 재산 기준액(원): {{ debug_payload.current.property_base_after_deduction_krw }}</div>
+              <div>② 재산보험료부과점수(점): {{ debug_payload.current.property_points }}</div>
+              <div>③ 재산보험료(원): {{ debug_payload.current.property_premium_krw }} = ② × {{ debug_payload.current.point_value_used }}</div>
+              <div>④ 건강보험료(원): {{ debug_payload.current.health_premium_krw }}</div>
+              <div>⑤ 장기요양(원): {{ debug_payload.current.ltc_premium_krw }}</div>
+              <div>⑥ 최종(원): {{ debug_payload.current.total_krw }}</div>
+              <div>income_year_applied: {{ debug_payload.current.income_year_applied }}</div>
+              <div>property_year_applied: {{ debug_payload.current.property_year_applied }}</div>
+            </div>
+          </div>
+          <div>
+            <div class="basis-k">november ({{ november_month_label }})</div>
+            <div class="basis-v">
+              <div>① 소득월액(원): {{ debug_payload.november.income_monthly_krw }}</div>
+              <div>① 소득월액보험료(원): {{ debug_payload.november.income_premium_krw }}</div>
+              <div>전월세 평가액(원): {{ debug_payload.november.rent_eval_krw }} = (보증금 + 월세×40) × 0.30</div>
+              <div>재산 공제(원): {{ debug_payload.november.property_deduction_krw }}</div>
+              <div>공제 후 재산 기준액(원): {{ debug_payload.november.property_base_after_deduction_krw }}</div>
+              <div>② 재산보험료부과점수(점): {{ debug_payload.november.property_points }}</div>
+              <div>③ 재산보험료(원): {{ debug_payload.november.property_premium_krw }} = ② × {{ debug_payload.november.point_value_used }}</div>
+              <div>④ 건강보험료(원): {{ debug_payload.november.health_premium_krw }}</div>
+              <div>⑤ 장기요양(원): {{ debug_payload.november.ltc_premium_krw }}</div>
+              <div>⑥ 최종(원): {{ debug_payload.november.total_krw }}</div>
+              <div>income_year_applied: {{ debug_payload.november.income_year_applied }}</div>
+              <div>property_year_applied: {{ debug_payload.november.property_year_applied }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="basis-grid" style="padding-top:0;">
+          <div>
+            <div class="basis-k">flags</div>
+            <div class="basis-v">
+              <div>unit_scale_warning: {{ "true" if debug_payload.flags.unit_scale_warning else "false" }}</div>
+              <div>duplication_suspected: {{ "true" if debug_payload.flags.duplication_suspected else "false" }}</div>
+              <div>fallback_used: {{ "true" if debug_payload.flags.fallback_used else "false" }}</div>
+              <div>income_source: {{ debug_payload.income_source.source_label or '자동 추정(연동)' }}</div>
+              <div>income_source_year: {{ debug_payload.income_source.used_year or debug_payload.income_source.target_year or '-' }}</div>
+            </div>
+          </div>
+          <div>
+            <div class="basis-k">요약</div>
+            <div class="basis-v">
+              <div>원인 파악은 ①~⑥ 중 급증 구간과 flags를 먼저 확인하세요.</div>
+              <div>business_income_amount_krw: {{ debug_payload.income_override_values.business_income_amount_krw or 0 }}</div>
+              <div>fin_income_amount_krw: {{ debug_payload.income_override_values.fin_income_amount_krw or 0 }}</div>
+              <div>salary_income_amount_krw: {{ debug_payload.income_override_values.salary_income_amount_krw or 0 }}</div>
+              <div>pension_income_amount_krw: {{ debug_payload.income_override_values.pension_income_amount_krw or 0 }}</div>
+              <div>other_income_amount_krw: {{ debug_payload.income_override_values.other_income_amount_krw or 0 }}</div>
+            </div>
+          </div>
+        </div>
+      </details>
+      {% endif %}
+      </aside>
+    </div>
+  </form>
+  <div id="asset-inline-status" class="asset-inline-status" role="status" aria-live="polite"></div>
+</div>
+{% endblock %}
+
+{% block script_extra %}
+<script>
+  (function () {
+    const csrfToken = "{{ csrf_token }}";
+    const monthKey = "{{ month_key }}";
+    const pageForm = document.querySelector("form[action*='/dashboard/assets']");
+    const postUrlBase = pageForm ? String(pageForm.getAttribute("action") || "").trim() : window.location.pathname;
+    const toJsonUrl = (baseUrl) => {
+      const base = String(baseUrl || "").trim() || window.location.pathname;
+      return base.includes("?") ? `${base}&format=json` : `${base}?format=json`;
+    };
+
+    const resetFormToServerDefaults = (formEl) => {
+      if (!formEl) return;
+      formEl.querySelectorAll("input, textarea, select").forEach((el) => {
+        if (el instanceof HTMLInputElement) {
+          const t = String(el.type || "").toLowerCase();
+          if (t === "checkbox" || t === "radio") {
+            el.checked = !!el.defaultChecked;
+            return;
+          }
+          if (t === "file" || t === "submit" || t === "button" || t === "reset") {
+            return;
+          }
+          el.value = el.defaultValue;
+          return;
+        }
+        if (el instanceof HTMLTextAreaElement) {
+          el.value = el.defaultValue;
+          return;
+        }
+        if (el instanceof HTMLSelectElement) {
+          let hasDefault = false;
+          Array.from(el.options).forEach((opt) => {
+            const selected = !!opt.defaultSelected;
+            opt.selected = selected;
+            if (selected) hasDefault = true;
+          });
+          if (!hasDefault && el.options.length > 0) {
+            el.selectedIndex = 0;
+          }
+        }
+      });
+    };
+
+    if (pageForm) {
+      // 브라우저 자동복원/자동완성으로 보이는 값 대신, 서버가 렌더링한 마지막 저장값을 항상 기준으로 삼는다.
+      resetFormToServerDefaults(pageForm);
+      window.setTimeout(() => resetFormToServerDefaults(pageForm), 80);
+      window.addEventListener("pageshow", () => {
+        resetFormToServerDefaults(pageForm);
+      });
+    }
+
+    const bindDraftToggle = (showId, draftId, cancelId) => {
+      const showBtn = document.getElementById(showId);
+      const draft = document.getElementById(draftId);
+      const cancelBtn = document.getElementById(cancelId);
+      if (!showBtn || !draft || !cancelBtn) return;
+      showBtn.addEventListener("click", () => {
+        draft.classList.add("show");
+        const firstInput = draft.querySelector("input, select, textarea");
+        if (firstInput) firstInput.focus();
+      });
+      cancelBtn.addEventListener("click", () => {
+        draft.classList.remove("show");
+        draft.querySelectorAll("input[type='text'], input[type='number']").forEach((el) => { el.value = ""; });
+      });
+    };
+    bindDraftToggle("btn-show-add-home", "home-add-draft", "btn-cancel-add-home");
+    bindDraftToggle("btn-show-add-car", "car-add-draft", "btn-cancel-add-car");
+
+    const statusEl = document.getElementById("asset-inline-status");
+    const showInlineStatus = (msg, ok = true) => {
+      if (!statusEl) return;
+      statusEl.textContent = String(msg || (ok ? "저장됐어요." : "저장에 실패했어요."));
+      statusEl.classList.remove("ok", "err", "show");
+      statusEl.classList.add(ok ? "ok" : "err", "show");
+      window.setTimeout(() => {
+        statusEl.classList.remove("show");
+      }, 1800);
+    };
+
+    const toInt = (raw, fallback = 0) => {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return Math.trunc(Number(fallback) || 0);
+      return Math.trunc(n);
+    };
+
+    const toFloat = (raw, fallback = 0) => {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return Number(fallback) || 0;
+      return n;
+    };
+
+    const formatKrw = (raw) => {
+      const n = Number(raw || 0);
+      if (!Number.isFinite(n)) return "0원";
+      return `${Math.round(n).toLocaleString("ko-KR")}원`;
+    };
+
+    const formatDeltaKrw = (raw) => {
+      const n = toInt(raw, 0);
+      const absText = `${Math.abs(n).toLocaleString("ko-KR")}원`;
+      if (n > 0) return `+${absText}`;
+      if (n < 0) return `-${absText}`;
+      return absText;
+    };
+
+    const updateFeedbackCard = (payload) => {
+      if (!payload || typeof payload !== "object") return;
+      const feedback = payload.feedback || {};
+      const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+      };
+      setText("kpi-current-nhis", formatKrw(feedback.current_nhis_est_krw));
+      setText("kpi-current-summary", formatKrw(feedback.current_nhis_est_krw));
+      setText("kpi-nov-nhis", formatKrw(feedback.november_nhis_est_krw));
+      setText("kpi-nov-diff", formatKrw(feedback.november_diff_krw));
+      setText("kpi-tax", formatKrw(feedback.tax_due_est_krw));
+      setText("breakdown-total", formatKrw(feedback.current_nhis_est_krw));
+      if (feedback.nhis_estimate && typeof feedback.nhis_estimate === "object") {
+        setText("breakdown-income", formatKrw(feedback.nhis_estimate.income_premium_krw || 0));
+        setText("breakdown-property", formatKrw(feedback.nhis_estimate.property_premium_krw || 0));
+        setText("breakdown-ltc", formatKrw(feedback.nhis_estimate.ltc_est_krw || 0));
+      }
+      const ratioRaw = Number(payload.completion_ratio ?? feedback.completion_ratio ?? 0);
+      const ratio = Number.isFinite(ratioRaw) ? ratioRaw : 0;
+      const ratioEl = document.getElementById("kpi-completion");
+      if (ratioEl) ratioEl.textContent = `${Math.max(0, Math.round(ratio))}%`;
+      const badge = document.getElementById("kpi-completion-badge");
+      if (badge) {
+        badge.classList.remove("good", "warn");
+        if (ratio >= 80) {
+          badge.classList.add("good");
+          badge.textContent = "완료";
+        } else {
+          badge.classList.add("warn");
+          badge.textContent = "추가 입력 권장";
+        }
+      }
+      const note = document.getElementById("feedback-note");
+      if (note) note.textContent = String(feedback.note || "");
+
+      if (feedback.nhis_whatis_payload && typeof feedback.nhis_whatis_payload === "object") {
+        const payloadEl = document.getElementById("nhis-whatis-payload");
+        const root = document.getElementById("nhis-whatis-root");
+        if (payloadEl) {
+          payloadEl.textContent = JSON.stringify(feedback.nhis_whatis_payload);
+        }
+        if (root) {
+          root.setAttribute("data-whatis-ready", feedback.nhis_whatis_payload.ready ? "1" : "0");
+        }
+      }
+      window.dispatchEvent(new CustomEvent("assets-feedback-updated", { detail: { feedback } }));
+    };
+
+    const initNhisWhatIf = () => {
+      const root = document.getElementById("nhis-whatis-root");
+      const payloadEl = document.getElementById("nhis-whatis-payload");
+      if (!root || !payloadEl) return;
+
+      const resultEl = document.getElementById("nhis-whatis-result");
+      const resultDetailEl = document.getElementById("nhis-whatis-result-detail");
+      const errorEl = document.getElementById("nhis-whatis-error");
+      const resetBtn = document.getElementById("btn-whatis-reset");
+      const diagnosisEl = document.getElementById("nhis-diagnosis-line");
+      const debugMode = String(root.getAttribute("data-debug-nhis") || "") === "1";
+      let activeAction = "";
+
+      const node = {
+        heroTotal: document.getElementById("kpi-current-nhis"),
+        summaryTotal: document.getElementById("kpi-current-summary"),
+        income: document.getElementById("breakdown-income"),
+        property: document.getElementById("breakdown-property"),
+        ltc: document.getElementById("breakdown-ltc"),
+        total: document.getElementById("breakdown-total"),
+      };
+
+      const clampNonNegative = (raw, max = 20000000) => {
+        const n = toInt(raw, 0);
+        if (n <= 0) return 0;
+        if (n > max) return max;
+        return n;
+      };
+
+      const roundKrw = (raw) => clampNonNegative(Math.round(toFloat(raw, 0)));
+
+      const propertyPointsFromAmount = (amountRaw, tableRaw) => {
+        const amount = clampNonNegative(amountRaw, 2000000000000);
+        if (amount <= 0) return 0;
+        if (!Array.isArray(tableRaw) || !tableRaw.length) return null;
+        const rows = tableRaw
+          .map((row) => {
+            if (!Array.isArray(row) || row.length < 2) return null;
+            return [toInt(row[0], 0), toFloat(row[1], 0)];
+          })
+          .filter((row) => row && row[0] > 0 && row[1] >= 0)
+          .sort((a, b) => a[0] - b[0]);
+        if (!rows.length) return null;
+        for (const row of rows) {
+          if (amount <= row[0]) return row[1];
+        }
+        const last = rows[rows.length - 1];
+        const extra = Math.max(0, amount - last[0]);
+        return toFloat(last[1], 0) + (extra / 4500000) * 22.0;
+      };
+
+      const buildDiagnosis = (view) => {
+        const income = clampNonNegative(view.income_premium_krw);
+        const property = clampNonNegative(view.property_premium_krw);
+        const ltc = clampNonNegative(view.ltc_est_krw);
+        let line = "이번 금액은 소득/자산 입력을 함께 반영해 계산했어요(추정).";
+        if (income >= property && income >= ltc) {
+          line = "이번 금액은 소득 비중이 큰 편이에요(추정).";
+        } else if (property >= income && property >= ltc) {
+          line = "이번 금액은 자산 비중이 큰 편이에요(추정).";
+        } else {
+          line = "이번 금액은 장기요양 비율 영향이 함께 반영됐어요(추정).";
+        }
+        if (toInt(view.property_base_after_deduction_krw, 0) <= 0) {
+          line += " 자산 영향이 작을 수 있어요(추정).";
+        }
+        const fin = clampNonNegative(view.annual_fin_income_krw, 2000000000);
+        if (fin >= 8000000 && fin <= 12000000) {
+          line += " 금융소득이 1,000만 전후라 반영 방식이 달라질 수 있어요(추정).";
+        }
+        return line;
+      };
+
+      const renderEstimate = (view) => {
+        if (!view || typeof view !== "object") return;
+        if (node.heroTotal) node.heroTotal.textContent = formatKrw(view.total_est_krw);
+        if (node.summaryTotal) node.summaryTotal.textContent = formatKrw(view.total_est_krw);
+        if (node.income) node.income.textContent = formatKrw(view.income_premium_krw);
+        if (node.property) node.property.textContent = formatKrw(view.property_premium_krw);
+        if (node.ltc) node.ltc.textContent = formatKrw(view.ltc_est_krw);
+        if (node.total) node.total.textContent = formatKrw(view.total_est_krw);
+        if (diagnosisEl) diagnosisEl.textContent = buildDiagnosis(view);
+      };
+
+      const hideResult = () => {
+        if (resultEl) {
+          resultEl.textContent = "";
+          resultEl.classList.add("asset-hidden");
+        }
+        if (resultDetailEl) {
+          resultDetailEl.textContent = "";
+          resultDetailEl.classList.add("asset-hidden");
+        }
+      };
+
+      const hideError = () => {
+        if (errorEl) {
+          errorEl.textContent = "";
+          errorEl.classList.add("asset-hidden");
+        }
+      };
+
+      const showError = (msg, debugMissing) => {
+        if (!errorEl) return;
+        let out = String(msg || "지금은 가정 계산을 할 수 없어요. 입력을 저장하면 정확도가 올라가요.");
+        if (out === "지금은 가정 계산을 할 수 없어요.") {
+          out = "지금은 가정 계산을 할 수 없어요. 입력을 저장하면 정확도가 올라가요.";
+        }
+        if (debugMode && Array.isArray(debugMissing) && debugMissing.length) {
+          out += ` (debug: ${debugMissing.join(", ")})`;
+        }
+        errorEl.textContent = out;
+        errorEl.classList.remove("asset-hidden");
+      };
+
+      const scenarioLabel = (action) => {
+        if (action === "fin_to_10m") return "금융소득 1,000만 기준";
+        if (action === "deposit_plus_10m") return "보증금 1,000만 올리기";
+        if (action === "deposit_minus_10m") return "보증금 1,000만 내리기";
+        if (action === "monthly_plus_100k") return "월세 10만 올리기";
+        if (action === "monthly_minus_100k") return "월세 10만 내리기";
+        return "가정 계산";
+      };
+
+      const setActiveAction = (action) => {
+        activeAction = String(action || "");
+        root.querySelectorAll("[data-whatis-action]").forEach((btn) => {
+          const isActive = String(btn.getAttribute("data-whatis-action") || "") === activeAction;
+          btn.classList.toggle("is-active", isActive);
+          btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+        });
+      };
+
+      const setActionButtonsDisabled = (disabled) => {
+        root.querySelectorAll("[data-whatis-action]").forEach((btn) => {
+          btn.disabled = !!disabled;
+        });
+        if (resetBtn) resetBtn.disabled = !!disabled;
+      };
+
+      const parsePayload = () => {
+        try {
+          const raw = JSON.parse(String(payloadEl.textContent || "{}"));
+          return (raw && typeof raw === "object") ? raw : {};
+        } catch (_) {
+          return {};
+        }
+      };
+
+      const buildFallbackView = () => {
+        return {
+          member_type: "unknown",
+          annual_fin_income_krw: 0,
+          rent_deposit_krw: 0,
+          rent_monthly_krw: 0,
+          property_tax_base_total_krw: 0,
+          owned_home_rent_eval_krw: 0,
+          salary_monthly_krw: 0,
+          income_premium_krw: 0,
+          property_premium_krw: 0,
+          health_est_krw: 0,
+          ltc_est_krw: 0,
+          total_est_krw: 0,
+          property_base_after_deduction_krw: 0,
+          property_points: 0,
+        };
+      };
+
+      const normalizeBaseView = (baseRaw) => {
+        const base = (baseRaw && typeof baseRaw === "object") ? baseRaw : {};
+        return {
+          member_type: String(base.member_type || "unknown").toLowerCase(),
+          annual_fin_income_krw: clampNonNegative(base.annual_fin_income_krw, 2000000000),
+          rent_deposit_krw: clampNonNegative(base.rent_deposit_krw, 5000000000),
+          rent_monthly_krw: clampNonNegative(base.rent_monthly_krw, 500000000),
+          property_tax_base_total_krw: clampNonNegative(base.property_tax_base_total_krw, 5000000000),
+          owned_home_rent_eval_krw: clampNonNegative(base.owned_home_rent_eval_krw, 5000000000),
+          salary_monthly_krw: clampNonNegative(base.salary_monthly_krw, 100000000),
+          income_premium_krw: clampNonNegative(base.income_premium_krw),
+          property_premium_krw: clampNonNegative(base.property_premium_krw),
+          health_est_krw: clampNonNegative(base.health_est_krw),
+          ltc_est_krw: clampNonNegative(base.ltc_est_krw),
+          total_est_krw: clampNonNegative(base.total_est_krw),
+          property_base_after_deduction_krw: clampNonNegative(base.property_base_after_deduction_krw, 5000000000),
+          property_points: Math.max(0, toFloat(base.property_points, 0)),
+        };
+      };
+
+      const computeEstimate = (profile, rules) => {
+        const base = normalizeBaseView(profile);
+        const memberType = String(base.member_type || "unknown");
+        const rule = (rules && typeof rules === "object") ? rules : {};
+        const healthRate = Math.max(0, toFloat(rule.health_insurance_rate, 0));
+        const pointValue = Math.max(0, toFloat(rule.regional_point_value, 0));
+        const ltcRatio = Math.max(0, toFloat(rule.long_term_care_ratio_of_health, 0));
+        const floor = clampNonNegative(rule.health_premium_floor_krw, 50000000);
+        const cap = clampNonNegative(rule.health_premium_cap_krw, 50000000);
+        const deduction = clampNonNegative(rule.property_basic_deduction_krw, 5000000000);
+        const rentEvalMultiplier = Math.max(0, toFloat(rule.rent_eval_multiplier, 0.3));
+        const rentToDeposit = clampNonNegative(rule.rent_month_to_deposit_multiplier, 1000);
+        const propertyTable = Array.isArray(rule.property_points_table) ? rule.property_points_table : [];
+
+        if (healthRate <= 0 || ltcRatio < 0) {
+          return null;
+        }
+
+        if (memberType === "regional") {
+          if (pointValue <= 0 || !propertyTable.length) return null;
+          const incomeMonthly = Math.floor(base.annual_fin_income_krw / 12);
+          const incomePremium = roundKrw(incomeMonthly * healthRate);
+          const rentEval = roundKrw((base.rent_deposit_krw + (base.rent_monthly_krw * rentToDeposit)) * rentEvalMultiplier);
+          const grossProperty = clampNonNegative(base.property_tax_base_total_krw + rentEval + base.owned_home_rent_eval_krw, 5000000000);
+          const netProperty = Math.max(0, grossProperty - deduction);
+          const propertyPoints = propertyPointsFromAmount(netProperty, propertyTable);
+          if (propertyPoints === null) return null;
+          const propertyPremium = roundKrw(propertyPoints * pointValue);
+          let health = clampNonNegative(incomePremium + propertyPremium);
+          if (cap > 0 && health > cap) health = cap;
+          if (floor > 0 && health > 0 && health < floor) health = floor;
+          const ltc = roundKrw(health * ltcRatio);
+          return {
+            ...base,
+            income_premium_krw: incomePremium,
+            property_premium_krw: propertyPremium,
+            health_est_krw: health,
+            ltc_est_krw: ltc,
+            total_est_krw: clampNonNegative(health + ltc),
+            property_base_after_deduction_krw: netProperty,
+            property_points: propertyPoints,
+          };
+        }
+
+        if (memberType === "employee") {
+          const salaryMonthly = clampNonNegative(base.salary_monthly_krw, 100000000);
+          const baseHealth = roundKrw(salaryMonthly * healthRate);
+          let extraHealth = 0;
+          if (base.annual_fin_income_krw > 20000000) {
+            extraHealth = roundKrw(((base.annual_fin_income_krw - 20000000) / 12) * healthRate);
+          }
+          let health = clampNonNegative(baseHealth + extraHealth);
+          if (cap > 0 && health > cap) health = cap;
+          const ltc = roundKrw(health * ltcRatio);
+          return {
+            ...base,
+            income_premium_krw: health,
+            property_premium_krw: 0,
+            health_est_krw: health,
+            ltc_est_krw: ltc,
+            total_est_krw: clampNonNegative(health + ltc),
+            property_base_after_deduction_krw: 0,
+            property_points: 0,
+          };
+        }
+
+        if (memberType === "dependent") {
+          return {
+            ...base,
+            income_premium_krw: 0,
+            property_premium_krw: 0,
+            health_est_krw: 0,
+            ltc_est_krw: 0,
+            total_est_krw: 0,
+            property_base_after_deduction_krw: 0,
+            property_points: 0,
+          };
+        }
+        return {
+          ...base,
+        };
+      };
+
+      let payload = {};
+      let baseline = buildFallbackView();
+      let currentView = buildFallbackView();
+
+      const applyPayload = (nextPayload) => {
+        payload = (nextPayload && typeof nextPayload === "object") ? nextPayload : {};
+        const baseRaw = payload.base || {};
+        baseline = normalizeBaseView(baseRaw);
+        currentView = { ...baseline };
+        renderEstimate(currentView);
+        hideResult();
+        hideError();
+        if (resetBtn) resetBtn.classList.add("asset-hidden");
+        setActiveAction("");
+
+        const ready = !!payload.ready;
+        setActionButtonsDisabled(!ready);
+        if (!ready) {
+          showError(payload.error_message || "지금은 가정 계산을 할 수 없어요. 입력을 저장하면 정확도가 올라가요.", payload.debug_missing);
+        }
+      };
+
+      const resetToBaseline = () => {
+        currentView = { ...baseline };
+        renderEstimate(currentView);
+        hideResult();
+        hideError();
+        if (resetBtn) resetBtn.classList.add("asset-hidden");
+        setActiveAction("");
+      };
+
+      const applyAction = (action) => {
+        hideError();
+        const rules = payload.rules || {};
+        const scenario = { ...baseline };
+        if (action === "fin_to_10m") {
+          scenario.annual_fin_income_krw = 10000000;
+        } else if (action === "deposit_plus_10m") {
+          scenario.rent_deposit_krw = clampNonNegative(scenario.rent_deposit_krw + 10000000, 5000000000);
+        } else if (action === "deposit_minus_10m") {
+          scenario.rent_deposit_krw = Math.max(0, clampNonNegative(scenario.rent_deposit_krw - 10000000, 5000000000));
+        } else if (action === "monthly_plus_100k") {
+          scenario.rent_monthly_krw = clampNonNegative(scenario.rent_monthly_krw + 100000, 500000000);
+        } else if (action === "monthly_minus_100k") {
+          scenario.rent_monthly_krw = Math.max(0, clampNonNegative(scenario.rent_monthly_krw - 100000, 500000000));
+        } else {
+          return;
+        }
+
+        const estimated = computeEstimate(scenario, rules);
+        if (!estimated) {
+          showError(payload.error_message || "지금은 가정 계산을 할 수 없어요. 입력을 저장하면 정확도가 올라가요.", payload.debug_missing);
+          return;
+        }
+        currentView = estimated;
+        renderEstimate(currentView);
+        const delta = toInt(currentView.total_est_krw, 0) - toInt(baseline.total_est_krw, 0);
+        const incomeDelta = toInt(currentView.income_premium_krw, 0) - toInt(baseline.income_premium_krw, 0);
+        const propertyDelta = toInt(currentView.property_premium_krw, 0) - toInt(baseline.property_premium_krw, 0);
+        const ltcDelta = toInt(currentView.ltc_est_krw, 0) - toInt(baseline.ltc_est_krw, 0);
+        if (resultEl) {
+          resultEl.textContent = (action === "fin_to_10m")
+            ? `가정 결과: 기준 가정 시 월 건보료 ${formatDeltaKrw(delta)} 차이(추정)`
+            : `가정 결과: 월 건보료 ${formatDeltaKrw(delta)} (추정)`;
+          resultEl.classList.remove("asset-hidden");
+        }
+        if (resultDetailEl) {
+          const changedParts = [];
+          if (incomeDelta !== 0) changedParts.push(`소득 영향 ${formatDeltaKrw(incomeDelta)}`);
+          if (propertyDelta !== 0) changedParts.push(`재산 영향 ${formatDeltaKrw(propertyDelta)}`);
+          if (ltcDelta !== 0) changedParts.push(`장기요양 ${formatDeltaKrw(ltcDelta)}`);
+          resultDetailEl.textContent = changedParts.length
+            ? `변한 항목: ${changedParts.join(" / ")}`
+            : "변한 항목: 큰 변화가 없어요(추정).";
+          resultDetailEl.classList.remove("asset-hidden");
+        }
+        if (resetBtn) resetBtn.classList.remove("asset-hidden");
+        setActiveAction(action);
+        if (diagnosisEl) {
+          diagnosisEl.textContent = `${scenarioLabel(action)} 적용 결과예요(추정). ${buildDiagnosis(currentView)}`;
+        }
+      };
+
+      root.querySelectorAll("[data-whatis-action]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const action = String(btn.getAttribute("data-whatis-action") || "").trim();
+          if (!action) return;
+          applyAction(action);
+        });
+      });
+
+      if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+          resetToBaseline();
+        });
+      }
+
+      window.addEventListener("assets-feedback-updated", (evt) => {
+        const detail = evt && evt.detail ? evt.detail : {};
+        const feedback = detail && detail.feedback ? detail.feedback : {};
+        if (feedback && typeof feedback === "object" && feedback.nhis_whatis_payload) {
+          applyPayload(feedback.nhis_whatis_payload);
+        } else {
+          applyPayload(parsePayload());
+        }
+      });
+
+      applyPayload(parsePayload());
+    };
+
+    initNhisWhatIf();
+
+    const syncRentModeFields = (opts) => {
+      const wrap = opts && opts.wrap ? opts.wrap : null;
+      const mode = String((opts && opts.mode) || "").toLowerCase();
+      const fieldAttr = String((opts && opts.fieldAttr) || "");
+      const inputAttr = String((opts && opts.inputAttr) || "");
+      if (!wrap || !fieldAttr || !inputAttr) return;
+
+      const showWrap = mode === "jeonse" || mode === "rent";
+      wrap.classList.toggle("show", showWrap);
+
+      wrap.querySelectorAll(`[${fieldAttr}]`).forEach((field) => {
+        const targetMode = String(field.getAttribute(fieldAttr) || "").toLowerCase();
+        field.classList.toggle("show", showWrap && targetMode === mode);
+      });
+
+      const clearInputsByMode = (targetMode) => {
+        wrap.querySelectorAll(`[${inputAttr}='${targetMode}']`).forEach((input) => {
+          if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLTextAreaElement)) return;
+          input.value = "";
+        });
+      };
+      if (mode === "jeonse") {
+        clearInputsByMode("rent");
+      } else if (mode === "rent") {
+        clearInputsByMode("jeonse");
+      } else {
+        clearInputsByMode("jeonse");
+        clearInputsByMode("rent");
+      }
+    };
+
+    const bindHomeRentToggle = (container = document) => {
+      const blocks = container.querySelectorAll(".asset-inline-form, .asset-add-draft, .asset-block");
+      blocks.forEach((block) => {
+        const modeSelect = block.querySelector("[data-home-rent-mode]");
+        const rentWrap = block.querySelector("[data-home-rent-fields]");
+        if (!modeSelect || !rentWrap || modeSelect.dataset.bound === "1") return;
+        const sync = () => {
+          syncRentModeFields({
+            wrap: rentWrap,
+            mode: modeSelect.value,
+            fieldAttr: "data-home-mode-field",
+            inputAttr: "data-home-rent-input",
+          });
+        };
+        modeSelect.addEventListener("change", sync);
+        sync();
+        modeSelect.dataset.bound = "1";
+      });
+    };
+    bindHomeRentToggle();
+
+    const currentHousingMode = document.getElementById("current-housing-mode");
+    const currentRentFields = document.getElementById("current-rent-fields");
+    const currentRentNote = document.getElementById("current-rent-note");
+    const homePanelBody = document.getElementById("home-panel-body");
+    const homePanelNote = document.getElementById("home-panel-note");
+    const homePanelToggle = document.getElementById("btn-toggle-home-panel");
+    const setHomePanelCollapsed = (collapsed) => {
+      if (!homePanelBody) return;
+      const isCollapsed = Boolean(collapsed);
+      homePanelBody.classList.toggle("collapsed", isCollapsed);
+      if (homePanelNote) {
+        homePanelNote.classList.toggle("asset-hidden", !isCollapsed);
+      }
+      if (homePanelToggle) {
+        homePanelToggle.textContent = isCollapsed ? "펼치기" : "접기";
+        homePanelToggle.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+      }
+    };
+    if (homePanelToggle && homePanelBody) {
+      homePanelToggle.addEventListener("click", () => {
+        const collapsed = homePanelBody.classList.contains("collapsed");
+        setHomePanelCollapsed(!collapsed);
+      });
+    }
+    if (currentHousingMode && currentRentFields && currentRentNote) {
+      const syncCurrentRent = () => {
+        const mode = String(currentHousingMode.value || "").toLowerCase();
+        const show = mode === "jeonse" || mode === "rent";
+        syncRentModeFields({
+          wrap: currentRentFields,
+          mode,
+          fieldAttr: "data-current-mode-field",
+          inputAttr: "data-current-rent-input",
+        });
+        currentRentNote.classList.toggle("asset-hidden", show);
+        setHomePanelCollapsed(mode !== "own");
+      };
+      currentHousingMode.addEventListener("change", syncCurrentRent);
+      syncCurrentRent();
+    } else if (homePanelBody) {
+      setHomePanelCollapsed(homePanelBody.classList.contains("collapsed"));
+    }
+
+    const incomeHybridEnabled = document.getElementById("income-hybrid-enabled");
+    const incomeHybridBody = document.getElementById("income-hybrid-body");
+    const incomeHybridLargeConfirmed = document.getElementById("income-hybrid-large-confirmed");
+    const syncIncomeHybridBody = () => {
+      if (!incomeHybridEnabled || !incomeHybridBody) return;
+      incomeHybridBody.classList.toggle("collapsed", !incomeHybridEnabled.checked);
+    };
+    if (incomeHybridEnabled && incomeHybridBody) {
+      incomeHybridEnabled.addEventListener("change", syncIncomeHybridBody);
+      syncIncomeHybridBody();
+    }
+
+    const numericOnly = /^\d+$/;
+    const confirmLargeIncomeHybridValue = () => {
+      if (!pageForm || !incomeHybridEnabled || !incomeHybridEnabled.checked) {
+        if (incomeHybridLargeConfirmed) incomeHybridLargeConfirmed.value = "0";
+        return true;
+      }
+      const fields = pageForm.querySelectorAll("[data-income-hybrid-input='1']");
+      let hasLargeValue = false;
+      for (const field of fields) {
+        const raw = String(field.value || "").trim();
+        if (!raw) continue;
+        const normalized = raw.replace(/,/g, "");
+        if (!numericOnly.test(normalized)) {
+          const labelEl = field.closest(".asset-field")?.querySelector(".asset-label");
+          const label = labelEl ? String(labelEl.textContent || "").trim() : "소득 값";
+          window.alert(`${label}은 숫자만 입력해 주세요.`);
+          field.focus();
+          return false;
+        }
+        const amount = Number(normalized);
+        if (Number.isFinite(amount) && amount > 10000000000) {
+          hasLargeValue = true;
+        }
+      }
+      if (hasLargeValue) {
+        const confirmed = window.confirm("입력값에 100억 원을 넘는 항목이 있어요. 값이 맞으면 저장을 계속하세요.");
+        if (incomeHybridLargeConfirmed) incomeHybridLargeConfirmed.value = confirmed ? "1" : "0";
+        return confirmed;
+      }
+      if (incomeHybridLargeConfirmed) incomeHybridLargeConfirmed.value = "0";
+      return true;
+    };
+    if (pageForm) {
+      pageForm.addEventListener("submit", (evt) => {
+        if (!confirmLargeIncomeHybridValue()) {
+          evt.preventDefault();
+        }
+      });
+    }
+
+    const wrap = document.getElementById("history-rows-wrap");
+    const countInput = document.getElementById("history-rows-count");
+    const addBtn = document.getElementById("btn-add-history-row");
+    if (wrap && countInput && addBtn) {
+      let historySaving = false;
+      const nextIndex = () => {
+        const n = parseInt(countInput.value || "0", 10);
+        return Number.isFinite(n) ? n + 1 : 1;
+      };
+      const renumberRows = () => {
+        const rows = Array.from(wrap.querySelectorAll("[data-history-row]"));
+        rows.forEach((row, idx0) => {
+          const idx = idx0 + 1;
+          row.setAttribute("data-history-row", String(idx));
+          row.querySelectorAll("input").forEach((input) => {
+            const name = String(input.getAttribute("name") || "");
+            if (!name.startsWith("history_")) return;
+            const parts = name.split("_");
+            const suffix = parts[parts.length - 1];
+            if (!/^\d+$/.test(suffix)) return;
+            parts[parts.length - 1] = String(idx);
+            input.setAttribute("name", parts.join("_"));
+          });
+        });
+      };
+      const syncCount = () => {
+        renumberRows();
+        const rows = wrap.querySelectorAll("[data-history-row]");
+        countInput.value = String(rows.length || 0);
+      };
+      const buildHistoryPayload = () => {
+        const fd = new FormData();
+        fd.set("csrf_token", csrfToken);
+        fd.set("month", monthKey);
+        fd.set("action", "save_history_only");
+        fd.set("history_rows", String(countInput.value || "0"));
+        wrap.querySelectorAll("input[name^='history_']").forEach((input) => {
+          fd.set(input.name, input.value ?? "");
+        });
+        return fd;
+      };
+      const saveHistoryOnly = async () => {
+        if (historySaving) return;
+        historySaving = true;
+        try {
+          const res = await fetch(toJsonUrl(postUrlBase), {
+            method: "POST",
+            headers: { "X-CSRF-Token": csrfToken },
+            body: buildHistoryPayload(),
+            credentials: "same-origin",
+          });
+          const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+          if (!contentType.includes("application/json")) {
+            throw new Error("non_json_response");
+          }
+          const payload = await res.json();
+          if (!res.ok || !payload || payload.ok !== true) {
+            const msg = (payload && payload.message) ? payload.message : "과거 고지 이력을 저장하지 못했어요.";
+            showInlineStatus(msg, false);
+            return;
+          }
+          showInlineStatus(String(payload.message || "과거 고지 이력을 저장했어요."), true);
+          updateFeedbackCard(payload);
+        } catch (_) {
+          showInlineStatus("과거 고지 이력을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.", false);
+        } finally {
+          historySaving = false;
+        }
+      };
+      const bindRemove = (el) => {
+        if (!el) return;
+        el.addEventListener("click", () => {
+          const row = el.closest("[data-history-row]");
+          if (row) row.remove();
+          if (wrap.querySelectorAll("[data-history-row]").length === 0) {
+            addBtn.click();
+          } else {
+            syncCount();
+          }
+          void saveHistoryOnly();
+        });
+      };
+      wrap.querySelectorAll("[data-remove-history='1']").forEach(bindRemove);
+      addBtn.addEventListener("click", () => {
+        const idx = nextIndex();
+        const row = document.createElement("div");
+        row.className = "asset-history-row";
+        row.setAttribute("data-history-row", String(idx));
+        row.innerHTML = `
+          <div class="asset-history-grid">
+            <label class="asset-field">
+              <span class="asset-label">연도</span>
+              <input class="asset-input" type="text" name="history_year_${idx}" value="" placeholder="예: 2025">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">월(선택)</span>
+              <input class="asset-input" type="text" name="history_month_${idx}" value="" placeholder="비우면 연간">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">합계(원)</span>
+              <input class="asset-input" type="text" name="history_total_krw_${idx}" value="">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">건보료만(원)</span>
+              <input class="asset-input" type="text" name="history_health_only_krw_${idx}" value="">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">부과점수(선택)</span>
+              <input class="asset-input" type="text" name="history_score_points_${idx}" value="">
+            </label>
+            <button type="button" class="btn ghost danger asset-history-remove" data-remove-history="1">삭제</button>
+          </div>`;
+        wrap.appendChild(row);
+        const removeBtn = row.querySelector("[data-remove-history='1']");
+        bindRemove(removeBtn);
+        syncCount();
+      });
+      syncCount();
+    }
+
+    async function submitInline(blockEl, action) {
+      const postUrl = String(blockEl.getAttribute("data-post-url") || "").trim();
+      if (!postUrl) return;
+      const fd = new FormData();
+      const targetItemId = String((blockEl.querySelector("input[name='item_id']") || {}).value || "").trim();
+      fd.set("csrf_token", csrfToken);
+      fd.set("month", monthKey);
+      fd.set("action", action || String(blockEl.getAttribute("data-inline-action") || "save_main"));
+      if ((action === "update_item" || action === "delete_item") && targetItemId) {
+        fd.set("_target_item_id", targetItemId);
+      }
+      blockEl.querySelectorAll("input, select, textarea").forEach((el) => {
+        if (!el.name) return;
+        if (el.type === "checkbox" || el.type === "radio") {
+          if (!el.checked) return;
+        }
+        fd.set(el.name, el.value ?? "");
+      });
+      const url = postUrl.includes("?") ? `${postUrl}&format=json` : `${postUrl}?format=json`;
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "X-CSRF-Token": csrfToken },
+          body: fd,
+          credentials: "same-origin",
+        });
+        const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+        if (!contentType.includes("application/json")) {
+          throw new Error("non_json_response");
+        }
+        const payload = await res.json();
+        if (!payload || typeof payload.ok !== "boolean") {
+          throw new Error("invalid_json_contract");
+        }
+        if (!res.ok || !payload.ok) {
+          const errMsg = (payload && payload.message) ? payload.message : "저장에 실패했어요.";
+          showInlineStatus(errMsg, false);
+          return;
+        }
+        const msg = (payload && payload.message) ? payload.message : "저장됐어요.";
+        showInlineStatus(msg, true);
+        updateFeedbackCard(payload);
+        const nextUrl = "{{ url_for('web_profile.assets_page', month=month_key, skip_quiz=1) }}";
+        window.setTimeout(() => {
+          const joiner = nextUrl.includes("?") ? "&" : "?";
+          window.location.href = `${nextUrl}${joiner}_ts=${Date.now()}`;
+        }, 420);
+      } catch (_) {
+        // JSON 응답을 받지 못했거나 네트워크 오류가 나면 일반 폼 제출로 안전하게 폴백.
+        const form = blockEl.closest("form");
+        if (form) {
+          const hidden = document.createElement("input");
+          hidden.type = "hidden";
+          hidden.name = "action";
+          if ((action === "update_item" || action === "delete_item") && targetItemId) {
+            hidden.value = `${action}:${targetItemId}`;
+            const hiddenTarget = document.createElement("input");
+            hiddenTarget.type = "hidden";
+            hiddenTarget.name = "_target_item_id";
+            hiddenTarget.value = targetItemId;
+            form.appendChild(hiddenTarget);
+          } else {
+            hidden.value = action || "save_main";
+          }
+          form.appendChild(hidden);
+          form.submit();
+          return;
+        }
+        showInlineStatus("저장에 실패했어요. 잠시 후 다시 시도해 주세요.", false);
+      }
+    }
+
+    document.querySelectorAll("[data-inline-submit]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const action = String(btn.getAttribute("data-inline-submit") || "").trim();
+        const block = btn.closest(".asset-inline-form");
+        if (!block || !action) return;
+        if (action === "delete_item" && !window.confirm("정말 삭제할까요?")) {
+          return;
+        }
+        e.preventDefault();
+        btn.disabled = true;
+        submitInline(block, action).finally(() => {
+          btn.disabled = false;
+        });
+      });
+    });
+
+    // 인라인 카드 입력 중 Enter로 전체 폼이 제출되는 것을 방지한다.
+    document.querySelectorAll(".asset-inline-form input, .asset-inline-form select").forEach((el) => {
+      el.addEventListener("keydown", (evt) => {
+        if (evt.key !== "Enter") return;
+        evt.preventDefault();
+        const block = el.closest(".asset-inline-form");
+        if (!block) return;
+        const updateBtn = block.querySelector("[data-inline-submit='update_item']");
+        const addHomeBtn = block.querySelector("[data-inline-submit='add_home_item']");
+        const addCarBtn = block.querySelector("[data-inline-submit='add_car_item']");
+        const targetBtn = updateBtn || addHomeBtn || addCarBtn;
+        if (targetBtn instanceof HTMLElement) {
+          targetBtn.click();
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

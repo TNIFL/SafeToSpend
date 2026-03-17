@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}건보료 기준 데이터 진단 | 관리자{% endblock %}
+
+{% block content %}
+<div class="wrap" style="max-width:1080px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">건보료 기준 데이터 진단</div>
+      <div class="p">공식 기준 데이터 스냅샷과 최신성 상태를 확인합니다.</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_profile.nhis_page') }}">건보료 페이지</a>
+      <a class="btn ghost" href="{{ url_for('web_profile.admin_assets_data') }}">자산 데이터 진단</a>
+    </div>
+  </div>
+
+  {% if not rows %}
+    <div class="card pad">
+      <div class="h2" style="font-size:1rem;">스냅샷이 아직 없어요</div>
+      <div class="p">`flask --app app refresh-nhis-rates`로 기준 데이터를 먼저 갱신해 주세요.</div>
+    </div>
+  {% else %}
+    <div class="table-card card" style="overflow:auto;">
+      <table class="table" style="min-width:980px;">
+        <thead>
+          <tr>
+            <th>기준연도</th>
+            <th>건강보험료율</th>
+            <th>장기요양 비율</th>
+            <th>장기요양(소득비)</th>
+            <th>점수당 금액</th>
+            <th>재산 기본공제</th>
+            <th>자동차 부과</th>
+            <th>업데이트</th>
+            <th>활성</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>{{ row.effective_year }}</td>
+              <td>{{ "%.2f"|format((row.health_insurance_rate or 0) * 100) }}%</td>
+              <td>{{ "%.2f"|format((row.long_term_care_ratio_of_health or 0) * 100) }}%</td>
+              <td>
+                {% if row.long_term_care_rate_optional is not none %}
+                  {{ "%.4f"|format((row.long_term_care_rate_optional or 0) * 100) }}%
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>{{ "{:,.1f}".format(row.regional_point_value or 0) }}원</td>
+              <td>{{ "{:,}".format(row.property_basic_deduction_krw or 0) }}원</td>
+              <td>{{ "적용" if row.car_premium_enabled else "폐지" }}</td>
+              <td>{{ row.fetched_at.strftime("%Y-%m-%d %H:%M") if row.fetched_at else "-" }}</td>
+              <td>
+                {% if row.is_active %}
+                  <span class="chip chip-done">활성</span>
+                {% else %}
+                  <span class="chip">비활성</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

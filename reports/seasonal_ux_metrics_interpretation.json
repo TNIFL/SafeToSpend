@@ -1,0 +1,204 @@
+{
+  "generated_at": "2026-03-15T20:53:06",
+  "source_report": "reports/seasonal_ux_metrics_audit_latest.json",
+  "thresholds": {
+    "min_shown_for_directional_read": 30,
+    "min_clicked_for_directional_read": 10,
+    "min_completed_for_completion_read": 5,
+    "min_shown_for_provisional_copy_review": 5,
+    "min_clicked_for_provisional_friction_review": 1
+  },
+  "has_enough_data": false,
+  "insufficient_data_reason": "No card reached the minimum shown/clicked/completed thresholds for directional priority changes.",
+  "overall_summary": {
+    "seasonal_ux_rows": 24,
+    "shown_count": 22,
+    "clicked_count": 1,
+    "landed_count": 1,
+    "completed_count": 0,
+    "observed_season_focuses": [
+      "off_season"
+    ]
+  },
+  "by_card_interpretation": [
+    {
+      "season_focus": "off_season",
+      "card_type": "offseason_accuracy",
+      "source_screen": "overview",
+      "cta_target": "profile",
+      "shown_count": 2,
+      "clicked_count": 0,
+      "completed_count": 0,
+      "ctr": 0.0,
+      "completion_rate_from_click": 0.0,
+      "enough_for_directional_read": false,
+      "interpretation": "insufficient_data",
+      "recommendation": "hold"
+    },
+    {
+      "season_focus": "off_season",
+      "card_type": "offseason_accuracy",
+      "source_screen": "overview",
+      "cta_target": "tax_buffer",
+      "shown_count": 1,
+      "clicked_count": 0,
+      "completed_count": 0,
+      "ctr": 0.0,
+      "completion_rate_from_click": 0.0,
+      "enough_for_directional_read": false,
+      "interpretation": "insufficient_data",
+      "recommendation": "hold"
+    },
+    {
+      "season_focus": "off_season",
+      "card_type": "offseason_accuracy",
+      "source_screen": "tax_buffer",
+      "cta_target": "profile",
+      "shown_count": 1,
+      "clicked_count": 0,
+      "completed_count": 0,
+      "ctr": 0.0,
+      "completion_rate_from_click": 0.0,
+      "enough_for_directional_read": false,
+      "interpretation": "insufficient_data",
+      "recommendation": "hold"
+    },
+    {
+      "season_focus": "off_season",
+      "card_type": "offseason_accuracy",
+      "source_screen": "tax_buffer",
+      "cta_target": "tax_buffer",
+      "shown_count": 5,
+      "clicked_count": 0,
+      "completed_count": 0,
+      "ctr": 0.0,
+      "completion_rate_from_click": 0.0,
+      "enough_for_directional_read": false,
+      "interpretation": "low_ctr_signal_but_insufficient_data",
+      "recommendation": "copy_review"
+    },
+    {
+      "season_focus": "off_season",
+      "card_type": "offseason_monthly_review",
+      "source_screen": "overview",
+      "cta_target": "review",
+      "shown_count": 3,
+      "clicked_count": 0,
+      "completed_count": 0,
+      "ctr": 0.0,
+      "completion_rate_from_click": 0.0,
+      "enough_for_directional_read": false,
+      "interpretation": "insufficient_data",
+      "recommendation": "hold"
+    },
+    {
+      "season_focus": "off_season",
+      "card_type": "offseason_monthly_review",
+      "source_screen": "review",
+      "cta_target": "review",
+      "shown_count": 4,
+      "clicked_count": 1,
+      "completed_count": 0,
+      "ctr": 25.0,
+      "completion_rate_from_click": 0.0,
+      "enough_for_directional_read": false,
+      "interpretation": "completion_friction_signal_but_insufficient_data",
+      "recommendation": "completion_friction_review"
+    },
+    {
+      "season_focus": "off_season",
+      "card_type": "offseason_package_ready",
+      "source_screen": "overview",
+      "cta_target": "package",
+      "shown_count": 3,
+      "clicked_count": 0,
+      "completed_count": 0,
+      "ctr": 0.0,
+      "completion_rate_from_click": 0.0,
+      "enough_for_directional_read": false,
+      "interpretation": "insufficient_data",
+      "recommendation": "hold"
+    },
+    {
+      "season_focus": "off_season",
+      "card_type": "offseason_package_ready",
+      "source_screen": "package",
+      "cta_target": "package",
+      "shown_count": 3,
+      "clicked_count": 0,
+      "completed_count": 0,
+      "ctr": 0.0,
+      "completion_rate_from_click": 0.0,
+      "enough_for_directional_read": false,
+      "interpretation": "insufficient_data",
+      "recommendation": "hold"
+    }
+  ],
+  "by_screen_interpretation": [
+    {
+      "source_screen": "overview",
+      "shown_count": 9,
+      "clicked_count": 0,
+      "landed_count": 0,
+      "completed_count": 0,
+      "ctr": 0.0,
+      "completion_rate_from_click": 0.0,
+      "interpretation": "insufficient_data"
+    },
+    {
+      "source_screen": "package",
+      "shown_count": 3,
+      "clicked_count": 0,
+      "landed_count": 0,
+      "completed_count": 0,
+      "ctr": 0.0,
+      "completion_rate_from_click": 0.0,
+      "interpretation": "insufficient_data"
+    },
+    {
+      "source_screen": "review",
+      "shown_count": 4,
+      "clicked_count": 1,
+      "landed_count": 1,
+      "completed_count": 0,
+      "ctr": 25.0,
+      "completion_rate_from_click": 0.0,
+      "interpretation": "insufficient_data"
+    },
+    {
+      "source_screen": "tax_buffer",
+      "shown_count": 6,
+      "clicked_count": 0,
+      "landed_count": 0,
+      "completed_count": 0,
+      "ctr": 0.0,
+      "completion_rate_from_click": 0.0,
+      "interpretation": "insufficient_data"
+    }
+  ],
+  "candidates_for_priority_raise": [],
+  "candidates_for_priority_lower": [],
+  "cards_needing_copy_review": [
+    {
+      "season_focus": "off_season",
+      "card_type": "offseason_accuracy",
+      "source_screen": "tax_buffer",
+      "cta_target": "tax_buffer",
+      "reason": "shown exists but clicked is zero"
+    }
+  ],
+  "cards_needing_completion_friction_review": [
+    {
+      "season_focus": "off_season",
+      "card_type": "offseason_monthly_review",
+      "source_screen": "review",
+      "cta_target": "review",
+      "reason": "clicked and landed happened but completed is zero"
+    }
+  ],
+  "provisional_recommendations": [
+    "Off-season accuracy cards have repeated shown events but zero clicks, so CTA copy should become more concrete before changing priority.",
+    "The review seasonal context card is the only card with click+landed activity, so keep its priority but reduce same-screen CTA friction.",
+    "Do not reorder may/november cards yet because current data is below directional thresholds."
+  ]
+}

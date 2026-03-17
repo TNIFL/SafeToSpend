@@ -1,0 +1,2731 @@
+{
+  "generated_at_utc": "2026-03-14T02:19:11",
+  "month_key": "2026-03",
+  "scanned_users": 97,
+  "config": {
+    "recent_active_days": 90,
+    "legacy_days": 365
+  },
+  "cohort_definitions": [
+    {
+      "key": "all_users",
+      "description": "조회된 전체 사용자"
+    },
+    {
+      "key": "recent_active_users",
+      "description": "최근 90일 활동 사용자"
+    },
+    {
+      "key": "profile_started_users",
+      "description": "세금/건보 입력이 최소 1개 이상 시작된 사용자"
+    },
+    {
+      "key": "linked_account_users",
+      "description": "계좌 연동 이력이 있는 사용자"
+    },
+    {
+      "key": "exclude_admin_test_inactive_legacy",
+      "description": "관리자/테스트/비활성/레거시 휴면 계정을 제외한 사용자"
+    },
+    {
+      "key": "operational_target_users",
+      "description": "권장 분모(관리자·테스트 제외 + 최근 활성 + 입력 시작 사용자)"
+    }
+  ],
+  "cohort_flag_counts": {
+    "admin_accounts": 1,
+    "test_accounts": 88,
+    "inactive_accounts": 80,
+    "legacy_dormant_accounts": 0,
+    "recent_active_accounts": 17,
+    "profile_started_accounts": 39,
+    "linked_account_accounts": 3
+  },
+  "recommended_distribution_cohort": "operational_target_users",
+  "errors": {
+    "error_count": 0,
+    "top_error_types": []
+  },
+  "cohorts": {
+    "all_users": {
+      "scanned_users": 97,
+      "tax": {
+        "accuracy_level_distribution": [
+          {
+            "key": "blocked",
+            "count": 95,
+            "percent": 97.94
+          },
+          {
+            "key": "limited",
+            "count": 2,
+            "percent": 2.06
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_income_classification",
+            "count": 95,
+            "percent": 97.94
+          },
+          {
+            "key": "proxy_from_annual_income",
+            "count": 2,
+            "percent": 2.06
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_income_classification",
+            "count": 95,
+            "percent": 97.94
+          },
+          {
+            "key": "proxy_from_annual_income",
+            "count": 2,
+            "percent": 2.06
+          }
+        ],
+        "segments": {
+          "income_classification": [
+            {
+              "segment": "unknown",
+              "total": 97,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 2.06
+                },
+                {
+                  "key": "blocked",
+                  "count": 95,
+                  "percent": 97.94
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 66.67
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 33.33
+                }
+              ]
+            },
+            {
+              "segment": "not_linked",
+              "total": 94,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 94,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 6,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 4,
+                  "percent": 66.67
+                }
+              ]
+            },
+            {
+              "segment": "profile_incomplete",
+              "total": 91,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 91,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "nhis": {
+        "accuracy_level_distribution": [
+          {
+            "key": "blocked",
+            "count": 61,
+            "percent": 62.89
+          },
+          {
+            "key": "limited",
+            "count": 28,
+            "percent": 28.87
+          },
+          {
+            "key": "high_confidence",
+            "count": 8,
+            "percent": 8.25
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_membership_type",
+            "count": 61,
+            "percent": 62.89
+          },
+          {
+            "key": "missing_non_salary_income",
+            "count": 26,
+            "percent": 26.8
+          },
+          {
+            "key": "ok",
+            "count": 8,
+            "percent": 8.25
+          },
+          {
+            "key": "insufficient_profile_inputs",
+            "count": 1,
+            "percent": 1.03
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 1.03
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_membership_type",
+            "count": 61,
+            "percent": 68.54
+          },
+          {
+            "key": "missing_non_salary_income",
+            "count": 26,
+            "percent": 29.21
+          },
+          {
+            "key": "insufficient_profile_inputs",
+            "count": 1,
+            "percent": 1.12
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 1.12
+          }
+        ],
+        "segments": {
+          "member_type": [
+            {
+              "segment": "regional",
+              "total": 36,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 8,
+                  "percent": 22.22
+                },
+                {
+                  "key": "limited",
+                  "count": 28,
+                  "percent": 77.78
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "unknown",
+              "total": 61,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 61,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 33.33
+                }
+              ]
+            },
+            {
+              "segment": "not_linked",
+              "total": 94,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 7,
+                  "percent": 7.45
+                },
+                {
+                  "key": "limited",
+                  "count": 27,
+                  "percent": 28.72
+                },
+                {
+                  "key": "blocked",
+                  "count": 60,
+                  "percent": 63.83
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 6,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 1,
+                  "percent": 16.67
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 3,
+                  "percent": 50.0
+                }
+              ]
+            },
+            {
+              "segment": "profile_incomplete",
+              "total": 91,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 7,
+                  "percent": 7.69
+                },
+                {
+                  "key": "limited",
+                  "count": 26,
+                  "percent": 28.57
+                },
+                {
+                  "key": "blocked",
+                  "count": 58,
+                  "percent": 63.74
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "recent_active_users": {
+      "scanned_users": 17,
+      "tax": {
+        "accuracy_level_distribution": [
+          {
+            "key": "blocked",
+            "count": 15,
+            "percent": 88.24
+          },
+          {
+            "key": "limited",
+            "count": 2,
+            "percent": 11.76
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_income_classification",
+            "count": 15,
+            "percent": 88.24
+          },
+          {
+            "key": "proxy_from_annual_income",
+            "count": 2,
+            "percent": 11.76
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_income_classification",
+            "count": 15,
+            "percent": 88.24
+          },
+          {
+            "key": "proxy_from_annual_income",
+            "count": 2,
+            "percent": 11.76
+          }
+        ],
+        "segments": {
+          "income_classification": [
+            {
+              "segment": "unknown",
+              "total": 17,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 11.76
+                },
+                {
+                  "key": "blocked",
+                  "count": 15,
+                  "percent": 88.24
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 66.67
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 33.33
+                }
+              ]
+            },
+            {
+              "segment": "not_linked",
+              "total": 14,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 14,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 5,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 40.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 3,
+                  "percent": 60.0
+                }
+              ]
+            },
+            {
+              "segment": "profile_incomplete",
+              "total": 12,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 12,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "nhis": {
+        "accuracy_level_distribution": [
+          {
+            "key": "blocked",
+            "count": 14,
+            "percent": 82.35
+          },
+          {
+            "key": "limited",
+            "count": 2,
+            "percent": 11.76
+          },
+          {
+            "key": "high_confidence",
+            "count": 1,
+            "percent": 5.88
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_membership_type",
+            "count": 14,
+            "percent": 82.35
+          },
+          {
+            "key": "insufficient_profile_inputs",
+            "count": 1,
+            "percent": 5.88
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 5.88
+          },
+          {
+            "key": "ok",
+            "count": 1,
+            "percent": 5.88
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_membership_type",
+            "count": 14,
+            "percent": 87.5
+          },
+          {
+            "key": "insufficient_profile_inputs",
+            "count": 1,
+            "percent": 6.25
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 6.25
+          }
+        ],
+        "segments": {
+          "member_type": [
+            {
+              "segment": "regional",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 66.67
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "unknown",
+              "total": 14,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 14,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 33.33
+                }
+              ]
+            },
+            {
+              "segment": "not_linked",
+              "total": 14,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 7.14
+                },
+                {
+                  "key": "blocked",
+                  "count": 13,
+                  "percent": 92.86
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 5,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 1,
+                  "percent": 20.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 20.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 3,
+                  "percent": 60.0
+                }
+              ]
+            },
+            {
+              "segment": "profile_incomplete",
+              "total": 12,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 8.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 11,
+                  "percent": 91.67
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "profile_started_users": {
+      "scanned_users": 39,
+      "tax": {
+        "accuracy_level_distribution": [
+          {
+            "key": "blocked",
+            "count": 37,
+            "percent": 94.87
+          },
+          {
+            "key": "limited",
+            "count": 2,
+            "percent": 5.13
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_income_classification",
+            "count": 37,
+            "percent": 94.87
+          },
+          {
+            "key": "proxy_from_annual_income",
+            "count": 2,
+            "percent": 5.13
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_income_classification",
+            "count": 37,
+            "percent": 94.87
+          },
+          {
+            "key": "proxy_from_annual_income",
+            "count": 2,
+            "percent": 5.13
+          }
+        ],
+        "segments": {
+          "income_classification": [
+            {
+              "segment": "unknown",
+              "total": 39,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 5.13
+                },
+                {
+                  "key": "blocked",
+                  "count": 37,
+                  "percent": 94.87
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 100.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "not_linked",
+              "total": 37,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 37,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 6,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 4,
+                  "percent": 66.67
+                }
+              ]
+            },
+            {
+              "segment": "profile_incomplete",
+              "total": 33,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 33,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "nhis": {
+        "accuracy_level_distribution": [
+          {
+            "key": "limited",
+            "count": 28,
+            "percent": 71.79
+          },
+          {
+            "key": "high_confidence",
+            "count": 8,
+            "percent": 20.51
+          },
+          {
+            "key": "blocked",
+            "count": 3,
+            "percent": 7.69
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_non_salary_income",
+            "count": 26,
+            "percent": 66.67
+          },
+          {
+            "key": "ok",
+            "count": 8,
+            "percent": 20.51
+          },
+          {
+            "key": "missing_membership_type",
+            "count": 3,
+            "percent": 7.69
+          },
+          {
+            "key": "insufficient_profile_inputs",
+            "count": 1,
+            "percent": 2.56
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 2.56
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_non_salary_income",
+            "count": 26,
+            "percent": 83.87
+          },
+          {
+            "key": "missing_membership_type",
+            "count": 3,
+            "percent": 9.68
+          },
+          {
+            "key": "insufficient_profile_inputs",
+            "count": 1,
+            "percent": 3.23
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 3.23
+          }
+        ],
+        "segments": {
+          "member_type": [
+            {
+              "segment": "regional",
+              "total": 36,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 8,
+                  "percent": 22.22
+                },
+                {
+                  "key": "limited",
+                  "count": 28,
+                  "percent": 77.78
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "unknown",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 3,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 1,
+                  "percent": 50.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 50.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "not_linked",
+              "total": 37,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 7,
+                  "percent": 18.92
+                },
+                {
+                  "key": "limited",
+                  "count": 27,
+                  "percent": 72.97
+                },
+                {
+                  "key": "blocked",
+                  "count": 3,
+                  "percent": 8.11
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 6,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 1,
+                  "percent": 16.67
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 3,
+                  "percent": 50.0
+                }
+              ]
+            },
+            {
+              "segment": "profile_incomplete",
+              "total": 33,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 7,
+                  "percent": 21.21
+                },
+                {
+                  "key": "limited",
+                  "count": 26,
+                  "percent": 78.79
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "linked_account_users": {
+      "scanned_users": 3,
+      "tax": {
+        "accuracy_level_distribution": [
+          {
+            "key": "limited",
+            "count": 2,
+            "percent": 66.67
+          },
+          {
+            "key": "blocked",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "proxy_from_annual_income",
+            "count": 2,
+            "percent": 66.67
+          },
+          {
+            "key": "missing_income_classification",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "proxy_from_annual_income",
+            "count": 2,
+            "percent": 66.67
+          },
+          {
+            "key": "missing_income_classification",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "segments": {
+          "income_classification": [
+            {
+              "segment": "unknown",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 66.67
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 33.33
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 66.67
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 33.33
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 2,
+                  "percent": 100.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "profile_incomplete",
+              "total": 1,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "nhis": {
+        "accuracy_level_distribution": [
+          {
+            "key": "blocked",
+            "count": 1,
+            "percent": 33.33
+          },
+          {
+            "key": "high_confidence",
+            "count": 1,
+            "percent": 33.33
+          },
+          {
+            "key": "limited",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_membership_type",
+            "count": 1,
+            "percent": 33.33
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 33.33
+          },
+          {
+            "key": "ok",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_membership_type",
+            "count": 1,
+            "percent": 50.0
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 50.0
+          }
+        ],
+        "segments": {
+          "member_type": [
+            {
+              "segment": "regional",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 1,
+                  "percent": 50.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 50.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "unknown",
+              "total": 1,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 33.33
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 1,
+                  "percent": 50.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 50.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "profile_incomplete",
+              "total": 1,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "exclude_admin_test_inactive_legacy": {
+      "scanned_users": 5,
+      "tax": {
+        "accuracy_level_distribution": [
+          {
+            "key": "blocked",
+            "count": 4,
+            "percent": 80.0
+          },
+          {
+            "key": "limited",
+            "count": 1,
+            "percent": 20.0
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_income_classification",
+            "count": 4,
+            "percent": 80.0
+          },
+          {
+            "key": "proxy_from_annual_income",
+            "count": 1,
+            "percent": 20.0
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_income_classification",
+            "count": 4,
+            "percent": 80.0
+          },
+          {
+            "key": "proxy_from_annual_income",
+            "count": 1,
+            "percent": 20.0
+          }
+        ],
+        "segments": {
+          "income_classification": [
+            {
+              "segment": "unknown",
+              "total": 5,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 20.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 4,
+                  "percent": 80.0
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 50.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 50.0
+                }
+              ]
+            },
+            {
+              "segment": "not_linked",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 3,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 2,
+                  "percent": 66.67
+                }
+              ]
+            },
+            {
+              "segment": "profile_incomplete",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 2,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "nhis": {
+        "accuracy_level_distribution": [
+          {
+            "key": "blocked",
+            "count": 4,
+            "percent": 80.0
+          },
+          {
+            "key": "limited",
+            "count": 1,
+            "percent": 20.0
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_membership_type",
+            "count": 4,
+            "percent": 80.0
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 20.0
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_membership_type",
+            "count": 4,
+            "percent": 80.0
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 20.0
+          }
+        ],
+        "segments": {
+          "member_type": [
+            {
+              "segment": "regional",
+              "total": 1,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 100.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "unknown",
+              "total": 4,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 4,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 50.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 1,
+                  "percent": 50.0
+                }
+              ]
+            },
+            {
+              "segment": "not_linked",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 3,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 2,
+                  "percent": 66.67
+                }
+              ]
+            },
+            {
+              "segment": "profile_incomplete",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 2,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "operational_target_users": {
+      "scanned_users": 3,
+      "tax": {
+        "accuracy_level_distribution": [
+          {
+            "key": "blocked",
+            "count": 2,
+            "percent": 66.67
+          },
+          {
+            "key": "limited",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_income_classification",
+            "count": 2,
+            "percent": 66.67
+          },
+          {
+            "key": "proxy_from_annual_income",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_income_classification",
+            "count": 2,
+            "percent": 66.67
+          },
+          {
+            "key": "proxy_from_annual_income",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "segments": {
+          "income_classification": [
+            {
+              "segment": "unknown",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 2,
+                  "percent": 66.67
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 1,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 100.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "not_linked",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 2,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 2,
+                  "percent": 66.67
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "nhis": {
+        "accuracy_level_distribution": [
+          {
+            "key": "blocked",
+            "count": 2,
+            "percent": 66.67
+          },
+          {
+            "key": "limited",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "reason_distribution_all": [
+          {
+            "key": "missing_membership_type",
+            "count": 2,
+            "percent": 66.67
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "reason_distribution_limited_blocked": [
+          {
+            "key": "missing_membership_type",
+            "count": 2,
+            "percent": 66.67
+          },
+          {
+            "key": "missing_property_tax_base",
+            "count": 1,
+            "percent": 33.33
+          }
+        ],
+        "segments": {
+          "member_type": [
+            {
+              "segment": "regional",
+              "total": 1,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 100.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "unknown",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 2,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "linked_account": [
+            {
+              "segment": "linked",
+              "total": 1,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 100.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 0,
+                  "percent": 0.0
+                }
+              ]
+            },
+            {
+              "segment": "not_linked",
+              "total": 2,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "blocked",
+                  "count": 2,
+                  "percent": 100.0
+                }
+              ]
+            }
+          ],
+          "profile_completion": [
+            {
+              "segment": "profile_complete",
+              "total": 3,
+              "levels": [
+                {
+                  "key": "exact_ready",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "high_confidence",
+                  "count": 0,
+                  "percent": 0.0
+                },
+                {
+                  "key": "limited",
+                  "count": 1,
+                  "percent": 33.33
+                },
+                {
+                  "key": "blocked",
+                  "count": 2,
+                  "percent": 66.67
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "tax": {
+    "accuracy_level_distribution": [
+      {
+        "key": "blocked",
+        "count": 95,
+        "percent": 97.94
+      },
+      {
+        "key": "limited",
+        "count": 2,
+        "percent": 2.06
+      }
+    ],
+    "reason_distribution_all": [
+      {
+        "key": "missing_income_classification",
+        "count": 95,
+        "percent": 97.94
+      },
+      {
+        "key": "proxy_from_annual_income",
+        "count": 2,
+        "percent": 2.06
+      }
+    ],
+    "reason_distribution_limited_blocked": [
+      {
+        "key": "missing_income_classification",
+        "count": 95,
+        "percent": 97.94
+      },
+      {
+        "key": "proxy_from_annual_income",
+        "count": 2,
+        "percent": 2.06
+      }
+    ],
+    "segments": {
+      "income_classification": [
+        {
+          "segment": "unknown",
+          "total": 97,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "limited",
+              "count": 2,
+              "percent": 2.06
+            },
+            {
+              "key": "blocked",
+              "count": 95,
+              "percent": 97.94
+            }
+          ]
+        }
+      ],
+      "linked_account": [
+        {
+          "segment": "linked",
+          "total": 3,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "limited",
+              "count": 2,
+              "percent": 66.67
+            },
+            {
+              "key": "blocked",
+              "count": 1,
+              "percent": 33.33
+            }
+          ]
+        },
+        {
+          "segment": "not_linked",
+          "total": 94,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "limited",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "blocked",
+              "count": 94,
+              "percent": 100.0
+            }
+          ]
+        }
+      ],
+      "profile_completion": [
+        {
+          "segment": "profile_complete",
+          "total": 6,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "limited",
+              "count": 2,
+              "percent": 33.33
+            },
+            {
+              "key": "blocked",
+              "count": 4,
+              "percent": 66.67
+            }
+          ]
+        },
+        {
+          "segment": "profile_incomplete",
+          "total": 91,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "limited",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "blocked",
+              "count": 91,
+              "percent": 100.0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "nhis": {
+    "accuracy_level_distribution": [
+      {
+        "key": "blocked",
+        "count": 61,
+        "percent": 62.89
+      },
+      {
+        "key": "limited",
+        "count": 28,
+        "percent": 28.87
+      },
+      {
+        "key": "high_confidence",
+        "count": 8,
+        "percent": 8.25
+      }
+    ],
+    "reason_distribution_all": [
+      {
+        "key": "missing_membership_type",
+        "count": 61,
+        "percent": 62.89
+      },
+      {
+        "key": "missing_non_salary_income",
+        "count": 26,
+        "percent": 26.8
+      },
+      {
+        "key": "ok",
+        "count": 8,
+        "percent": 8.25
+      },
+      {
+        "key": "insufficient_profile_inputs",
+        "count": 1,
+        "percent": 1.03
+      },
+      {
+        "key": "missing_property_tax_base",
+        "count": 1,
+        "percent": 1.03
+      }
+    ],
+    "reason_distribution_limited_blocked": [
+      {
+        "key": "missing_membership_type",
+        "count": 61,
+        "percent": 68.54
+      },
+      {
+        "key": "missing_non_salary_income",
+        "count": 26,
+        "percent": 29.21
+      },
+      {
+        "key": "insufficient_profile_inputs",
+        "count": 1,
+        "percent": 1.12
+      },
+      {
+        "key": "missing_property_tax_base",
+        "count": 1,
+        "percent": 1.12
+      }
+    ],
+    "segments": {
+      "member_type": [
+        {
+          "segment": "regional",
+          "total": 36,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 8,
+              "percent": 22.22
+            },
+            {
+              "key": "limited",
+              "count": 28,
+              "percent": 77.78
+            },
+            {
+              "key": "blocked",
+              "count": 0,
+              "percent": 0.0
+            }
+          ]
+        },
+        {
+          "segment": "unknown",
+          "total": 61,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "limited",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "blocked",
+              "count": 61,
+              "percent": 100.0
+            }
+          ]
+        }
+      ],
+      "linked_account": [
+        {
+          "segment": "linked",
+          "total": 3,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 1,
+              "percent": 33.33
+            },
+            {
+              "key": "limited",
+              "count": 1,
+              "percent": 33.33
+            },
+            {
+              "key": "blocked",
+              "count": 1,
+              "percent": 33.33
+            }
+          ]
+        },
+        {
+          "segment": "not_linked",
+          "total": 94,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 7,
+              "percent": 7.45
+            },
+            {
+              "key": "limited",
+              "count": 27,
+              "percent": 28.72
+            },
+            {
+              "key": "blocked",
+              "count": 60,
+              "percent": 63.83
+            }
+          ]
+        }
+      ],
+      "profile_completion": [
+        {
+          "segment": "profile_complete",
+          "total": 6,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 1,
+              "percent": 16.67
+            },
+            {
+              "key": "limited",
+              "count": 2,
+              "percent": 33.33
+            },
+            {
+              "key": "blocked",
+              "count": 3,
+              "percent": 50.0
+            }
+          ]
+        },
+        {
+          "segment": "profile_incomplete",
+          "total": 91,
+          "levels": [
+            {
+              "key": "exact_ready",
+              "count": 0,
+              "percent": 0.0
+            },
+            {
+              "key": "high_confidence",
+              "count": 7,
+              "percent": 7.69
+            },
+            {
+              "key": "limited",
+              "count": 26,
+              "percent": 28.57
+            },
+            {
+              "key": "blocked",
+              "count": 58,
+              "percent": 63.74
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

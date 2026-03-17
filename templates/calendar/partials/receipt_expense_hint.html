@@ -1,0 +1,245 @@
+{% if expense_guidance %}
+  {% set guidance_border = "rgba(37,99,235,.22)" %}
+  {% set guidance_bg = "rgba(37,99,235,.06)" %}
+  {% set guidance_text = "#1d4ed8" %}
+  {% set guidance_tone = expense_guidance.tone or expense_guidance.level %}
+  {% set followup_action = expense_followup_action|default("") %}
+  {% set followup_return_view = expense_followup_return_view|default("review") %}
+  {% set followup_partial = expense_followup_partial|default(false) %}
+  {% set reinforcement_action = expense_reinforcement_action|default("") %}
+  {% set reinforcement_return_view = expense_reinforcement_return_view|default(followup_return_view) %}
+  {% set reinforcement_partial = expense_reinforcement_partial|default(followup_partial) %}
+  {% set reinforcement_data = expense_reinforcement|default({}) %}
+  {% if guidance_tone == "high" %}
+    {% set guidance_border = "rgba(16,185,129,.24)" %}
+    {% set guidance_bg = "rgba(16,185,129,.08)" %}
+    {% set guidance_text = "#047857" %}
+  {% elif guidance_tone == "review" %}
+    {% set guidance_border = "rgba(245,158,11,.28)" %}
+    {% set guidance_bg = "rgba(245,158,11,.10)" %}
+    {% set guidance_text = "#b45309" %}
+  {% elif guidance_tone == "block" %}
+    {% set guidance_border = "rgba(239,68,68,.22)" %}
+    {% set guidance_bg = "rgba(239,68,68,.08)" %}
+    {% set guidance_text = "#b91c1c" %}
+  {% endif %}
+  <div
+    class="receipt-expense-hint"
+    style="margin-top:10px; border:1px solid {{ guidance_border }}; background:{{ guidance_bg }}; border-radius:12px; padding:10px 12px;"
+  >
+    <div style="display:flex; gap:10px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;">
+      <div style="min-width:0; flex:1;">
+        <div style="font-weight:800; color:{{ guidance_text }};">{{ expense_guidance.label }}</div>
+        <div class="small-note" style="margin-top:4px; color:#334155;">{{ expense_guidance.summary }}</div>
+      </div>
+      {% if expense_guide_url %}
+        <a class="btn small ghost" href="{{ expense_guide_url }}#{{ expense_guidance.anchor }}">왜 이렇게 보나요?</a>
+      {% endif %}
+    </div>
+
+    <div class="small-note muted2" style="margin-top:6px;">{{ expense_guidance.why }}</div>
+
+    {% if expense_guidance.applied_follow_up_answers %}
+      <div style="margin-top:8px;">
+        <div class="small-note" style="font-weight:700; color:#0f172a;">반영된 답변</div>
+        <ul style="margin:6px 0 0 18px; padding:0; color:#334155; font-size:12px; line-height:1.55;">
+          {% for row in expense_guidance.applied_follow_up_answers %}
+            <li>
+              <b>{{ row.prompt }}</b>
+              {% if row.summary %} · {{ row.summary }}{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if expense_guidance.applied_reinforcement %}
+      <div style="margin-top:8px;">
+        <div class="small-note" style="font-weight:700; color:#0f172a;">반영된 보강 정보</div>
+        <ul style="margin:6px 0 0 18px; padding:0; color:#334155; font-size:12px; line-height:1.55;">
+          {% for row in expense_guidance.applied_reinforcement %}
+            <li><b>{{ row.label }}</b> · {{ row.summary }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if expense_guidance.follow_up_questions %}
+      <div style="margin-top:8px;">
+        <div class="small-note" style="font-weight:700; color:#0f172a;">추가로 확인하면 좋아요</div>
+        {% if followup_action %}
+          <form
+            method="post"
+            action="{{ followup_action }}"
+            style="margin-top:8px; display:grid; gap:10px;"
+            {% if followup_partial %}data-rw-form="1"{% endif %}
+          >
+            {% if followup_partial %}<input type="hidden" name="partial" value="1">{% endif %}
+            <input type="hidden" name="month" value="{{ month_key }}">
+            <input type="hidden" name="focus" value="{{ focus }}">
+            <input type="hidden" name="q" value="{{ q }}">
+            <input type="hidden" name="limit" value="{{ limit }}">
+            <input type="hidden" name="return_view" value="{{ followup_return_view }}">
+            {% if account_filter_value is defined and account_filter_value %}
+              <input type="hidden" name="account" value="{{ account_filter_value }}">
+            {% endif %}
+            {% if receipt_type is defined and receipt_type %}
+              <input type="hidden" name="receipt_type" value="{{ receipt_type }}">
+            {% endif %}
+            {% if view is defined %}
+              <input type="hidden" name="merchant" value="{{ view.get('merchant','') }}">
+              <input type="hidden" name="paid_at" value="{{ view.get('paid_at','') }}">
+              <input type="hidden" name="total_krw" value="{{ view.get('total_krw','') }}">
+              <input type="hidden" name="vat_krw" value="{{ view.get('vat_krw','') }}">
+              <input type="hidden" name="payment_method" value="{{ view.get('payment_method','') }}">
+              <input type="hidden" name="card_tail" value="{{ view.get('card_tail','') }}">
+              <input type="hidden" name="approval_no" value="{{ view.get('approval_no','') }}">
+            {% elif draft is defined %}
+              <input type="hidden" name="merchant" value="{{ draft.get('merchant','') }}">
+              <input type="hidden" name="paid_at" value="{{ draft.get('paid_at','') }}">
+              <input type="hidden" name="total_krw" value="{{ draft.get('total_krw','') }}">
+              <input type="hidden" name="vat_krw" value="{{ draft.get('vat_krw','') }}">
+              <input type="hidden" name="payment_method" value="{{ draft.get('payment_method','') }}">
+              <input type="hidden" name="card_tail" value="{{ draft.get('card_tail','') }}">
+              <input type="hidden" name="approval_no" value="{{ draft.get('approval_no','') }}">
+            {% endif %}
+
+            {% for question in expense_guidance.follow_up_questions[:3] %}
+              <div style="border:1px solid rgba(15,23,42,.08); background:rgba(255,255,255,.72); border-radius:10px; padding:10px;">
+                <div class="small-note" style="font-weight:700; color:#0f172a;">{{ question.prompt }}</div>
+                {% if question.input_type in ("boolean", "choice") and question.choices %}
+                  <div class="row" style="gap:8px; flex-wrap:wrap; margin-top:8px;">
+                    {% for choice in question.choices %}
+                      <label class="chk" style="display:flex; align-items:center; gap:6px;">
+                        <input
+                          type="radio"
+                          name="followup__{{ question.question_key }}__value"
+                          value="{{ choice.value }}"
+                          {% if question.current_value == choice.value %}checked{% endif %}
+                        >
+                        <span>{{ choice.label }}</span>
+                      </label>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+
+                {% if question.input_type == "text" or question.allow_text %}
+                  <label class="field" style="margin-top:8px;">
+                    <span class="label">{{ question.text_label or "추가 메모" }}</span>
+                    <input
+                      type="text"
+                      name="followup__{{ question.question_key }}__text"
+                      value="{{ question.current_text }}"
+                      placeholder="{{ question.text_placeholder }}"
+                    >
+                  </label>
+                {% endif %}
+              </div>
+            {% endfor %}
+
+            <div class="row" style="gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+              <button class="btn small primary" type="submit">답변 저장하고 다시 보기</button>
+            </div>
+          </form>
+        {% else %}
+          <ul style="margin:6px 0 0 18px; padding:0; color:#334155; font-size:12px; line-height:1.55;">
+            {% for question in expense_guidance.follow_up_questions[:2] %}
+              <li>{{ question.prompt }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if expense_guidance.reinforcement_requirements %}
+      <div style="margin-top:10px;">
+        <div class="small-note" style="font-weight:700; color:#0f172a;">추가 보강하면 좋아요</div>
+        <div class="small-note muted2" style="margin-top:4px;">{{ expense_guidance.reinforcement_summary }}</div>
+        {% if expense_guidance.remaining_gaps %}
+          <div class="small-note muted2" style="margin-top:6px;">
+            아직 필요한 항목:
+            {{ expense_guidance.remaining_gaps|join(" · ") }}
+          </div>
+        {% endif %}
+        {% if reinforcement_action %}
+          <form
+            method="post"
+            action="{{ reinforcement_action }}"
+            enctype="multipart/form-data"
+            style="margin-top:8px; display:grid; gap:10px;"
+            {% if reinforcement_partial %}data-rw-form="1"{% endif %}
+          >
+            {% if reinforcement_partial %}<input type="hidden" name="partial" value="1">{% endif %}
+            <input type="hidden" name="month" value="{{ month_key }}">
+            <input type="hidden" name="focus" value="{{ focus }}">
+            <input type="hidden" name="q" value="{{ q }}">
+            <input type="hidden" name="limit" value="{{ limit }}">
+            <input type="hidden" name="return_view" value="{{ reinforcement_return_view }}">
+            {% if account_filter_value is defined and account_filter_value %}
+              <input type="hidden" name="account" value="{{ account_filter_value }}">
+            {% endif %}
+            {% if receipt_type is defined and receipt_type %}
+              <input type="hidden" name="receipt_type" value="{{ receipt_type }}">
+            {% endif %}
+            {% if view is defined %}
+              <input type="hidden" name="merchant" value="{{ view.get('merchant','') }}">
+              <input type="hidden" name="paid_at" value="{{ view.get('paid_at','') }}">
+              <input type="hidden" name="total_krw" value="{{ view.get('total_krw','') }}">
+              <input type="hidden" name="vat_krw" value="{{ view.get('vat_krw','') }}">
+              <input type="hidden" name="payment_method" value="{{ view.get('payment_method','') }}">
+              <input type="hidden" name="card_tail" value="{{ view.get('card_tail','') }}">
+              <input type="hidden" name="approval_no" value="{{ view.get('approval_no','') }}">
+            {% elif draft is defined %}
+              <input type="hidden" name="merchant" value="{{ draft.get('merchant','') }}">
+              <input type="hidden" name="paid_at" value="{{ draft.get('paid_at','') }}">
+              <input type="hidden" name="total_krw" value="{{ draft.get('total_krw','') }}">
+              <input type="hidden" name="vat_krw" value="{{ draft.get('vat_krw','') }}">
+              <input type="hidden" name="payment_method" value="{{ draft.get('payment_method','') }}">
+              <input type="hidden" name="card_tail" value="{{ draft.get('card_tail','') }}">
+              <input type="hidden" name="approval_no" value="{{ draft.get('approval_no','') }}">
+            {% endif %}
+
+            {% for requirement in expense_guidance.reinforcement_requirements[:4] %}
+              <div style="border:1px solid rgba(15,23,42,.08); background:rgba(255,255,255,.72); border-radius:10px; padding:10px;">
+                <div class="small-note" style="font-weight:700; color:#0f172a;">{{ requirement.label }}</div>
+                {% if requirement.help %}
+                  <div class="small-note muted2" style="margin-top:4px;">{{ requirement.help }}</div>
+                {% endif %}
+                {% if requirement.input_type == "textarea" %}
+                  <label class="field" style="margin-top:8px;">
+                    <textarea name="reinforce__{{ requirement.field_key }}" rows="3" placeholder="{{ requirement.placeholder }}">{{ reinforcement_data.get(requirement.field_key, '') }}</textarea>
+                  </label>
+                {% elif requirement.input_type == "file" %}
+                  <label class="field" style="margin-top:8px;">
+                    <input type="file" name="reinforce__supporting_file" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.heic,.heif,.txt">
+                  </label>
+                  {% if reinforcement_data.get('supporting_file_name') %}
+                    <div class="small-note muted2" style="margin-top:4px;">현재 파일: {{ reinforcement_data.get('supporting_file_name') }}</div>
+                  {% endif %}
+                {% else %}
+                  <label class="field" style="margin-top:8px;">
+                    <input type="text" name="reinforce__{{ requirement.field_key }}" value="{{ reinforcement_data.get(requirement.field_key, '') }}" placeholder="{{ requirement.placeholder }}">
+                  </label>
+                {% endif %}
+              </div>
+            {% endfor %}
+
+            <div class="row" style="gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+              <button class="btn small ghost" type="submit">보강 저장하고 다시 보기</button>
+            </div>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if expense_guidance.evidence_requirements %}
+      <div class="small-note muted2" style="margin-top:8px;">
+        증빙 메모:
+        {{ expense_guidance.evidence_requirements[:2]|join(" · ") }}
+      </div>
+    {% endif %}
+    {% if show_disclaimer %}
+      <div class="small-note muted2" style="margin-top:6px;">서비스의 분류 결과는 보조 판단입니다.</div>
+    {% endif %}
+  </div>
+{% endif %}

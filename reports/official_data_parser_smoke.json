@@ -1,0 +1,81 @@
+{
+  "generated_at": "2026-03-16T00:10:15",
+  "row_count": 6,
+  "rows": [
+    {
+      "fixture_name": "hometax_withholding_statement.csv",
+      "registry_status": "supported_document_type",
+      "document_type": "hometax_withholding_statement",
+      "parse_status": "parsed",
+      "extracted_summary": {
+        "issuer": "국세청 홈택스",
+        "document_name": "원천징수 이행상황 신고서",
+        "verified_reference_date": "2026-02-10",
+        "document_period_start": "2025-01-01",
+        "document_period_end": "2025-12-31",
+        "total_amount_krw": 1820000,
+        "primary_key_label": "지급처 식별키",
+        "primary_key_value": "PAYER-DEMO-001"
+      },
+      "parse_error_code": null
+    },
+    {
+      "fixture_name": "hometax_business_card_usage.xlsx",
+      "registry_status": "supported_document_type",
+      "document_type": "hometax_business_card_usage",
+      "parse_status": "parsed",
+      "extracted_summary": {
+        "issuer": "국세청 홈택스",
+        "document_name": "사업용 신용카드 사용내역",
+        "verified_reference_date": "2026-03-05",
+        "document_period_start": "2026-01-01",
+        "document_period_end": "2026-02-28",
+        "total_amount_krw": 485000,
+        "primary_key_label": "사업자 식별키",
+        "primary_key_value": "BIZ-DEMO-777"
+      },
+      "parse_error_code": null
+    },
+    {
+      "fixture_name": "nhis_payment_confirmation.pdf",
+      "registry_status": "supported_document_type",
+      "document_type": "nhis_payment_confirmation",
+      "parse_status": "parsed",
+      "extracted_summary": {
+        "issuer": "국민건강보험공단",
+        "document_name": "보험료 납부확인서",
+        "verified_reference_date": "2026-03-03",
+        "document_period_start": "2026-01-01",
+        "document_period_end": "2026-02-28",
+        "total_amount_krw": 352000,
+        "primary_key_label": "가입자 식별키",
+        "primary_key_value": "NHIS-DEMO-100"
+      },
+      "parse_error_code": null
+    },
+    {
+      "fixture_name": "unknown_headers.csv",
+      "registry_status": "unsupported_document_type",
+      "document_type": null,
+      "parse_status": "unsupported_document_type",
+      "extracted_summary": {},
+      "parse_error_code": "unsupported_document_type"
+    },
+    {
+      "fixture_name": "encrypted_notice.pdf",
+      "registry_status": "unsupported_format",
+      "document_type": null,
+      "parse_status": "unsupported_format",
+      "extracted_summary": {},
+      "parse_error_code": "encrypted_pdf_unsupported"
+    },
+    {
+      "fixture_name": "scanned_image_notice.pdf",
+      "registry_status": "unsupported_format",
+      "document_type": null,
+      "parse_status": "unsupported_format",
+      "extracted_summary": {},
+      "parse_error_code": "scanned_pdf_unsupported"
+    }
+  ]
+}

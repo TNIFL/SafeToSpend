@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}문의 답변 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:980px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">문의 답변</div>
+      <div class="p">문의 내용을 확인하고 답변을 저장해 주세요.</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_support.admin_inquiries') }}">목록으로</a>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="row" style="justify-content:space-between; align-items:flex-start; gap:10px;">
+      <div>
+        <div style="font-weight:900;">{{ inquiry.subject }}</div>
+        <div class="small-note muted2" style="margin-top:4px;">
+          {{ user_email }} · 접수 {{ inquiry.created_at.strftime("%Y-%m-%d %H:%M") if inquiry.created_at else "-" }}
+        </div>
+      </div>
+      {% set st = (inquiry.status or 'open') %}
+      {% if st == 'answered' %}
+        <span class="badge good">{{ status_label(st) }}</span>
+      {% elif st == 'closed' %}
+        <span class="badge">{{ status_label(st) }}</span>
+      {% else %}
+        <span class="badge warn">{{ status_label(st) }}</span>
+      {% endif %}
+    </div>
+    <div class="panel" style="margin-top:10px; white-space:pre-wrap; line-height:1.65;">{{ inquiry.message }}</div>
+  </div>
+
+  <form method="post" action="{{ url_for('web_support.admin_inquiry_reply', inquiry_id=inquiry.id) }}" class="card pad" style="display:grid; gap:12px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="reply_lock" value="{{ inquiry.replied_at.isoformat() if inquiry.replied_at else '' }}">
+    <label class="field">
+      <span class="label">답변 내용</span>
+      <textarea name="admin_reply" rows="8" maxlength="5000" required>{{ inquiry.admin_reply or '' }}</textarea>
+    </label>
+    <label class="field" style="max-width:260px;">
+      <span class="label">상태</span>
+      <select name="status">
+        <option value="answered" {% if (inquiry.status or '') == 'answered' %}selected{% endif %}>답변 완료</option>
+        <option value="closed" {% if (inquiry.status or '') == 'closed' %}selected{% endif %}>종료</option>
+      </select>
+    </label>
+    <div class="row" style="justify-content:flex-end;">
+      <button type="submit" class="btn primary">답변 보내기</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

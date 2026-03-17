@@ -1,0 +1,34 @@
+{
+  "datasets": {
+    "vehicle": {
+      "source_name": "행정안전부 자동차 시가표준액 공개자료",
+      "source_url": "https://www.law.go.kr/법령/지방세법",
+      "keywords": [
+        "자동차",
+        "자동차세",
+        "시가표준",
+        "지방세",
+        "배기량",
+        "취득세",
+        "연식",
+        "세율",
+        "법령"
+      ]
+    },
+    "home": {
+      "source_name": "국토교통부 부동산 공시가격 알리미",
+      "source_url": "https://www.realtyprice.kr/",
+      "keywords": [
+        "공시가격",
+        "부동산",
+        "주택",
+        "주택가격",
+        "공동주택",
+        "단독주택",
+        "realtyprice",
+        "알리미",
+        "국토교통부"
+      ]
+    }
+  }
+}

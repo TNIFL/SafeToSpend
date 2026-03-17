@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}이용약관 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 960px; padding-top: 24px; padding-bottom: 52px;">
+  <section class="card pad">
+    <div class="h2">이용약관</div>
+    <div class="small-note muted2" style="margin-top: 8px;">
+      시행일 {{ effective_date }} · 최종 개정일 {{ updated_date }}
+    </div>
+
+    <div style="margin-top: 16px; line-height: 1.75;">
+      <p>본 약관은 SafeToSpend(쓸수있어) 서비스 이용과 관련한 기본 조건을 정합니다.</p>
+
+      <h3 style="margin-top: 18px;">1. 서비스 범위</h3>
+      <ul>
+        <li>거래 업로드/정리, 계좌 연동, 증빙/영수증 관리</li>
+        <li>세금·건보료 추정, 월말 정리, 패키지 출력</li>
+        <li>문의 접수/답변 확인</li>
+      </ul>
+
+      <h3 style="margin-top: 18px;">2. 계정</h3>
+      <ul>
+        <li>이메일/비밀번호 기반 계정을 사용합니다.</li>
+        <li>이용자는 계정정보를 정확히 관리해야 합니다.</li>
+      </ul>
+
+      <h3 style="margin-top: 18px;">3. 유료 정책(코드 기준)</h3>
+      <ul>
+        <li>플랜: free / basic / pro</li>
+        <li>월 요금 상수: basic 6,900원, pro 12,900원</li>
+        <li>추가 계좌(add-on): 계좌 1개당 월 3,000원</li>
+        <li>결제 실패 시 최대 3일 유예 후 상태 변경이 적용될 수 있음</li>
+      </ul>
+
+      <h3 style="margin-top: 18px;">4. 업그레이드/해지/환불 관련 안내</h3>
+      <ul>
+        <li>업그레이드 및 추가 계좌 구매는 결제 확인 후 반영됩니다.</li>
+        <li>구독 상태머신에는 기간 종료 해지(cancel at period end) 구조가 구현되어 있습니다.</li>
+        <li>현재 코드 기준 이용자용 해지 요청 UI 경로는 별도 확정이 필요합니다(문의 경로: <a href="/support">/support</a>).</li>
+        <li>현재 정책 안내 문구 기준으로 기존 결제분 환불 없음이 고지되어 있습니다.</li>
+        <li>다만 법령상 환불 의무가 있는 경우 관련 법령을 우선 적용합니다.</li>
+      </ul>
+
+      <h3 style="margin-top: 18px;">5. 이용자 책임 및 금지행위</h3>
+      <ul>
+        <li>타인 계정 도용, 권한 우회, 서비스 운영 방해 행위 금지</li>
+        <li>허위 정보 입력 및 권리 침해 자료 업로드 금지</li>
+      </ul>
+
+      <h3 style="margin-top: 18px;">6. 책임 제한</h3>
+      <ul>
+        <li>서비스는 세무대리·법률자문·회계감사를 제공하지 않습니다.</li>
+        <li>입력값/연동상태/기준데이터에 따라 결과가 달라질 수 있습니다.</li>
+        <li>소비자보호 관련 강행규정은 본 약관보다 우선합니다.</li>
+      </ul>
+
+      <h3 style="margin-top: 18px;">7. 준거법 및 관할</h3>
+      <ul>
+        <li>대한민국 법령을 준거법으로 합니다.</li>
+        <li>분쟁은 관련 법령에 따른 관할 법원에서 처리합니다.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+{% endblock %}

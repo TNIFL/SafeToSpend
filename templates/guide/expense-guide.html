@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}비용처리 안내 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap" style="max-width:1040px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">{{ title }}</div>
+      <div class="p">{{ summary }}</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="/dashboard/review">정리하기</a>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="h2" style="font-size:1.02rem;">빠른 구분</div>
+    <div class="small-note muted2" style="margin-top:6px;">서비스는 영수증을 자동으로 단정하지 않고, 설명 가능성에 따라 먼저 안내해요.</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:12px;">
+      {% for bucket in quick_buckets %}
+        <a
+          href="#{{ bucket.anchor }}"
+          style="display:block; text-decoration:none; color:inherit; border:1px solid var(--line); border-radius:14px; padding:14px; background:#fff;"
+        >
+          <div style="font-weight:800;">{{ bucket.title }}</div>
+          <div class="small-note muted2" style="margin-top:6px;">{{ bucket.intro }}</div>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% for bucket in quick_buckets %}
+    <div id="{{ bucket.anchor }}" class="card pad" style="margin-bottom:12px;">
+      <div class="h2" style="font-size:1.02rem;">{{ bucket.title }}</div>
+      <div class="small-note muted2" style="margin-top:6px;">{{ bucket.intro }}</div>
+      <div style="display:grid; gap:10px; margin-top:12px;">
+        {% for item in bucket["items"] %}
+          <div style="border:1px solid var(--line); border-radius:12px; padding:12px;">
+            <div style="font-weight:800;">{{ item.name }}</div>
+            <div class="small-note muted2" style="margin-top:6px;">{{ item.why }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="h2" style="font-size:1.02rem;">자주 헷갈리는 사례</div>
+    <div style="display:grid; gap:10px; margin-top:12px;">
+      {% for case in confusing_cases %}
+        <div style="border:1px solid var(--line); border-radius:12px; padding:12px;">
+          <div style="font-weight:800;">{{ case.title }}</div>
+          <div class="small-note muted2" style="margin-top:6px;">{{ case.body }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="h2" style="font-size:1.02rem;">영수증 올릴 때 함께 남기면 좋은 정보</div>
+    <div style="display:grid; gap:8px; margin-top:12px;">
+      {% for tip in input_tips %}
+        <div style="border:1px solid var(--line); border-radius:12px; padding:12px;">{{ tip }}</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:12px; border-color:rgba(37,99,235,.22); background:rgba(37,99,235,.05);">
+    <div class="h2" style="font-size:1.02rem;">꼭 확인해 주세요</div>
+    <div style="display:grid; gap:6px; margin-top:10px;">
+      {% for line in disclaimer_lines %}
+        <div class="small-note">{{ line }}</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card pad">
+    <div class="h2" style="font-size:1.02rem;">공식 근거</div>
+    <div style="display:grid; gap:10px; margin-top:12px;">
+      {% for source in sources %}
+        <div style="border:1px solid var(--line); border-radius:12px; padding:12px;">
+          <a href="{{ source.url }}" target="_blank" rel="noopener" style="font-weight:800; color:inherit;">{{ source.title }}</a>
+          <div class="small-note muted2" style="margin-top:6px;">{{ source.note }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

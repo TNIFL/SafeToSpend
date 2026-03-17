@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}자산 데이터 진단 | 관리자{% endblock %}
+
+{% block content %}
+<div class="wrap" style="max-width:980px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">자산 데이터셋 상태</div>
+      <div class="p">차량/부동산 추정 데이터의 최신성과 fallback 상태를 확인합니다.</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_profile.assets_page', skip_quiz=1) }}">자산 페이지</a>
+    </div>
+  </div>
+
+  {% if status.update_error %}
+    <div class="card pad" style="margin-bottom:10px;border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.08);">
+      <div class="h2" style="font-size:1rem;">업데이트 실패</div>
+      <div class="p">최근 갱신 중 오류가 있었어요: {{ status.update_error }}</div>
+      <div class="p muted2">서비스는 마지막 성공 데이터로 추정을 계속합니다.</div>
+    </div>
+  {% endif %}
+
+  <div class="grid2" style="gap:12px;">
+    {% for key, row in status.datasets.items() %}
+      <div class="card pad">
+        <div class="h2" style="font-size:1rem;">{{ '차량 데이터셋' if key == 'vehicle' else '부동산 데이터셋' }}</div>
+        <div class="p">출처: {{ row.source_name or '-' }}</div>
+        <div class="p">기준연도: {{ row.version_year or '-' }}</div>
+        <div class="p">마지막 갱신: {{ row.fetched_at.strftime('%Y-%m-%d %H:%M') if row.fetched_at else '-' }}</div>
+        <div class="p">활성 상태: {{ '활성' if row.is_active else '비활성' }}</div>
+        {% set payload = row.payload_json or {} %}
+        {% if payload.get('format_drift_detected') %}
+          <div class="p" style="color:#b45309;">포맷 변경 감지: 예</div>
+          <div class="p muted2">{{ payload.get('format_drift_reason') or 'source_structure_changed' }}</div>
+        {% else %}
+          <div class="p">포맷 변경 감지: 아니오</div>
+        {% endif %}
+        {% if payload.get('note') %}
+          <div class="p muted2" style="margin-top:6px;">{{ payload.get('note') }}</div>
+        {% endif %}
+        {% if row.source_url %}
+          <div class="p" style="margin-top:8px;"><a href="{{ row.source_url }}" target="_blank" rel="noopener">출처 열기</a></div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="card pad" style="margin-top:12px;">
+    <div class="h2" style="font-size:1rem;">요약 상태</div>
+    <div class="p">stale: {{ '예' if status.is_stale else '아니오' }}</div>
+    <div class="p">fallback 사용: {{ '예' if status.used_fallback else '아니오' }}</div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,117 @@
+{
+  "generated_at": "2026-03-15T04:44:21",
+  "month_key": "2026-03",
+  "credentials": {
+    "email": "e2e+receipt-tax-effects@safetospend.local",
+    "password": "Test1234!",
+    "user_pk": 352
+  },
+  "paths": {
+    "review": "/dashboard/review?month=2026-03&lane=review&focus=expense_confirm&limit=200",
+    "tax_buffer": "/dashboard/tax-buffer?month=2026-03",
+    "calendar": "/dashboard/calendar?month=2026-03"
+  },
+  "baseline": {
+    "tax_due_est_krw": 792000,
+    "buffer_target_krw": 792000,
+    "receipt_reflected_expense_krw": 0,
+    "receipt_pending_expense_krw": 0
+  },
+  "cases": {
+    "followup_reflect_transport": {
+      "tx_id": 5247,
+      "counterparty": "서울택시",
+      "memo": "야간 이동",
+      "amount_krw": 48000,
+      "occurred_at": "2026-03-14 23:30",
+      "initial_level": "needs_review",
+      "expectation": "weekend transport; follow-up reason should promote to high_likelihood"
+    },
+    "reinforcement_reflect_meal": {
+      "tx_id": 5248,
+      "counterparty": "스타벅스",
+      "memo": "거래처 미팅 커피",
+      "amount_krw": 18000,
+      "occurred_at": "2026-03-12 14:30",
+      "initial_level": "needs_review",
+      "expectation": "business meal candidate; follow-up alone stays needs_review, reinforcement can promote"
+    },
+    "pending_cafe_no_change": {
+      "tx_id": 5249,
+      "counterparty": "스타벅스",
+      "memo": "회의 전 커피",
+      "amount_krw": 13000,
+      "occurred_at": "2026-03-13 11:40",
+      "initial_level": "needs_review",
+      "expectation": "cafe spend remains pending after follow-up"
+    },
+    "consult_asset": {
+      "tx_id": 5250,
+      "counterparty": "애플스토어",
+      "memo": "맥북 프로",
+      "amount_krw": 2400000,
+      "occurred_at": "2026-03-11 15:20",
+      "initial_level": "consult_tax_review",
+      "expectation": "high-value asset remains consult_tax_review"
+    },
+    "reduced_motion_transport": {
+      "tx_id": 5251,
+      "counterparty": "서울택시",
+      "memo": "새벽 공항 이동",
+      "amount_krw": 52000,
+      "occurred_at": "2026-03-15 00:15",
+      "initial_level": "needs_review",
+      "expectation": "reduced motion follow-up case should promote to high_likelihood"
+    }
+  },
+  "expected_transitions": {
+    "followup_reflect_transport": {
+      "after_followup_level": "high_likelihood"
+    },
+    "reinforcement_reflect_meal": {
+      "after_followup_level": "needs_review",
+      "after_reinforcement_level": "high_likelihood"
+    },
+    "pending_cafe_no_change": {
+      "after_followup_level": "needs_review"
+    },
+    "consult_asset": {
+      "after_followup_level": "consult_tax_review"
+    },
+    "reduced_motion_transport": {
+      "after_followup_level": "high_likelihood"
+    }
+  },
+  "e2e_results": {
+    "followup_reflect_transport": {
+      "status": "passed",
+      "toast": "영수증 반영 결과\n        영수증 48,000원이 비용 반영 대상으로 인정되어 예상세금이 12,672원 줄었어요.\n      \n      ×",
+      "before_tax_due_krw": 792000,
+      "after_tax_due_krw": 779328,
+      "reflected_expense_after_krw": 48000
+    },
+    "reinforcement_reflect_meal": {
+      "status": "passed",
+      "toast": "영수증 반영 결과\n        영수증 66,000원이 비용 반영 대상으로 인정되어 예상세금이 4,752원 줄었어요.\n      \n      ×",
+      "review_tax_before_krw": 779328,
+      "review_tax_after_krw": 774576,
+      "review_expense_before_krw": 48000,
+      "review_expense_after_krw": 66000,
+      "tax_buffer_after_krw": 774576,
+      "calendar_after_krw": 774576,
+      "notice_count": 1
+    },
+    "pending_cafe_no_change": {
+      "status": "passed",
+      "toast": "영수증 반영 결과\n        추가 확인이 필요해 13,000원은 아직 예상세금에 반영되지 않았어요.\n      \n      ×",
+      "tax_due_krw": 774576,
+      "changed": false
+    },
+    "reduced_motion_transport": {
+      "status": "passed",
+      "toast": "영수증 반영 결과\n        영수증 118,000원이 비용 반영 대상으로 인정되어 예상세금이 13,728원 줄었어요.\n      \n      ×",
+      "tax_due_krw": 760848,
+      "reduced_motion": true
+    }
+  }
+}

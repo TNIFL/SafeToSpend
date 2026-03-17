@@ -1,0 +1,58 @@
+{
+  "generated_at_utc": "2026-03-14T01:24:47",
+  "month_key": "2026-03",
+  "scanned_users": 97,
+  "blocked_missing_taxable_income": {
+    "count": 0,
+    "percent": 0.0
+  },
+  "field_presence_summary": [
+    {
+      "key": "official_taxable_income_annual_krw_present",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "key": "annual_gross_income_present_taxable_missing",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "key": "annual_deductible_expense_present_taxable_missing",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "key": "income_classification_missing",
+      "count": 97,
+      "percent": 100.0
+    },
+    {
+      "key": "withheld_tax_annual_krw_missing",
+      "count": 97,
+      "percent": 100.0
+    },
+    {
+      "key": "prepaid_tax_annual_krw_missing",
+      "count": 97,
+      "percent": 100.0
+    }
+  ],
+  "missing_taxable_income_classification": [
+    {
+      "key": "form_not_collecting",
+      "count": 0,
+      "percent": 0.0
+    }
+  ],
+  "taxable_input_source_on_missing": [],
+  "confidence_drop_with_taxable_income": {
+    "denominator_taxable_income_users": 0,
+    "distribution": []
+  },
+  "auto_backfill_candidates": {
+    "distribution": [],
+    "proxy_upgrade_possible_percent": 0.0
+  },
+  "errors": []
+}

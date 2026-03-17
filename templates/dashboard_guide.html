@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}서비스 사용 가이드 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">서비스 사용 가이드</div>
+      <div class="p">어디에서 무엇을 해야 하는지, 문구가 뜨면 어떻게 처리하는지만 짧게 안내해요.</div>
+      {% if from_page %}
+        <div class="small-note muted2">현재 보고 있던 화면: <b>{{ from_page }}</b></div>
+      {% endif %}
+    </div>
+    <div class="actions">
+      <span class="badge primary">{{ month_key }}</span>
+      <a class="btn ghost" href="{{ dashboard_url }}">대시보드</a>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:12px;" id="order">
+    <div class="h2" style="font-size:1.02rem;">핵심 이용 순서</div>
+    {% if primary_anchor %}
+      <div class="small-note muted2" style="margin-top:6px;">현재 화면 기준 가이드를 먼저 보려면 아래 버튼을 눌러 주세요.</div>
+      <div style="margin-top:8px;">
+        <a class="btn small ghost" href="#{{ primary_anchor }}">현재 화면 가이드로 이동</a>
+      </div>
+    {% endif %}
+    <div style="display:grid;gap:8px;margin-top:10px;">
+      <div style="border:1px solid var(--line);border-radius:12px;padding:10px;">
+        <b>1) 내역 가져오기</b>
+        <div class="small-note muted2" style="margin-top:4px;">가져오기에서 거래 데이터를 먼저 넣습니다.</div>
+        <a class="btn small ghost" style="margin-top:6px;" href="{{ import_url }}">가져오기 열기</a>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:10px;">
+        <b>2) 캘린더/정리하기에서 정리</b>
+        <div class="small-note muted2" style="margin-top:4px;">캘린더로 흐름 확인, 정리하기에서 누락/분류/첨부를 처리합니다.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+          <a class="btn small ghost" href="{{ calendar_url }}">캘린더</a>
+          <a class="btn small ghost" href="{{ review_url }}">정리하기</a>
+        </div>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:10px;">
+        <b>3) 세금/건보료 확인</b>
+        <div class="small-note muted2" style="margin-top:4px;">세금 보관함과 건보료 화면에서 예상 금액과 부족분을 확인합니다.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+          <a class="btn small ghost" href="{{ tax_buffer_url }}">세금 보관함</a>
+          <a class="btn small ghost" href="{{ nhis_url }}">건보료</a>
+        </div>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:10px;">
+        <b>4) 전달 전 최종 점검</b>
+        <div class="small-note muted2" style="margin-top:4px;">보관함/대사 리포트로 점검 후 패키지를 생성합니다.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+          <a class="btn small ghost" href="{{ vault_url }}">증빙 보관함</a>
+          <a class="btn small ghost" href="{{ reconcile_url }}">대사 리포트</a>
+          <a class="btn small ghost" href="{{ package_url }}">패키지</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="calendar" class="card pad" style="margin-bottom:10px;">
+    <div class="h2" style="font-size:1rem;">캘린더 화면 사용법</div>
+    <div class="small-note muted2" style="margin-top:6px;">월 전체 흐름을 보고, 오늘 할 일 1개부터 처리하세요.</div>
+    <div class="small-note muted2" style="margin-top:4px;">상단 KPI와 경고 카드를 먼저 확인하면 우선순위를 잡기 쉽습니다.</div>
+    <a class="btn small ghost" style="margin-top:8px;" href="{{ calendar_url }}">캘린더 열기</a>
+  </div>
+
+  <div id="review" class="card pad" style="margin-bottom:10px;">
+    <div class="h2" style="font-size:1rem;">정리하기 화면에서 할 일</div>
+    <div class="small-note muted2" style="margin-top:6px;">누락 탭부터 보고, 분류/첨부를 완료하세요.</div>
+    <div class="small-note muted2" style="margin-top:4px;">`맞아요/아니에요/나중에`는 추천 매칭을 빠르게 확정하는 버튼입니다.</div>
+    <a class="btn small ghost" style="margin-top:8px;" href="{{ review_required_url }}">누락 탭 바로가기</a>
+  </div>
+
+  <div id="tax-buffer" class="card pad" style="margin-bottom:10px;">
+    <div class="h2" style="font-size:1rem;">세금 보관함 화면에서 할 일</div>
+    <div class="small-note muted2" style="margin-top:6px;">상단의 권장 보관액/현재 잔액/부족액을 먼저 확인하세요.</div>
+    <div class="small-note muted2" style="margin-top:4px;">아래 `세금 보관/납부`에서 금액을 기록하면 잔액이 갱신됩니다.</div>
+    <a class="btn small ghost" style="margin-top:8px;" href="{{ tax_buffer_url }}">세금 보관함 열기</a>
+  </div>
+
+  <div id="nhis" class="card pad" style="margin-bottom:10px;">
+    <div class="h2" style="font-size:1rem;">건보료 화면에서 할 일</div>
+    <div class="small-note muted2" style="margin-top:6px;">상단 금액 확인 → 빠른 입력 저장 → 분해/근거 확인 순서로 보세요.</div>
+    {% if not refs_ready %}
+      <div class="small-note muted2" style="margin-top:4px;">공식 기준 확인 중일 때는 숫자가 잠시 숨겨질 수 있어요.</div>
+    {% else %}
+      <div class="small-note muted2" style="margin-top:4px;">11월 금액/차이를 함께 보며 변동 가능성을 점검할 수 있어요.</div>
+    {% endif %}
+    <a class="btn small ghost" style="margin-top:8px;" href="{{ nhis_url }}">건보료 열기</a>
+  </div>
+
+  <div id="vault" class="card pad" style="margin-bottom:10px;">
+    <div class="h2" style="font-size:1rem;">증빙 보관함 사용법</div>
+    <div class="small-note muted2" style="margin-top:6px;">누락/첨부됨/불필요 필터를 바꿔가며 필요한 항목만 처리하세요.</div>
+    <div class="small-note muted2" style="margin-top:4px;">파일 업로드 후 상태 배지가 바뀌는지 확인하면 됩니다.</div>
+    <a class="btn small ghost" style="margin-top:8px;" href="{{ vault_url }}">증빙 보관함 열기</a>
+  </div>
+
+  <div id="reconcile" class="card pad" style="margin-bottom:10px;">
+    <div class="h2" style="font-size:1rem;">대사 리포트 사용법</div>
+    <div class="small-note muted2" style="margin-top:6px;">누락/미분류/중복/이상치 카드를 위에서부터 순서대로 확인하세요.</div>
+    <div class="small-note muted2" style="margin-top:4px;">각 카드의 이동 버튼으로 정리 화면에서 즉시 수정하면 됩니다.</div>
+    <a class="btn small ghost" style="margin-top:8px;" href="{{ reconcile_url }}">대사 리포트 열기</a>
+  </div>
+
+  <div id="package" class="card pad" style="margin-bottom:10px;">
+    <div class="h2" style="font-size:1rem;">패키지 전달</div>
+    <div class="small-note muted2" style="margin-top:6px;">전달 준비 상태에서 FAIL/WARN을 먼저 확인하세요.</div>
+    <div class="small-note muted2" style="margin-top:4px;">점검 후 ZIP을 내려받아 전달하면 됩니다.</div>
+    <a class="btn small ghost" style="margin-top:8px;" href="{{ package_url }}">패키지로 이동</a>
+  </div>
+
+  <div id="messages" class="card pad">
+    <div class="h2" style="font-size:1rem;">문구가 뜰 때 이렇게 하세요</div>
+    <div style="display:grid;gap:8px;margin-top:8px;">
+      <div style="border:1px solid var(--line);border-radius:12px;padding:10px;">
+        <b>“결과 준비 중”</b>
+        <div class="small-note muted2" style="margin-top:4px;">입력을 먼저 저장하고 `다시 확인`을 눌러 주세요.</div>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:10px;">
+        <b>“입력 정보가 부족해요”</b>
+        <div class="small-note muted2" style="margin-top:4px;">핵심 입력부터 채우면 정확도가 올라갑니다.</div>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:10px;">
+        <b>“저장에 실패했어요”</b>
+        <div class="small-note muted2" style="margin-top:4px;">새로고침 후 같은 화면에서 다시 저장해 주세요.</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% if official_data_effect_notice and official_data_effect_notice.show %}
+  {% set official_data_notice_tone = official_data_effect_notice.tone if official_data_effect_notice.tone else 'success' %}
+  <div class="card pad" style="margin-bottom:12px; border-color:{% if official_data_notice_tone == 'success' %}rgba(22,163,74,.24){% elif official_data_notice_tone == 'warn' %}rgba(245,158,11,.28){% else %}rgba(37,99,235,.22){% endif %}; background:{% if official_data_notice_tone == 'success' %}rgba(22,163,74,.06){% elif official_data_notice_tone == 'warn' %}rgba(245,158,11,.08){% else %}rgba(37,99,235,.05){% endif %};">
+    <div class="small-note muted2">공식 자료 기준으로 보정</div>
+    <div class="h2" style="font-size:1.02rem;">{{ official_data_effect_notice.title }}</div>
+    <div class="small-note muted2" style="margin-top:8px;">{{ official_data_effect_notice.summary }}</div>
+    {% if official_data_effect_notice.reference_date %}
+      <div class="small-note" style="margin-top:8px;">기준일: <b>{{ official_data_effect_notice.reference_date }}</b></div>
+    {% endif %}
+    {% if official_data_effect_notice.bullets %}
+      <ul style="margin:10px 0 0 18px; padding:0; display:grid; gap:6px;">
+        {% for item in official_data_effect_notice.bullets %}
+          <li class="small-note">{{ item }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    <div class="small-note muted2" style="margin-top:8px;">재확인이 필요해지면 다시 요청하고, 앞으로의 변경도 기준일 중심으로 관리해요. 애매한 자료는 자동 반영하지 않고, 구조 검증과 기관 확인은 같은 뜻으로 쓰지 않아요.</div>
+  </div>
+{% endif %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}면책고지 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 960px; padding-top: 24px; padding-bottom: 52px;">
+  <section class="card pad">
+    <div class="h2">면책고지</div>
+    <div class="small-note muted2" style="margin-top: 8px;">
+      시행일 {{ effective_date }} · 최종 개정일 {{ updated_date }}
+    </div>
+
+    <div style="margin-top: 16px; line-height: 1.75;">
+      <p>서비스는 정리·추정 지원 도구이며, 최종 확정값 제공 서비스가 아닙니다.</p>
+
+      <h3 style="margin-top: 18px;">1. 세금/건보 추정치 안내</h3>
+      <ul>
+        <li>세금·건보료 수치는 입력값과 기준 데이터 기반의 추정치입니다.</li>
+        <li>실제 신고세액·고지액·전문가 검토 결과와 차이가 발생할 수 있습니다.</li>
+      </ul>
+
+      <h3 style="margin-top: 18px;">2. 영수증/증빙 분류 안내</h3>
+      <ul>
+        <li>영수증 파싱 및 분류 결과는 보조 정보입니다.</li>
+        <li>최종 필요경비 인정 여부는 관련 법령 및 관할기관 판단에 따릅니다.</li>
+      </ul>
+
+      <h3 style="margin-top: 18px;">3. 정확도 제한 사유</h3>
+      <ul>
+        <li>계좌 미연동, 거래/파일 누락, 입력 부족 시 정확도가 낮아질 수 있습니다.</li>
+        <li>입력이 부족하면 제한 상태(limited/blocked)로 표시될 수 있습니다.</li>
+      </ul>
+
+      <h3 style="margin-top: 18px;">4. 전문 서비스 대체 여부</h3>
+      <ul>
+        <li>서비스는 세무대리, 법률자문, 회계감사를 대체하지 않습니다.</li>
+        <li>중요한 신고/납부/분쟁 사안은 전문가 자문을 권장합니다.</li>
+      </ul>
+
+      <h3 style="margin-top: 18px;">5. 책임 관련 고지</h3>
+      <ul>
+        <li>서비스는 이용자 판단을 돕기 위한 정보를 제공합니다.</li>
+        <li>최종 신고·납부 등 의사결정은 이용자 책임 하에 이루어져야 합니다.</li>
+        <li>본 고지는 법령상 이용자 권리를 배제하기 위한 목적이 아닙니다.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+{% endblock %}

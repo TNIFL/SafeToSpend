@@ -1,0 +1,50 @@
+{
+  "url_candidates": {
+    "health_rate": [
+      "https://www.mohw.go.kr/gallery.es?act=view&bid=0003&list_no=379625&mid=a10607030000",
+      "https://www.mohw.go.kr/board.es?act=view&bid=0027&cg_code=&list_no=1487279&mid=a10503010300&tag="
+    ],
+    "ltc_rate": [
+      "https://www.mohw.go.kr/board.es?act=view&bid=0027&list_no=1487817&mid=a10503010300",
+      "https://www.mohw.go.kr/board.es?act=view&bid=0027&list_no=1487817&mid=a10503010100"
+    ],
+    "point_value": [
+      "https://easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=4&cciNo=1&cnpClsNo=1&csmSeq=1141&popMenu=ov"
+    ],
+    "policy_change": [
+      "https://www.mohw.go.kr/board.es?act=view&bid=0027&list_no=1479847&mid=a10503000000",
+      "https://www.korea.kr/docViewer/result/2024.01/05/a84f92d76bfce4dc951e5b694131516e/a84f92d76bfce4dc951e5b694131516e.view.xhtml"
+    ],
+    "income_rule": [
+      "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lspttninfSeq=69493"
+    ]
+  },
+  "patterns": {
+    "health_rate": [
+      "건강보험(?:료)?율[^0-9]{0,20}([0-9]{1,2}(?:\\.[0-9]{1,4})?)\\s*%",
+      "보험료율[^0-9]{0,20}([0-9]{1,2}(?:\\.[0-9]{1,4})?)\\s*%"
+    ],
+    "ltc_ratio": [
+      "건강보험료의[^0-9]{0,20}([0-9]{1,2}(?:\\.[0-9]{1,4})?)\\s*%"
+    ],
+    "ltc_optional": [
+      "장기요양(?:보험)?(?:료)?(?:율)?[^0-9]{0,30}([0-9]{1,2}(?:\\.[0-9]{1,4})?)\\s*%",
+      "요양보험료율[^0-9]{0,20}([0-9]{1,2}(?:\\.[0-9]{1,4})?)\\s*%"
+    ],
+    "point_value": [
+      "점수당\\s*금액[^0-9]{0,20}([0-9]{1,4}(?:\\.[0-9]{1,3})?)\\s*원",
+      "점수당금액[^0-9]{0,20}([0-9]{1,4}(?:\\.[0-9]{1,3})?)"
+    ],
+    "property_deduction": [
+      "재산\\s*기본\\s*공제[^0-9]{0,20}([0-9,]{5,})\\s*원",
+      "기본공제[^0-9]{0,20}([0-9,]{5,})\\s*원"
+    ]
+  },
+  "keywords": {
+    "health_rate": ["건강보험", "보험료율", "%"],
+    "ltc_rate": ["장기요양", "건강보험료의", "%"],
+    "point_value": ["점수당", "금액", "원"],
+    "policy_change": ["재산", "공제", "자동차", "부과"],
+    "income_rule": ["11월", "12월", "소득", "반영"]
+  }
+}

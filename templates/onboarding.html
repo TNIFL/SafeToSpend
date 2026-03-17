@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}시작 설정 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .ob-wrap{max-width:860px;margin:0 auto;padding:24px 16px 52px;}
+  .ob-card{padding:18px;border-radius:20px;border:1px solid var(--line);background:#fff;box-shadow:var(--shadow-sm);overflow:hidden;}
+  .ob-title{font-size:clamp(1.45rem,2.2vw,1.8rem);font-weight:950;letter-spacing:-.6px;line-height:1.2;}
+  .ob-sub{margin-top:6px;color:var(--muted);line-height:1.55;font-size:.95rem;max-width:860px;}
+
+  .ob-progress-wrap{margin-top:14px;}
+  .ob-progress-top{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:.88rem;color:var(--muted-2);font-weight:850;}
+  .ob-progress{
+    margin-top:8px;height:10px;border-radius:999px;border:1px solid var(--line);background:rgba(2,6,23,.05);overflow:hidden;
+  }
+  .ob-progress > div{
+    height:100%;width:25%;
+    background:linear-gradient(90deg, rgba(37,99,235,1), rgba(59,130,246,.85));
+    transition:width .24s ease;
+  }
+
+  .ob-slider{position:relative;overflow:hidden;margin-top:14px;}
+  .ob-track{display:flex;width:400%;transition:transform .28s ease;}
+  .ob-step{width:25%;padding-right:10px;}
+
+  .ob-q{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);min-height:270px;}
+  .ob-q h3{margin:0 0 8px;font-size:1.02rem;letter-spacing:-.2px;}
+  .ob-q .hint{margin-bottom:8px;color:var(--muted-2);font-size:.88rem;}
+  .ob-opts{display:grid;gap:8px;}
+  .ob-opt{display:flex;gap:10px;align-items:flex-start;font-size:.95rem;color:var(--text);padding:8px;border:1px solid transparent;border-radius:10px;}
+  .ob-opt:hover{background:#fff;border-color:var(--line);}
+  .ob-opt input{margin-top:2px;}
+
+  .ob-nav{margin-top:12px;display:flex;gap:8px;justify-content:space-between;align-items:center;}
+  .ob-nav-right{display:flex;gap:8px;}
+  .ob-pulse{animation:obPulse .24s ease;}
+  @keyframes obPulse{
+    0%{transform:scale(1);} 45%{transform:scale(1.02);} 100%{transform:scale(1);}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ob-wrap">
+  <section class="ob-card" id="obCard">
+    <div class="page-head" style="margin-bottom:0;">
+      <div class="page-head-main">
+        <div class="ob-title">결과부터 보여드릴게요</div>
+        <div class="ob-sub">딱 4개만 고르면 지금 상태 기준 결과를 먼저 보여드려요.</div>
+        <div class="ob-sub" style="margin-top:4px;">더 정확하게 만드는 질문은 결과를 본 뒤 필요한 순간에만 물어볼게요.</div>
+      </div>
+    </div>
+
+    <div class="ob-progress-wrap">
+      <div class="ob-progress-top">
+        <span id="obStepLabel">1 / 4</span>
+        <span id="obStepTitle">관리 방식</span>
+      </div>
+      <div class="ob-progress"><div id="obBar"></div></div>
+    </div>
+
+    <form method="POST" action="{{ url_for('web_auth.onboarding') }}" id="obForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="next" value="{{ next_url or url_for('web_inbox.import_page') }}">
+
+      <div class="ob-slider">
+        <div class="ob-track" id="obTrack">
+          <div class="ob-step" data-step="1" data-title="관리 방식">
+            <div class="ob-q">
+              <h3>1) 보통 혼자 관리하시나요?</h3>
+              <div class="hint">정리 화면을 어떤 순서로 보여드릴지 정하려고 물어요.</div>
+              <div class="ob-opts">
+                <label class="ob-opt"><input type="radio" name="work_mode" value="solo" required>네, 혼자 봐요</label>
+                <label class="ob-opt"><input type="radio" name="work_mode" value="with_tax_accountant">세무사와 같이 봐요</label>
+                <label class="ob-opt"><input type="radio" name="work_mode" value="with_team">팀이나 다른 도구와 같이 봐요</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="ob-step" data-step="2" data-title="월 수입 감각">
+            <div class="ob-q">
+              <h3>2) 한 달에 들어오는 돈은 어느 정도인가요?</h3>
+              <div class="hint">대충 골라도 괜찮아요. 세금 보관 권장액을 잡는 데만 먼저 써요.</div>
+              <div class="ob-opts">
+                <label class="ob-opt"><input type="radio" name="monthly_income_band" value="lt_3m" required>300만원 미만</label>
+                <label class="ob-opt"><input type="radio" name="monthly_income_band" value="3m_6m">300만 ~ 600만원</label>
+                <label class="ob-opt"><input type="radio" name="monthly_income_band" value="6m_10m">600만 ~ 1,000만원</label>
+                <label class="ob-opt"><input type="radio" name="monthly_income_band" value="gt_10m">1,000만원 이상</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="ob-step" data-step="3" data-title="주로 하는 일">
+            <div class="ob-q">
+              <h3>3) 어떤 일을 주로 하세요?</h3>
+              <div class="hint">대충 가장 가까운 걸 고르면 돼요. 내역 정리 추천을 맞추는 데 써요.</div>
+              <div class="ob-opts">
+                <label class="ob-opt"><input type="radio" name="freelancer_type" value="developer" required>개발/IT</label>
+                <label class="ob-opt"><input type="radio" name="freelancer_type" value="designer">디자인/영상</label>
+                <label class="ob-opt"><input type="radio" name="freelancer_type" value="marketer">마케팅/광고</label>
+                <label class="ob-opt"><input type="radio" name="freelancer_type" value="creator">콘텐츠/글/영상</label>
+                <label class="ob-opt"><input type="radio" name="freelancer_type" value="consultant">강의/컨설팅</label>
+                <label class="ob-opt"><input type="radio" name="freelancer_type" value="other">기타</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="ob-step" data-step="4" data-title="먼저 보고 싶은 것">
+            <div class="ob-q">
+              <h3>4) 지금 가장 먼저 보고 싶은 건 무엇인가요?</h3>
+              <div class="hint">첫 화면 우선순위를 맞출게요.</div>
+              <div class="ob-opts">
+                <label class="ob-opt"><input type="radio" name="primary_goal" value="tax_ready" required>세금 부족/리스크 미리 방지</label>
+                <label class="ob-opt"><input type="radio" name="primary_goal" value="evidence_clean">증빙 누락 빠르게 정리</label>
+                <label class="ob-opt"><input type="radio" name="primary_goal" value="faster_month_close">월말 마감 시간을 줄이기</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ob-nav">
+        <button class="btn ghost" type="button" id="obPrev" disabled>이전</button>
+        <div class="ob-nav-right">
+          <button class="btn" type="button" id="obNext">다음</button>
+          <button class="btn primary" type="submit" id="obSubmit" style="display:none;">저장하고 결과 보기</button>
+        </div>
+      </div>
+    </form>
+  </section>
+</div>
+
+<script>
+(function(){
+  const form = document.getElementById("obForm");
+  const track = document.getElementById("obTrack");
+  const bar = document.getElementById("obBar");
+  const stepLabel = document.getElementById("obStepLabel");
+  const stepTitle = document.getElementById("obStepTitle");
+  const prevBtn = document.getElementById("obPrev");
+  const nextBtn = document.getElementById("obNext");
+  const submitBtn = document.getElementById("obSubmit");
+  const card = document.getElementById("obCard");
+  if (!form || !track) return;
+
+  const total = 4;
+  let idx = 0;
+  const groups = ["work_mode", "monthly_income_band", "freelancer_type", "primary_goal"];
+
+  function update(){
+    const stepNo = idx + 1;
+    track.style.transform = `translateX(-${idx * 25}%)`;
+    bar.style.width = `${(stepNo / total) * 100}%`;
+    stepLabel.textContent = `${stepNo} / ${total}`;
+    const stepEl = track.querySelector(`.ob-step[data-step='${stepNo}']`);
+    stepTitle.textContent = stepEl ? (stepEl.dataset.title || "") : "";
+    prevBtn.disabled = idx === 0;
+    nextBtn.style.display = idx === total - 1 ? "none" : "inline-flex";
+    submitBtn.style.display = idx === total - 1 ? "inline-flex" : "none";
+  }
+
+  function isCurrentStepValid(){
+    const name = groups[idx];
+    const picked = form.querySelector(`input[name='${name}']:checked`);
+    return !!picked;
+  }
+
+  function nudge(){
+    card.classList.remove("ob-pulse");
+    void card.offsetWidth;
+    card.classList.add("ob-pulse");
+  }
+
+  nextBtn.addEventListener("click", () => {
+    if (!isCurrentStepValid()) {
+      nudge();
+      const name = groups[idx];
+      const first = form.querySelector(`input[name='${name}']`);
+      if (first) first.focus();
+      return;
+    }
+    idx = Math.min(total - 1, idx + 1);
+    update();
+  });
+
+  prevBtn.addEventListener("click", () => {
+    idx = Math.max(0, idx - 1);
+    update();
+  });
+
+  form.addEventListener("submit", (e) => {
+    // 마지막 단계 제출 전 전체 유효성 점검
+    for (let i = 0; i < groups.length; i++) {
+      const name = groups[i];
+      const picked = form.querySelector(`input[name='${name}']:checked`);
+      if (!picked) {
+        e.preventDefault();
+        idx = i;
+        update();
+        nudge();
+        return;
+      }
+    }
+  });
+
+  update();
+})();
+</script>
+{% endblock %}

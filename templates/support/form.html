@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}문의 보내기 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:860px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">문의 보내기</div>
+      <div class="p">불편했던 점이나 필요한 기능을 남겨 주세요. 확인 후 답변드릴게요.</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ my_url }}">내 문의 보기</a>
+    </div>
+  </div>
+
+  <form method="post" class="card pad" style="display:grid; gap:12px;">
+    {% if support_unavailable %}
+      <div class="small-note muted2">
+        문의 기능 설정이 아직 완료되지 않았어요. 잠시 후 다시 시도해 주세요.
+      </div>
+    {% endif %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="field">
+      <span class="label">제목</span>
+      <input type="text" name="subject" maxlength="200" placeholder="예) 영수증 처리 속도가 느려요" required {% if support_unavailable %}disabled{% endif %}>
+    </label>
+    <label class="field">
+      <span class="label">문의 내용</span>
+      <textarea name="message" rows="9" maxlength="5000" placeholder="문제 상황을 간단히 적어 주세요." required {% if support_unavailable %}disabled{% endif %}></textarea>
+    </label>
+    <div class="row" style="gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+      <button type="submit" class="btn primary" {% if support_unavailable %}disabled{% endif %}>문의 보내기</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

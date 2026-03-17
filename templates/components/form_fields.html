@@ -1,0 +1,149 @@
+{% macro _field_id(name, field_id='') -%}
+  {%- if field_id -%}
+    {{- field_id -}}
+  {%- else -%}
+    {{- ("fld-" ~ (name|string)).replace("[", "-").replace("]", "").replace("_", "-") -}}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro text_field(
+  name,
+  label,
+  value='',
+  placeholder='',
+  help='',
+  error='',
+  field_id='',
+  required=false,
+  input_type='text',
+  input_class='',
+  wrapper_class='',
+  label_class='',
+  help_class='asset-field-help',
+  autocomplete='off',
+  inputmode='',
+  maxlength=''
+) -%}
+  {%- set fid = _field_id(name, field_id) -%}
+  <label class="{{ wrapper_class or 'asset-field' }}">
+    <span class="{{ label_class or 'asset-label' }}">
+      {{ label }}{% if required %} <span aria-hidden="true">*</span>{% endif %}
+    </span>
+    <input
+      id="{{ fid }}"
+      class="{{ input_class or 'asset-input' }}"
+      type="{{ input_type }}"
+      name="{{ name }}"
+      value="{{ value if value is not none else '' }}"
+      placeholder="{{ placeholder }}"
+      autocomplete="{{ autocomplete }}"
+      {% if inputmode %}inputmode="{{ inputmode }}"{% endif %}
+      {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+      {% if required %}required{% endif %}
+      aria-invalid="{{ 'true' if error else 'false' }}"
+      aria-describedby="{{ fid }}-help{% if error %} {{ fid }}-error{% endif %}"
+    >
+    {% if help %}
+      <span id="{{ fid }}-help" class="{{ help_class }}">{{ help }}</span>
+    {% endif %}
+    {% if error %}
+      <span id="{{ fid }}-error" class="{{ help_class }}" style="color:#b91c1c;">{{ error }}</span>
+    {% endif %}
+  </label>
+{%- endmacro %}
+
+{% macro number_field(
+  name,
+  label,
+  value='',
+  placeholder='',
+  help='',
+  error='',
+  field_id='',
+  required=false,
+  input_class='',
+  wrapper_class='',
+  label_class='',
+  help_class='asset-field-help',
+  unit='원',
+  data_format='krw',
+  data_income_hybrid='',
+  inputmode='numeric',
+  maxlength='',
+  min='',
+  max='',
+  step=''
+) -%}
+  {%- set fid = _field_id(name, field_id) -%}
+  <label class="{{ wrapper_class or 'asset-field' }}">
+    <span class="{{ label_class or 'asset-label' }}">
+      {{ label }}{% if required %} <span aria-hidden="true">*</span>{% endif %}
+    </span>
+    <input
+      id="{{ fid }}"
+      class="{{ input_class or 'asset-input' }}{% if data_format == 'krw' %} js-krw{% endif %}"
+      type="text"
+      name="{{ name }}"
+      value="{{ value if value is not none else '' }}"
+      placeholder="{{ placeholder }}"
+      inputmode="{{ inputmode }}"
+      {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+      {% if min %}min="{{ min }}"{% endif %}
+      {% if max %}max="{{ max }}"{% endif %}
+      {% if step %}step="{{ step }}"{% endif %}
+      {% if data_format %}data-format="{{ data_format }}"{% endif %}
+      {% if data_income_hybrid %}data-income-hybrid-input="{{ data_income_hybrid }}"{% endif %}
+      {% if required %}required{% endif %}
+      aria-invalid="{{ 'true' if error else 'false' }}"
+      aria-describedby="{{ fid }}-help{% if error %} {{ fid }}-error{% endif %}"
+    >
+    {% if help %}
+      <span id="{{ fid }}-help" class="{{ help_class }}">{{ help }}</span>
+    {% elif unit %}
+      <span id="{{ fid }}-help" class="{{ help_class }}">{{ unit }} 단위</span>
+    {% endif %}
+    {% if error %}
+      <span id="{{ fid }}-error" class="{{ help_class }}" style="color:#b91c1c;">{{ error }}</span>
+    {% endif %}
+  </label>
+{%- endmacro %}
+
+{% macro select_field(
+  name,
+  label,
+  options=[],
+  selected='',
+  help='',
+  error='',
+  field_id='',
+  required=false,
+  select_class='',
+  wrapper_class='',
+  label_class='',
+  help_class='asset-field-help'
+) -%}
+  {%- set fid = _field_id(name, field_id) -%}
+  <label class="{{ wrapper_class or 'asset-field' }}">
+    <span class="{{ label_class or 'asset-label' }}">
+      {{ label }}{% if required %} <span aria-hidden="true">*</span>{% endif %}
+    </span>
+    <select
+      id="{{ fid }}"
+      class="{{ select_class or 'asset-select' }}"
+      name="{{ name }}"
+      {% if required %}required{% endif %}
+      aria-invalid="{{ 'true' if error else 'false' }}"
+      aria-describedby="{{ fid }}-help{% if error %} {{ fid }}-error{% endif %}"
+    >
+      {% for opt_value, opt_label in options %}
+        <option value="{{ opt_value }}" {% if (opt_value|string) == (selected|string) %}selected{% endif %}>{{ opt_label }}</option>
+      {% endfor %}
+    </select>
+    {% if help %}
+      <span id="{{ fid }}-help" class="{{ help_class }}">{{ help }}</span>
+    {% endif %}
+    {% if error %}
+      <span id="{{ fid }}-error" class="{{ help_class }}" style="color:#b91c1c;">{{ error }}</span>
+    {% endif %}
+  </label>
+{%- endmacro %}

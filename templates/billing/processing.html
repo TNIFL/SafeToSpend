@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}결제 진행 중 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:760px; padding-top:20px;">
+  <div class="card pad">
+    <div class="h2">결제를 연결하고 있어요.</div>
+    <div class="small-note muted2" style="margin-top:8px;">
+      결제 의도 번호: {{ intent.id }}
+    </div>
+
+    {% if pending_message %}
+      <div class="note" style="margin-top:12px;">{{ pending_message }}</div>
+      <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn primary" href="{{ url_for('web_billing.payment_success', order_id=intent.pricing_snapshot_json.get('payment_order_id') if intent.pricing_snapshot_json else None) }}">상태 다시 확인</a>
+        <a class="btn ghost" href="{{ url_for('web_main.pricing') }}">요금제 화면으로 이동</a>
+      </div>
+    {% elif auto_submit %}
+      <div class="note" style="margin-top:12px;">
+        등록된 결제수단으로 첫 결제를 이어서 진행하고 있어요.
+      </div>
+      <form id="processing-confirm-form" method="post" action="{{ url_for('web_billing.checkout_confirm_submit') }}" style="margin-top:14px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="intent" value="{{ resume_token }}">
+        <button class="btn primary" type="submit">자동 진행이 안 되면 눌러 주세요</button>
+        <a class="btn ghost" href="{{ url_for('web_billing.checkout_confirm_page', intent=resume_token) }}">결제 확인 화면으로 이동</a>
+      </form>
+      <script>
+      (() => {
+        const form = document.getElementById("processing-confirm-form");
+        if (!form) return;
+        const onceKey = "billing_processing_submitted_{{ resume_token }}";
+        if (window.sessionStorage && sessionStorage.getItem(onceKey) === "1") return;
+        if (window.sessionStorage) sessionStorage.setItem(onceKey, "1");
+        window.setTimeout(() => form.submit(), 150);
+      })();
+      </script>
+    {% else %}
+      <div class="note warn" style="margin-top:12px;">
+        결제 연결 정보를 확인하지 못했어요. 아래 버튼으로 다시 진행해 주세요.
+      </div>
+      <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn primary" href="{{ url_for('web_billing.checkout_confirm_page', intent=resume_token) }}">결제 확인 화면으로 이동</a>
+        <a class="btn ghost" href="{{ url_for('web_main.pricing') }}">요금제 화면으로 이동</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

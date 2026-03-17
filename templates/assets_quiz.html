@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+{% block title %}자산 진단 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .asset-wrap{max-width:1120px;margin:0 auto;padding:24px 16px 56px;}
+  .asset-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start;}
+  .asset-card{padding:16px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:var(--shadow-sm);}
+  .asset-title{margin:0;font-size:1.08rem;font-weight:950;letter-spacing:-.35px;}
+  .asset-sub{margin-top:6px;color:var(--muted);font-size:.9rem;line-height:1.52;}
+  .asset-progress{height:10px;background:rgba(15,23,42,.08);border-radius:999px;overflow:hidden;margin-top:12px;}
+  .asset-progress > i{display:block;height:100%;background:linear-gradient(90deg,#2563eb,#0ea5e9);}
+  .asset-fields{display:grid;gap:10px;margin-top:14px;}
+  .asset-field{display:grid;gap:6px;}
+  .asset-label{font-size:.88rem;font-weight:900;color:var(--muted-2);}
+  .asset-input,.asset-select{width:100%;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text);outline:none;}
+  .asset-input:focus,.asset-select:focus{border-color:rgba(37,99,235,.42);box-shadow:0 0 0 4px rgba(37,99,235,.10);}
+  .asset-checkline{display:flex;gap:8px;flex-wrap:wrap;}
+  .asset-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .asset-kpis{display:grid;gap:8px;margin-top:10px;}
+  .asset-kpi{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);}
+  .asset-kpi .k{font-size:.78rem;color:var(--muted);font-weight:850;}
+  .asset-kpi .v{margin-top:4px;font-size:1.18rem;font-weight:950;letter-spacing:-.35px;}
+  .asset-note{margin-top:10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(15,23,42,.08);background:rgba(148,163,184,.08);font-size:.86rem;color:#334155;}
+  .asset-note.warn{border-color:rgba(245,158,11,.26);background:rgba(245,158,11,.12);color:#92400e;}
+  .asset-dyn-row{display:none;}
+  .asset-dyn-row.show{display:block;}
+  .asset-rent-quiz-fields{display:none;gap:10px;}
+  .asset-rent-quiz-fields.show{display:grid;}
+  .asset-mode-field{display:none;}
+  .asset-mode-field.show{display:grid;}
+  .asset-hidden{display:none !important;}
+  @media (max-width:980px){
+    .asset-grid{grid-template-columns:1fr;}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="asset-wrap">
+  <div class="page-head">
+    <div class="page-head-main">
+      <h1 class="asset-title">자산 진단(30초)</h1>
+      <div class="asset-sub">더 정확한 세금/건보료 예측을 위해 핵심만 단계별로 확인할게요.</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_profile.nhis_page', month=month_key, source='assets') }}">지금은 나중에</a>
+    </div>
+  </div>
+
+  <div class="asset-progress" aria-label="진행률">
+    <i style="width: {{ progress_pct }}%"></i>
+  </div>
+  <div class="small-note muted2" style="margin-top:6px;">{{ step }}/{{ total_steps }} 단계 · 완료율 {{ feedback.completion_ratio|int }}%</div>
+
+  <div class="asset-grid" style="margin-top:12px;">
+    <section class="asset-card">
+      <form method="post" action="{{ url_for('web_profile.assets_quiz', month=month_key) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="step" value="{{ step }}">
+
+        {% if step == 1 %}
+          <h2 class="asset-title">세대/부양가족 정보</h2>
+          <div class="asset-sub">세대 합산 여부는 건보료 추정에 영향을 줘요.</div>
+          {% set member_type_input = (feedback.nhis_member_type_input if feedback and feedback.nhis_member_type_input else 'unknown') %}
+          {% if member_type_input == 'employee' %}
+            {% set company_nhis = 'yes' %}
+            {% set dependent_nhis = 'no' %}
+          {% elif member_type_input == 'dependent' %}
+            {% set company_nhis = 'no' %}
+            {% set dependent_nhis = 'yes' %}
+          {% elif member_type_input == 'regional' %}
+            {% set company_nhis = 'no' %}
+            {% set dependent_nhis = 'no' %}
+          {% else %}
+            {% set company_nhis = 'unknown' %}
+            {% set dependent_nhis = 'unknown' %}
+          {% endif %}
+          <div class="asset-fields">
+            <label class="asset-field">
+              <span class="asset-label">회사에서 건강보험이 빠져나가나요?</span>
+              <select class="asset-select" name="company_nhis">
+                <option value="unknown" {% if company_nhis == 'unknown' %}selected{% endif %}>모름</option>
+                <option value="yes" {% if company_nhis == 'yes' %}selected{% endif %}>예</option>
+                <option value="no" {% if company_nhis == 'no' %}selected{% endif %}>아니오</option>
+              </select>
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">가족 직장보험 피부양자인가요?</span>
+              <select class="asset-select" name="dependent_nhis">
+                <option value="unknown" {% if dependent_nhis == 'unknown' %}selected{% endif %}>모름</option>
+                <option value="yes" {% if dependent_nhis == 'yes' %}selected{% endif %}>예</option>
+                <option value="no" {% if dependent_nhis == 'no' %}selected{% endif %}>아니오</option>
+              </select>
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">세대에 다른 소득/재산이 있나요?</span>
+              <select class="asset-select" name="household_has_others">
+                <option value="" {% if profile.household_has_others is none %}selected{% endif %}>모름</option>
+                <option value="yes" {% if profile.household_has_others is sameas true %}selected{% endif %}>있음</option>
+                <option value="no" {% if profile.household_has_others is sameas false %}selected{% endif %}>없음</option>
+              </select>
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">부양가족 수(선택)</span>
+              <input class="asset-input" type="text" name="dependents_count" value="{{ profile.dependents_count if profile.dependents_count is not none else '' }}" placeholder="예: 1">
+            </label>
+          </div>
+        {% elif step == 2 %}
+          <h2 class="asset-title">거주 형태</h2>
+          <div class="asset-sub">자가/전월세에 따라 필요한 입력이 달라져요.</div>
+          <div class="asset-fields">
+            <label class="asset-field">
+              <span class="asset-label">거주 형태</span>
+              <select class="asset-select" name="housing_mode">
+                <option value="unknown" {% if profile.housing_mode == 'unknown' %}selected{% endif %}>모름</option>
+                <option value="own" {% if profile.housing_mode == 'own' %}selected{% endif %}>자가</option>
+                <option value="jeonse" {% if profile.housing_mode == 'jeonse' %}selected{% endif %}>전세</option>
+                <option value="rent" {% if profile.housing_mode == 'rent' %}selected{% endif %}>월세</option>
+                <option value="none" {% if profile.housing_mode == 'none' %}selected{% endif %}>해당 없음</option>
+              </select>
+            </label>
+          </div>
+        {% elif step == 3 %}
+          <h2 class="asset-title">자가 주택 정보</h2>
+          <div class="asset-sub">집 개수만 고르면, 집마다 주소/유형/면적을 간단히 받아 자동 추정해요.</div>
+          <div class="asset-fields">
+            {% set home_count = (home_list|length) if home_list else (1 if profile.housing_mode == 'own' else 0) %}
+            {% if profile.housing_mode == 'own' and home_count < 1 %}{% set home_count = 1 %}{% endif %}
+            {% if home_count > 3 %}{% set home_count = 3 %}{% endif %}
+            <label class="asset-field">
+              <span class="asset-label">보유 주택 수</span>
+              <select class="asset-select" name="home_count" id="home-count-select">
+                <option value="0" {% if home_count == 0 %}selected{% endif %}>없음</option>
+                <option value="1" {% if home_count == 1 %}selected{% endif %}>1채</option>
+                <option value="2" {% if home_count == 2 %}selected{% endif %}>2채</option>
+                <option value="3" {% if home_count == 3 %}selected{% endif %}>3채 이상</option>
+              </select>
+            </label>
+            <div id="home-empty-note" class="asset-note{% if home_count > 0 %} asset-hidden{% endif %}">보유 주택이 없으면 이 단계 입력을 건너뛸 수 있어요.</div>
+            {% for idx in range(1, 4) %}
+              {% set row = (home_list[idx - 1] if home_list and (idx - 1) < (home_list|length) else {}) %}
+              {% set rinput = (row.input if row and row.input else {}) %}
+              <div class="asset-dyn-row{% if idx <= home_count %} show{% endif %}" data-home-row="{{ idx }}">
+                <div class="asset-note" style="margin-top:2px;">집 {{ idx }} / <span data-home-total>{{ home_count }}</span></div>
+                <label class="asset-field">
+                  <span class="asset-label">주소(시/구/동 정도)</span>
+                  <input class="asset-input" type="text" name="home_address_{{ idx }}" value="{{ rinput.address_text if rinput else '' }}" placeholder="예: 서울 마포구 상암동">
+                </label>
+                <label class="asset-field">
+                  <span class="asset-label">주택 유형</span>
+                  {% set home_type = (rinput.home_type if rinput else '') %}
+                  <select class="asset-select" name="home_type_{{ idx }}">
+                    <option value="">모름</option>
+                    <option value="apartment" {% if home_type == 'apartment' %}selected{% endif %}>아파트</option>
+                    <option value="villa" {% if home_type == 'villa' %}selected{% endif %}>빌라/연립</option>
+                    <option value="house" {% if home_type == 'house' %}selected{% endif %}>단독주택</option>
+                    <option value="officetel" {% if home_type == 'officetel' %}selected{% endif %}>오피스텔</option>
+                  </select>
+                </label>
+                <label class="asset-field">
+                  <span class="asset-label">전용면적(㎡, 선택)</span>
+                  <input class="asset-input" type="text" name="home_area_sqm_{{ idx }}" value="{{ rinput.area_sqm if rinput and rinput.area_sqm is not none else '' }}" placeholder="예: 84">
+                </label>
+              </div>
+            {% endfor %}
+          </div>
+        {% elif step == 4 %}
+          <h2 class="asset-title">전월세 정보</h2>
+          <div class="asset-sub">전세/월세를 선택하고 입력하면 11월 예상치 정확도가 올라가요.</div>
+          {% set rent_item = items.rent if items and items.rent else {} %}
+          {% set rent_input = rent_item.input if rent_item and rent_item.input else {} %}
+          {% set rent_mode = profile.housing_mode if profile.housing_mode in ['jeonse', 'rent', 'none', 'unknown'] else 'unknown' %}
+          {% set rent_deposit_val = (rent_input.rent_deposit_krw if rent_input else none) %}
+          {% set rent_monthly_val = (rent_input.rent_monthly_krw if rent_input else none) %}
+          {% if rent_mode in ['unknown', 'none'] %}
+            {% if (rent_monthly_val|int > 0) %}
+              {% set rent_mode = 'rent' %}
+            {% elif (rent_deposit_val|int > 0) %}
+              {% set rent_mode = 'jeonse' %}
+            {% endif %}
+          {% endif %}
+          <div class="asset-fields">
+            <label class="asset-field">
+              <span class="asset-label">거주 형태(전월세)</span>
+              <select class="asset-select" name="rent_input_mode" id="rent-input-mode">
+                <option value="unknown" {% if rent_mode == 'unknown' %}selected{% endif %}>모름</option>
+                <option value="jeonse" {% if rent_mode == 'jeonse' %}selected{% endif %}>전세</option>
+                <option value="rent" {% if rent_mode == 'rent' %}selected{% endif %}>월세</option>
+                <option value="none" {% if rent_mode == 'none' %}selected{% endif %}>해당 없음</option>
+              </select>
+            </label>
+            <div id="rent-empty-note" class="asset-note{% if rent_mode in ['jeonse', 'rent'] %} asset-hidden{% endif %}">
+              전세 또는 월세를 선택하면 입력란이 열려요.
+            </div>
+            <div class="asset-rent-quiz-fields{% if rent_mode in ['jeonse', 'rent'] %} show{% endif %}" id="rent-amount-fields">
+              <label class="asset-field asset-mode-field{% if rent_mode == 'jeonse' %} show{% endif %}" data-rent-mode-field="jeonse">
+                <span class="asset-label">전세금(원)</span>
+                <input class="asset-input" type="text" name="rent_deposit_krw" data-rent-input="jeonse" value="{{ rent_deposit_val if rent_deposit_val is not none else '' }}" placeholder="예: 30000000">
+              </label>
+              <label class="asset-field asset-mode-field{% if rent_mode == 'rent' %} show{% endif %}" data-rent-mode-field="rent">
+                <span class="asset-label">월세(원)</span>
+                <input class="asset-input" type="text" name="rent_monthly_krw" data-rent-input="rent" value="{{ rent_monthly_val if rent_monthly_val is not none else '' }}" placeholder="예: 700000">
+              </label>
+            </div>
+          </div>
+        {% elif step == 5 %}
+          <h2 class="asset-title">차량 정보</h2>
+          <div class="asset-sub">브랜드/차종/연식만 입력하면 표준가액을 자동으로 추정해요.</div>
+          <div class="asset-fields">
+            <label class="asset-field">
+              <span class="asset-label">차량 보유 여부</span>
+              <select class="asset-select" name="has_car" id="has-car-select">
+                <option value="" {% if profile.has_car is none %}selected{% endif %}>모름</option>
+                <option value="yes" {% if profile.has_car is sameas true %}selected{% endif %}>있음</option>
+                <option value="no" {% if profile.has_car is sameas false %}selected{% endif %}>없음</option>
+              </select>
+            </label>
+            {% set car_count = (car_list|length) if car_list else (1 if profile.has_car is sameas true else 1) %}
+            {% if car_count < 1 %}{% set car_count = 1 %}{% endif %}
+            {% if car_count > 3 %}{% set car_count = 3 %}{% endif %}
+            <label class="asset-field" id="car-count-field">
+              <span class="asset-label">차량 대수</span>
+              <select class="asset-select" name="car_count" id="car-count-select">
+                <option value="1" {% if car_count == 1 %}selected{% endif %}>1대</option>
+                <option value="2" {% if car_count == 2 %}selected{% endif %}>2대</option>
+                <option value="3" {% if car_count == 3 %}selected{% endif %}>3대 이상</option>
+              </select>
+            </label>
+            <div id="car-empty-note" class="asset-note{% if profile.has_car is sameas true %} asset-hidden{% endif %}">차량이 없으면 이 단계 입력을 건너뛰어도 괜찮아요.</div>
+            {% for idx in range(1, 4) %}
+              {% set row = (car_list[idx - 1] if car_list and (idx - 1) < (car_list|length) else {}) %}
+              {% set rinput = (row.input if row and row.input else {}) %}
+              <div class="asset-dyn-row{% if profile.has_car is sameas true and idx <= car_count %} show{% endif %}" data-car-row="{{ idx }}">
+                <div class="asset-note" style="margin-top:2px;">차량 {{ idx }} / <span data-car-total>{{ car_count }}</span></div>
+                <label class="asset-field">
+                  <span class="asset-label">브랜드</span>
+                  <input class="asset-input" type="text" name="car_brand_{{ idx }}" value="{{ rinput.brand if rinput else '' }}" placeholder="예: 현대">
+                </label>
+                <label class="asset-field">
+                  <span class="asset-label">차종/모델</span>
+                  <input class="asset-input" type="text" name="car_model_{{ idx }}" value="{{ rinput.model if rinput else '' }}" placeholder="예: 아반떼">
+                </label>
+                <label class="asset-field">
+                  <span class="asset-label">연식</span>
+                  <input class="asset-input" type="text" name="car_year_{{ idx }}" value="{{ rinput.year if rinput and rinput.year is not none else '' }}" placeholder="예: 2021">
+                </label>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <h2 class="asset-title">기타 소득 정보</h2>
+          <div class="asset-sub">근로/이자/배당 같은 소득이 있으면 11월 변동 예측에 반영돼요.</div>
+          <div class="asset-fields">
+            <div class="asset-field">
+              <span class="asset-label">해당되는 소득을 선택해 주세요</span>
+              <div class="asset-checkline">
+                {% set selected = profile.other_income_types or [] %}
+                {% for code in income_type_options %}
+                  <label class="chk"><input type="checkbox" name="other_income_{{ code }}" value="1" {% if code in selected %}checked{% endif %}>{{ income_type_labels.get(code, code) }}</label>
+                {% endfor %}
+              </div>
+            </div>
+            <label class="asset-field">
+              <span class="asset-label">기타 소득 연간 합계(선택, 원)</span>
+              <input class="asset-input" type="text" name="other_income_annual_krw" value="{{ profile.other_income_annual_krw if profile.other_income_annual_krw is not none else '' }}" placeholder="예: 12000000">
+            </label>
+          </div>
+        {% endif %}
+
+        <div class="asset-actions">
+          {% if step >= total_steps %}
+            <button class="btn primary" id="quiz-primary-submit" type="submit" name="action" value="complete">완료하고 결과 보기</button>
+          {% else %}
+            <button class="btn primary" id="quiz-primary-submit" type="submit" name="action" value="next">저장하고 다음</button>
+          {% endif %}
+          <button class="btn ghost" type="submit" name="action" value="skip">지금은 건너뛰기</button>
+          {% if step > 1 %}
+            <button class="btn ghost" type="submit" name="action" value="back">이전</button>
+          {% endif %}
+        </div>
+      </form>
+    </section>
+
+    <aside class="asset-card">
+      <h2 class="asset-title">입력할수록 숫자가 바뀌어요</h2>
+      <div class="asset-sub">현재 기준과 11월 반영 예상을 함께 보여드릴게요.</div>
+      <div class="asset-kpis">
+        <div class="asset-kpi">
+          <div class="k">현재 기준 예상 건보료 (추정)</div>
+          <div class="v">{{ "{:,}".format(feedback.current_nhis_est_krw|int) }}원</div>
+        </div>
+        <div class="asset-kpi">
+          <div class="k">11월 반영 예상 건보료 (추정)</div>
+          <div class="v">{{ "{:,}".format(feedback.november_nhis_est_krw|int) }}원</div>
+        </div>
+        <div class="asset-kpi">
+          <div class="k">차이 (추정)</div>
+          <div class="v">{{ "{:,}".format(feedback.november_diff_krw|int) }}원</div>
+        </div>
+      </div>
+      <div class="asset-note">{{ feedback.note }}</div>
+      {% if feedback.warnings %}
+        <div class="asset-note warn">
+          {% for msg in feedback.warnings[:3] %}
+            <div>• {{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <div class="small-note muted2" style="margin-top:10px;">모든 값은 추정치이며, 실제 고지서와 차이가 있을 수 있어요.</div>
+    </aside>
+  </div>
+</div>
+<script>
+  (function () {
+    const homeCountSelect = document.getElementById("home-count-select");
+    if (homeCountSelect) {
+      const homeRows = Array.from(document.querySelectorAll("[data-home-row]"));
+      const homeEmpty = document.getElementById("home-empty-note");
+      const homeTotals = Array.from(document.querySelectorAll("[data-home-total]"));
+      const syncHomes = () => {
+        const count = Math.max(0, Math.min(3, parseInt(homeCountSelect.value || "0", 10) || 0));
+        homeRows.forEach((row) => {
+          const idx = parseInt(row.getAttribute("data-home-row") || "0", 10) || 0;
+          row.classList.toggle("show", idx <= count && count > 0);
+        });
+        if (homeEmpty) homeEmpty.classList.toggle("asset-hidden", count > 0);
+        homeTotals.forEach((el) => { el.textContent = String(count); });
+      };
+      homeCountSelect.addEventListener("change", syncHomes);
+      syncHomes();
+    }
+
+    const hasCarSelect = document.getElementById("has-car-select");
+    const carCountSelect = document.getElementById("car-count-select");
+    if (hasCarSelect && carCountSelect) {
+      const carRows = Array.from(document.querySelectorAll("[data-car-row]"));
+      const carEmpty = document.getElementById("car-empty-note");
+      const carTotals = Array.from(document.querySelectorAll("[data-car-total]"));
+      const carCountField = document.getElementById("car-count-field");
+      const syncCars = () => {
+        const hasCar = String(hasCarSelect.value || "").toLowerCase() === "yes";
+        const count = Math.max(1, Math.min(3, parseInt(carCountSelect.value || "1", 10) || 1));
+        if (carCountField) carCountField.classList.toggle("asset-hidden", !hasCar);
+        if (carEmpty) carEmpty.classList.toggle("asset-hidden", hasCar);
+        carRows.forEach((row) => {
+          const idx = parseInt(row.getAttribute("data-car-row") || "0", 10) || 0;
+          row.classList.toggle("show", hasCar && idx <= count);
+        });
+        carTotals.forEach((el) => { el.textContent = String(count); });
+      };
+      hasCarSelect.addEventListener("change", syncCars);
+      carCountSelect.addEventListener("change", syncCars);
+      syncCars();
+    }
+
+    const rentModeSelect = document.getElementById("rent-input-mode");
+    if (rentModeSelect) {
+      const rentAmountFields = document.getElementById("rent-amount-fields");
+      const rentEmptyNote = document.getElementById("rent-empty-note");
+
+      const syncRentModeFields = (mode) => {
+        const showAmounts = mode === "jeonse" || mode === "rent";
+        if (rentAmountFields) rentAmountFields.classList.toggle("show", showAmounts);
+        if (rentEmptyNote) rentEmptyNote.classList.toggle("asset-hidden", showAmounts);
+        document.querySelectorAll("[data-rent-mode-field]").forEach((field) => {
+          const targetMode = String(field.getAttribute("data-rent-mode-field") || "").toLowerCase();
+          field.classList.toggle("show", showAmounts && targetMode === mode);
+        });
+        const clearInputsByMode = (targetMode) => {
+          document.querySelectorAll(`[data-rent-input='${targetMode}']`).forEach((input) => {
+            if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLTextAreaElement)) return;
+            input.value = "";
+          });
+        };
+        if (mode === "jeonse") {
+          clearInputsByMode("rent");
+        } else if (mode === "rent") {
+          clearInputsByMode("jeonse");
+        } else {
+          clearInputsByMode("jeonse");
+          clearInputsByMode("rent");
+        }
+      };
+
+      const syncRentMode = () => {
+        const mode = String(rentModeSelect.value || "").toLowerCase();
+        syncRentModeFields(mode);
+      };
+      rentModeSelect.addEventListener("change", syncRentMode);
+      syncRentMode();
+    }
+
+    // Enter 입력 시 의도치 않게 "이전"으로 제출되는 것을 막고 기본(다음/완료) 액션으로 보낸다.
+    const quizForm = document.querySelector(".asset-card form");
+    if (quizForm) {
+      const primaryBtn = document.getElementById("quiz-primary-submit");
+      quizForm.querySelectorAll("input, select, textarea").forEach((el) => {
+        el.addEventListener("keydown", (evt) => {
+          if (evt.key !== "Enter") return;
+          if (evt.isComposing) return;
+          if (el instanceof HTMLTextAreaElement) return;
+          evt.preventDefault();
+          if (primaryBtn instanceof HTMLElement) {
+            primaryBtn.click();
+          } else {
+            quizForm.requestSubmit();
+          }
+        });
+      });
+    }
+  })();
+</script>
+{% endblock %}

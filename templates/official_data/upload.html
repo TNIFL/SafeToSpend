@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}공식 자료 올리기 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap" style="max-width:960px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">{{ page_title }}</div>
+      <div class="p">{{ page_summary }}</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_guide.official_data_guide') }}">공식 자료 안내 보기</a>
+    </div>
+  </div>
+
+  {% include "partials/official_data_upload_notice.html" %}
+
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="h2" style="font-size:1.02rem;">지원하는 파일만 올려 주세요</div>
+    <div class="small-note muted2" style="margin-top:6px;">문서별로 지원 형식이 다를 수 있어요. 정확히 읽히는 파일만 자동 반영합니다.</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:12px;">
+      <div style="border:1px solid var(--line); border-radius:12px; padding:12px; background:#fff;">
+        <div style="font-weight:800;">지원 형식</div>
+        <div class="small-note muted2" style="margin-top:6px;">{{ supported_formats|join(', ') }}</div>
+      </div>
+      <div style="border:1px solid var(--line); border-radius:12px; padding:12px; background:#fff;">
+        <div style="font-weight:800;">지원 안 함</div>
+        <div class="small-note muted2" style="margin-top:6px;">{{ unsupported_formats|join(', ') }}</div>
+      </div>
+    </div>
+  </div>
+
+  {% if page_status and page_message %}
+    <div class="card pad" style="margin-bottom:12px; border-color:{% if status_tone == 'success' %}rgba(22,163,74,.24){% elif status_tone == 'error' %}rgba(239,68,68,.24){% else %}rgba(245,158,11,.24){% endif %}; background:{% if status_tone == 'success' %}rgba(22,163,74,.06){% elif status_tone == 'error' %}rgba(239,68,68,.06){% else %}rgba(245,158,11,.08){% endif %};">
+      <div class="h2" style="font-size:1rem;">{{ page_status }}</div>
+      <div class="small-note muted2" style="margin-top:6px;">{{ page_message }}</div>
+    </div>
+  {% endif %}
+
+  <div class="card pad" style="margin-bottom:12px;">
+    <div class="h2" style="font-size:1.02rem;">자료 종류 선택</div>
+    <div class="small-note muted2" style="margin-top:6px;">지원 형식에 맞는 기관 발급 파일만 v1에서 자동으로 읽어요.</div>
+    <form method="post" action="{{ url_for('web_official_data.upload_submit') }}" enctype="multipart/form-data" style="display:grid; gap:12px; margin-top:12px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label style="display:grid; gap:6px;">
+        <span class="small-note">자료 종류</span>
+        <select class="input" name="document_type" required>
+          <option value="">자료를 선택해 주세요</option>
+          {% for item in document_options %}
+            <option value="{{ item.document_type }}" {% if selected_document_type == item.document_type %}selected{% endif %}>{{ item.display_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% if selected_document %}
+        <div class="small-note muted2">현재 선택: {{ selected_document.display_name }} · {{ 'NHIS' if selected_document.source_system == 'nhis' else '홈택스' }}</div>
+      {% endif %}
+      <label style="display:grid; gap:6px;">
+        <span class="small-note">기관 발급 파일</span>
+        <input class="input" type="file" name="official_data_file" accept=".csv,.xlsx,.pdf" required>
+      </label>
+      <label style="display:flex; gap:8px; align-items:flex-start; opacity:.68;">
+        <input type="checkbox" disabled>
+        <span class="small-note muted2">파일 전체 선택 저장은 준비 중이에요. 지금은 핵심 추출값과 기준일만 저장하는 구조예요.</span>
+      </label>
+      <div class="row" style="gap:8px; flex-wrap:wrap;">
+        <button class="btn primary" type="submit">파일 올리고 확인하기</button>
+        <a class="btn ghost" href="{{ url_for('web_guide.official_data_guide') }}{% if selected_document and selected_document.guide_anchor %}#{{ selected_document.guide_anchor }}{% endif %}">어디서 받아야 하나요?</a>
+      </div>
+    </form>
+  </div>
+
+  {% include "partials/official_data_storage_notice.html" %}
+</div>
+{% endblock %}

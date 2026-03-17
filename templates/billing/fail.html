@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}결제수단 등록 실패 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:760px; padding-top:20px;">
+  <div class="card pad">
+    <div class="h2">결제수단 등록을 완료하지 못했어요.</div>
+    {% if order_id %}
+      <div class="small-note muted2" style="margin-top:8px;">
+        등록 시도 번호: {{ order_id }}
+      </div>
+    {% endif %}
+    <div class="note warn" style="margin-top:12px;">
+      잠시 후 다시 시도해 주세요. 같은 문제가 반복되면 문의하기에서 알려주세요.
+    </div>
+    <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+      {% if is_logged_in %}
+        <a class="btn primary" href="{{ url_for('web_billing.register_page') }}">다시 시도</a>
+        <a class="btn ghost" href="{{ url_for('web_bank.index') }}">계좌 연동 화면으로 이동</a>
+      {% else %}
+        <a class="btn primary" href="{{ url_for('web_auth.login') }}">로그인하고 다시 시도</a>
+        <a class="btn ghost" href="{{ url_for('web_main.pricing') }}">요금 안내 보기</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

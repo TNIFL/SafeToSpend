@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}영수증 확인{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:920px;">
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">영수증 자동 인식 결과</div>
+      <div class="p">{{ month_key }} · 저장 전 한 번 더 확인하세요</div>
+    </div>
+    <div class="actions">
+      <button
+        type="button"
+        class="btn ghost"
+        onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href='{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=limit) }}#tx-{{ tx.id }}'; }"
+      >
+        이전
+      </button>
+      <a class="btn ghost" href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=limit) }}#tx-{{ tx.id }}">돌아가기</a>
+    </div>
+  </div>
+
+  <div class="card pad">
+    <div class="row" style="gap:10px; flex-wrap:wrap;">
+      <span class="badge">parser: {{ draft_provider }}</span>
+      {% if draft_ok %}
+        <span class="badge good">추출됨</span>
+      {% else %}
+        <span class="badge warn">자동 인식 미설정</span>
+      {% endif %}
+      {% if draft_error %}
+        <span class="muted2">{{ draft_error }}</span>
+      {% endif %}
+    </div>
+
+    <div class="hr"></div>
+
+    {% set show_disclaimer = true %}
+    {% set expense_followup_action = url_for('web_calendar.review_expense_followup_save', tx_id=tx.id) %}
+    {% set expense_followup_return_view = 'confirm' %}
+    {% set expense_followup_partial = false %}
+    {% set expense_reinforcement_action = url_for('web_calendar.review_expense_reinforcement_save', tx_id=tx.id) %}
+    {% set expense_reinforcement_return_view = 'confirm' %}
+    {% set expense_reinforcement_partial = false %}
+    {% include "calendar/partials/receipt_expense_hint.html" %}
+
+    <form method="post" action="{{ url_for('web_calendar.receipt_confirm_save', tx_id=tx.id) }}">
+      <input type="hidden" name="month" value="{{ month_key }}">
+      <input type="hidden" name="focus" value="{{ focus }}">
+      <input type="hidden" name="q" value="{{ q }}">
+      <input type="hidden" name="limit" value="{{ limit }}">
+
+      <div class="grid2" style="gap:10px;">
+        <label class="field">
+          <span class="label">가맹점</span>
+          <input name="merchant" value="{{ view.get('merchant','') }}">
+        </label>
+        <label class="field">
+          <span class="label">결제일시</span>
+          <input name="paid_at" type="datetime-local" value="{{ (view.get('paid_at','')|replace(' ', 'T')) }}">
+        </label>
+        <label class="field">
+          <span class="label">총액(원)</span>
+          <input name="total_krw" value="{{ view.get('total_krw','') }}">
+        </label>
+        <label class="field">
+          <span class="label">부가세(원)</span>
+          <input name="vat_krw" value="{{ view.get('vat_krw','') }}">
+        </label>
+        <label class="field">
+          <span class="label">결제수단</span>
+          <input name="payment_method" value="{{ view.get('payment_method','') }}">
+        </label>
+        <label class="field">
+          <span class="label">카드 끝 4자리</span>
+          <input name="card_tail" value="{{ view.get('card_tail','') }}">
+        </label>
+        <label class="field" style="grid-column:1/-1;">
+          <span class="label">승인번호(선택)</span>
+          <input name="approval_no" value="{{ view.get('approval_no','') }}">
+        </label>
+      </div>
+
+      <div class="row" style="gap:8px; margin-top:12px; flex-wrap:wrap;">
+        <button class="btn primary" type="submit">맞아요 · 다음</button>
+        <a class="btn ghost" href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=limit) }}#tx-{{ tx.id }}">취소</a>
+      </div>
+
+      <div class="p" style="margin-top:10px; opacity:.7;">
+        * 자동 인식은 추정치예요. 틀리면 지금 수정해도 됩니다.
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

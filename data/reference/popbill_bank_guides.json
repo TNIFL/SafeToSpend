@@ -1,0 +1,226 @@
+{
+  "updated_at": "2026-03-08T10:06:55Z",
+  "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account",
+  "banks": [
+    {
+      "bank_code": "0003",
+      "bank_name": "IBK기업",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0004",
+      "bank_name": "KB국민",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0011",
+      "bank_name": "NH농협",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0020",
+      "bank_name": "우리",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0023",
+      "bank_name": "SC제일",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0027",
+      "bank_name": "씨티",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0031",
+      "bank_name": "iM뱅크(대구)",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0032",
+      "bank_name": "부산",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0034",
+      "bank_name": "광주",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0035",
+      "bank_name": "제주",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0037",
+      "bank_name": "전북",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0039",
+      "bank_name": "경남",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0081",
+      "bank_name": "하나",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0088",
+      "bank_name": "신한",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0090",
+      "bank_name": "카카오뱅크",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    },
+    {
+      "bank_code": "0092",
+      "bank_name": "토스뱅크",
+      "quick_service_name": "빠른조회 서비스",
+      "intro_message": "은행 사이트에서 빠른조회 등록 후 다시 연결해 주세요.",
+      "path_steps": [
+        "은행 앱/웹 로그인",
+        "뱅킹관리 또는 편의서비스 메뉴 이동",
+        "빠른조회(스피드조회/즉시조회) 등록 후 저장"
+      ],
+      "required_fields": [],
+      "official_doc_url": "https://developers.popbill.com/guide/easyfinbank/introduction/regist-bank-account"
+    }
+  ],
+  "notes": [
+    "문서 수집 실패: ConnectionError"
+  ],
+  "meta": {
+    "source_fetch_ok": false,
+    "parsed_bank_count": 0,
+    "total_bank_count": 16,
+    "fallback_bank_count": 16,
+    "structure_changed": true,
+    "last_run_status": "fallback",
+    "fetch_error": "ConnectionError"
+  }
+}

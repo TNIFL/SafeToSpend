@@ -1,0 +1,63 @@
+<div class="rw-step" data-step="1" data-title="영수증 첨부" data-sub="{{ tx.counterparty or tx.memo or '거래' }} · {{ tx.occurred_at.strftime('%m-%d %H:%M') }} · {{ tx.amount_krw|krw }}">
+  <div class="p" style="opacity:.8; margin-bottom:10px;">
+    종이 영수증(사진), 전자 영수증(텍스트/메일), 세금계산서/PDF 모두 가능해요.
+  </div>
+
+  <div class="note" style="margin-bottom:12px;">
+    <b>긴 영수증</b>은 <u>상단(상호/일시)</u> + <u>하단(합계/승인)</u>만 찍어도 돼요.<br>
+    여러 장이면 <b>사진을 여러 개 선택</b>하면 1개의 PDF로 자동 합쳐서 저장합니다.
+  </div>
+
+  {% if ev and ev.file_key %}
+    <div class="note" style="margin-bottom:12px;">
+      이미 업로드된 파일이 있어요: <b>{{ ev.original_filename or "첨부된 파일" }}</b><br>
+      새로 올리면 기존 파일을 교체합니다.
+    </div>
+  {% endif %}
+
+  {% set show_disclaimer = true %}
+  {% include "calendar/partials/receipt_expense_hint.html" %}
+
+  <form method="post"
+        action="{{ url_for('web_calendar.review_evidence_upload', tx_id=tx.id, partial=1) }}"
+        enctype="multipart/form-data"
+        data-rw-form="1">
+    <input type="hidden" name="partial" value="1">
+    <input type="hidden" name="month" value="{{ month_key }}">
+    <input type="hidden" name="focus" value="{{ focus }}">
+    <input type="hidden" name="q" value="{{ q }}">
+    <input type="hidden" name="limit" value="{{ limit }}">
+
+    <div class="grid2" style="gap:10px;">
+      <label class="field" style="grid-column:1/-1;">
+        <span class="label">증빙 종류</span>
+        <select name="receipt_type">
+          <option value="paper">종이 영수증(사진)</option>
+          <option value="electronic">전자 영수증(텍스트/메일)</option>
+          <option value="tax_invoice">세금계산서</option>
+          <option value="cash_receipt">현금영수증</option>
+          <option value="other">기타</option>
+        </select>
+      </label>
+
+      <label class="field" style="grid-column:1/-1;">
+        <span class="label">사진/PDF 업로드 (여러 장 가능)</span>
+        <input type="file" name="files" accept="image/*,application/pdf" multiple>
+        <div class="muted2" style="margin-top:6px;">* 여러 장이면 자동으로 1개의 PDF로 합쳐집니다(사진만).</div>
+      </label>
+
+      <div class="hr" style="grid-column:1/-1;"></div>
+
+      <label class="field" style="grid-column:1/-1;">
+        <span class="label">전자 영수증 텍스트 붙여넣기 (선택)</span>
+        <textarea name="receipt_text" rows="6" placeholder="예: 결제 완료 메일/주문내역/결제내역 텍스트를 붙여넣어도 돼요"></textarea>
+        <div class="muted2" style="margin-top:6px;">* 파일 없이 텍스트만으로도 등록 가능합니다.</div>
+      </label>
+    </div>
+
+    <div class="row" style="gap:8px; flex-wrap:wrap; justify-content:flex-end; margin-top:10px;">
+      <button class="btn primary" type="submit">업로드 · 자동 인식</button>
+      <button class="btn ghost" type="button" data-close>취소</button>
+    </div>
+  </form>
+</div>

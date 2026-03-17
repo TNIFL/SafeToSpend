@@ -1,0 +1,64 @@
+{% set bp_item = basis_item or {} %}
+{% set bp_basis = bp_item.get('basis') if bp_item else {} %}
+{% set bp_input = bp_item.get('input') if bp_item else {} %}
+{% if bp_basis is not mapping %}{% set bp_basis = {} %}{% endif %}
+{% if bp_input is not mapping %}{% set bp_input = {} %}{% endif %}
+<details class="basis-panel" {% if basis_open %}open{% endif %}>
+  <summary>{{ basis_title or '근거 보기' }}</summary>
+  {% if bp_basis %}
+    <div class="basis-grid">
+      <div>
+        <div class="basis-k">입력 요약</div>
+        <div class="basis-v">
+          {% if bp_input %}
+            {% for key, value in bp_input.items() %}
+              {% if value is not none and value != '' %}
+                <div>{{ key }}: {{ value }}</div>
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            <div>입력값 없음</div>
+          {% endif %}
+        </div>
+      </div>
+      <div>
+        <div class="basis-k">사용한 데이터</div>
+        <div class="basis-v">
+          <div>{{ bp_basis.get('source_name') or '-' }}</div>
+          {% if bp_basis.get('source_year') %}<div>기준연도: {{ bp_basis.get('source_year') }}</div>{% endif %}
+          {% if bp_basis.get('fetched_at') %}<div>업데이트: {{ bp_basis.get('fetched_at') }}</div>{% endif %}
+          {% if bp_basis.get('matched_key') %}<div>매칭: {{ bp_basis.get('matched_key') }}</div>{% endif %}
+        </div>
+      </div>
+      <div>
+        <div class="basis-k">계산 요약</div>
+        <div class="basis-v">
+          {% set steps = bp_basis.get('calc_steps') or {} %}
+          {% if steps is not mapping %}{% set steps = {} %}{% endif %}
+          {% if steps %}
+            {% for key, value in steps.items() %}
+              <div>{{ key }}: {{ value }}</div>
+            {% endfor %}
+          {% else %}
+            <div>계산식 정보 없음</div>
+          {% endif %}
+        </div>
+      </div>
+      <div>
+        <div class="basis-k">신뢰도/오차요인</div>
+        <div class="basis-v">
+          <div>신뢰도: {{ bp_basis.get('confidence') or 'low' }}</div>
+          {% if bp_basis.get('note') %}<div>{{ bp_basis.get('note') }}</div>{% endif %}
+          {% set warn_list = bp_item.get('warnings') or [] %}
+          {% if warn_list is sequence and warn_list is not string %}
+            {% for msg in warn_list[:3] %}
+              <div>• {{ msg }}</div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="basis-empty">근거 데이터가 아직 없어요. 값을 저장하면 자동으로 보여드릴게요.</div>
+  {% endif %}
+</details>

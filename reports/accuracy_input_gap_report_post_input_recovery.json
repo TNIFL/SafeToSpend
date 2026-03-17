@@ -1,0 +1,133 @@
+{
+  "generated_at_utc": "2026-03-12T22:20:16",
+  "month_key": "2026-03",
+  "scanned_users": 97,
+  "tax": {
+    "gap_bucket_distribution": [
+      {
+        "key": "mixed_requires_user_input",
+        "count": 97,
+        "percent": 100.0
+      }
+    ],
+    "needs_user_input_top_fields": [
+      {
+        "key": "income_classification",
+        "count": 97,
+        "percent": 100.0
+      },
+      {
+        "key": "official_taxable_income_annual_krw",
+        "count": 97,
+        "percent": 100.0
+      },
+      {
+        "key": "prepaid_tax_annual_krw",
+        "count": 97,
+        "percent": 100.0
+      },
+      {
+        "key": "withheld_tax_annual_krw",
+        "count": 97,
+        "percent": 100.0
+      },
+      {
+        "key": "withholding_3_3",
+        "count": 92,
+        "percent": 94.85
+      },
+      {
+        "key": "industry_group",
+        "count": 91,
+        "percent": 93.81
+      },
+      {
+        "key": "prev_income_band",
+        "count": 91,
+        "percent": 93.81
+      },
+      {
+        "key": "tax_type",
+        "count": 91,
+        "percent": 93.81
+      }
+    ],
+    "auto_fillable_top_fields": [
+      {
+        "key": "annual_deductible_expense_krw",
+        "count": 97,
+        "percent": 100.0
+      },
+      {
+        "key": "annual_gross_income_krw",
+        "count": 97,
+        "percent": 100.0
+      }
+    ],
+    "low_confidence_inferable_top_fields": [
+      {
+        "key": "official_taxable_income_annual_krw",
+        "count": 97,
+        "percent": 100.0
+      }
+    ],
+    "auto_upgrade_possible_percent": 0.0
+  },
+  "nhis": {
+    "gap_bucket_distribution": [
+      {
+        "key": "user_input_required",
+        "count": 61,
+        "percent": 62.89
+      },
+      {
+        "key": "auto_upgrade_possible",
+        "count": 26,
+        "percent": 26.8
+      },
+      {
+        "key": "already_high_or_exact",
+        "count": 8,
+        "percent": 8.25
+      },
+      {
+        "key": "mixed_requires_user_input",
+        "count": 1,
+        "percent": 1.03
+      },
+      {
+        "key": "no_clear_path",
+        "count": 1,
+        "percent": 1.03
+      }
+    ],
+    "needs_user_input_top_fields": [
+      {
+        "key": "member_type",
+        "count": 61,
+        "percent": 62.89
+      },
+      {
+        "key": "property_tax_base_total_krw",
+        "count": 1,
+        "percent": 1.03
+      }
+    ],
+    "auto_fillable_top_fields": [
+      {
+        "key": "annual_income_krw",
+        "count": 27,
+        "percent": 27.84
+      }
+    ],
+    "low_confidence_inferable_top_fields": [
+      {
+        "key": "non_salary_annual_income_krw",
+        "count": 27,
+        "percent": 27.84
+      }
+    ],
+    "auto_upgrade_possible_percent": 26.8
+  },
+  "errors": []
+}

@@ -1,0 +1,322 @@
+{% from "components/form_fields.html" import number_field, text_field %}
+
+{% set show_guide = assets_ui_show_guide if assets_ui_show_guide is defined else true %}
+{% set show_household = assets_ui_show_household if assets_ui_show_household is defined else true %}
+{% set show_income_hybrid = assets_ui_show_income_hybrid if assets_ui_show_income_hybrid is defined else true %}
+{% set income_hybrid_compact = assets_ui_income_hybrid_compact if assets_ui_income_hybrid_compact is defined else false %}
+{% set show_other_income = assets_ui_show_other_income if assets_ui_show_other_income is defined else true %}
+{% set show_history = assets_ui_show_history if assets_ui_show_history is defined else true %}
+{% set show_actions = assets_ui_show_actions if assets_ui_show_actions is defined else true %}
+{% set history_sync_default = assets_ui_history_sync_default if assets_ui_history_sync_default is defined else 1 %}
+
+{% if show_guide %}
+<details class="asset-block asset-guide">
+  <summary>입력 가이드 보기</summary>
+  <div class="asset-guide-body">
+    <div class="asset-guide-list">
+      <div><b>입력 위치:</b> 이 통합 입력 영역에서만 입력/수정하고 저장해 주세요.</div>
+      <div><b>저장 방식:</b> 아래 <b>저장하고 다시 계산</b>을 누르면 오른쪽 예상 금액이 즉시 갱신돼요.</div>
+      <div><b>소득 기준:</b> 실수령이 아닌 연 단위 세전 소득금액(또는 총급여 기준)을 넣어 주세요.</div>
+      <div><b>선택 입력:</b> 모르는 값은 비워도 되고, 자동 추정값으로 계속 계산할 수 있어요(추정).</div>
+    </div>
+  </div>
+</details>
+{% endif %}
+
+{% if show_household %}
+<div class="asset-block">
+  <h3>세대/부양가족</h3>
+  {% set member_type_input = (feedback.nhis_member_type_input if feedback and feedback.nhis_member_type_input else 'unknown') %}
+  {% if member_type_input == 'employee' %}
+    {% set company_nhis = 'yes' %}
+    {% set dependent_nhis = 'no' %}
+  {% elif member_type_input == 'dependent' %}
+    {% set company_nhis = 'no' %}
+    {% set dependent_nhis = 'yes' %}
+  {% elif member_type_input == 'regional' %}
+    {% set company_nhis = 'no' %}
+    {% set dependent_nhis = 'no' %}
+  {% else %}
+    {% set company_nhis = 'unknown' %}
+    {% set dependent_nhis = 'unknown' %}
+  {% endif %}
+  <div class="asset-fields">
+    <div class="asset-inline">
+      <label class="asset-field">
+        <span class="asset-label">회사에서 건강보험이 빠져나가나요?</span>
+        <select class="asset-select" name="company_nhis">
+          <option value="unknown" {% if company_nhis == 'unknown' %}selected{% endif %}>모름</option>
+          <option value="yes" {% if company_nhis == 'yes' %}selected{% endif %}>예</option>
+          <option value="no" {% if company_nhis == 'no' %}selected{% endif %}>아니오</option>
+        </select>
+      </label>
+      <label class="asset-field">
+        <span class="asset-label">가족 직장보험 피부양자인가요?</span>
+        <select class="asset-select" name="dependent_nhis">
+          <option value="unknown" {% if dependent_nhis == 'unknown' %}selected{% endif %}>모름</option>
+          <option value="yes" {% if dependent_nhis == 'yes' %}selected{% endif %}>예</option>
+          <option value="no" {% if dependent_nhis == 'no' %}selected{% endif %}>아니오</option>
+        </select>
+      </label>
+    </div>
+    <div class="asset-inline">
+      <label class="asset-field">
+        <span class="asset-label">세대에 다른 소득/재산 포함 여부</span>
+        <select class="asset-select" name="household_has_others">
+          <option value="" {% if assets_ctx.profile.household_has_others is none %}selected{% endif %}>모름</option>
+          <option value="yes" {% if assets_ctx.profile.household_has_others is sameas true %}selected{% endif %}>있음</option>
+          <option value="no" {% if assets_ctx.profile.household_has_others is sameas false %}selected{% endif %}>없음</option>
+        </select>
+      </label>
+      {{ number_field(
+        'dependents_count',
+        '부양가족 수(선택)',
+        assets_ctx.profile.dependents_count if assets_ctx.profile.dependents_count is not none else '',
+        placeholder='예: 1',
+        help='숫자만 입력해 주세요.',
+        unit='명',
+        data_format=''
+      ) }}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if show_income_hybrid %}
+{% set income_hybrid = assets_ctx.income_hybrid if assets_ctx and assets_ctx.income_hybrid else {} %}
+{% set income_hybrid_fields = income_hybrid.fields if income_hybrid and income_hybrid.fields else {} %}
+{% set income_hybrid_enabled = income_hybrid.enabled if income_hybrid and ('enabled' in income_hybrid) else false %}
+{% set income_hybrid_year = (income_hybrid.active_year if income_hybrid and income_hybrid.active_year else income_hybrid.recommended_year) %}
+{% set income_hybrid_scope = income_hybrid.active_scope if income_hybrid and income_hybrid.active_scope else 'both' %}
+{% set income_hybrid_basis = income_hybrid.input_basis if income_hybrid and income_hybrid.input_basis else 'income_amount_pre_tax' %}
+{% set income_hybrid_source = feedback.nhis_income_source if feedback and feedback.nhis_income_source else {} %}
+{% set income_hybrid_source_code = income_hybrid_source.source_code if income_hybrid_source and income_hybrid_source.source_code else 'auto' %}
+{% set income_hybrid_mode_text = '사용자 입력(확정) 적용 중' if income_hybrid_source_code == 'user_input' else '자동 추정으로 계산 중' %}
+<div class="asset-block">
+  <div class="asset-hybrid-toggle">
+    <h3>{% if income_hybrid_compact %}금융소득(질문 3){% else %}소득 입력(하이브리드){% endif %}</h3>
+    <span class="asset-badge {{ 'manual' if income_hybrid_source_code == 'user_input' else 'auto' }}">{{ income_hybrid_mode_text }}</span>
+  </div>
+  <div class="asset-sub">
+    {% if income_hybrid_compact %}
+      금융소득(이자+배당, 연)만 먼저 입력해도 경계 구간 확인이 가능해요(추정).
+    {% else %}
+      자동 추정은 기본값이고, 필요한 항목만 직접 입력하면 확정치로 우선 반영돼요(추정).
+    {% endif %}
+  </div>
+  <input type="hidden" name="income_hybrid_present" value="1">
+  <input type="hidden" id="income-hybrid-large-confirmed" name="income_hybrid_large_confirmed" value="0">
+  <input type="hidden" name="income_hybrid_is_pre_tax" value="1">
+  {% set business_income_value = income_hybrid_fields.get('business_income_amount_krw') if income_hybrid_fields else none %}
+  {% set fin_income_value = income_hybrid_fields.get('fin_income_amount_krw') if income_hybrid_fields else none %}
+  <div class="asset-inline{% if income_hybrid_compact %} single{% endif %}" style="margin-top:10px;">
+    {% if not income_hybrid_compact %}
+    {{ number_field(
+      'business_income_amount_krw',
+      '사업소득(소득금액, 연)',
+      business_income_value if business_income_value is not none else '',
+      placeholder='예: 42000000',
+      help='종합소득세 신고서 ‘소득금액’',
+      data_income_hybrid='1'
+    ) }}
+    {% else %}
+      <input type="hidden" name="business_income_amount_krw" value="{{ business_income_value if business_income_value is not none else '' }}">
+    {% endif %}
+    {{ number_field(
+      'fin_income_amount_krw',
+      '금융소득(이자+배당, 연)',
+      fin_income_value if fin_income_value is not none else '',
+      placeholder='예: 12000000',
+      help='이자+배당 ‘소득금액’ 합(연). 1,000만원 기준에 영향',
+      data_income_hybrid='1'
+    ) }}
+  </div>
+  <div class="asset-note" style="margin-top:8px;">
+    {% if income_hybrid_compact %}
+      금융소득이 없으면 비워두세요. 필요하면 아래 상세 입력을 열어 보정할 수 있어요(추정).
+    {% else %}
+      핵심 소득(사업/금융)만 먼저 넣고, 필요하면 아래 상세 입력을 열어 보정해 주세요.
+    {% endif %}
+  </div>
+  <div style="margin-top:10px;">
+    <label>
+      <input type="checkbox" id="income-hybrid-enabled" name="income_hybrid_enabled" value="1" {% if income_hybrid_enabled %}checked{% endif %}>
+      정확하게 입력하기
+    </label>
+  </div>
+  <div class="asset-hybrid-body{% if not income_hybrid_enabled %} collapsed{% endif %}" id="income-hybrid-body">
+    <div class="asset-hybrid-guide">
+      <div>여기서 입력하는 금액은 ‘입금액(매출)’이 아니라, 세법 기준의 ‘소득금액(필요경비를 뺀 금액)’이에요.</div>
+      <div>세후(실수령)가 아니라, 신고서/자료에 적힌 ‘소득금액(세전 기준)’을 입력해 주세요.</div>
+      <div>정확히 모르겠으면 비워도 돼요. 자동 추정으로 계산해 드려요(추정).</div>
+      <div><b>건보료 반영은 시점에 따라 전년도/전전년도 자료가 쓰일 수 있어요(추정).</b></div>
+    </div>
+    <div class="asset-inline">
+      <label class="asset-field">
+        <span class="asset-label">기준 연도</span>
+        <select class="asset-select" name="income_hybrid_year">
+          {% for y in (income_hybrid.year_options if income_hybrid and income_hybrid.year_options else [income_hybrid_year]) %}
+            <option value="{{ y }}" {% if y|int == income_hybrid_year|int %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="asset-field">
+        <span class="asset-label">적용 범위</span>
+        <select class="asset-select" name="income_hybrid_scope">
+          <option value="both" {% if income_hybrid_scope == 'both' %}selected{% endif %}>건보+세금 모두</option>
+          <option value="nhis" {% if income_hybrid_scope == 'nhis' %}selected{% endif %}>건보료만</option>
+          <option value="tax" {% if income_hybrid_scope == 'tax' %}selected{% endif %}>세금만</option>
+        </select>
+      </label>
+    </div>
+    <div class="asset-inline">
+      <label class="asset-field">
+        <span class="asset-label">근로 입력 기준</span>
+        <select class="asset-select" name="income_hybrid_input_basis">
+          <option value="income_amount_pre_tax" {% if income_hybrid_basis == 'income_amount_pre_tax' %}selected{% endif %}>소득금액(세전 기준)</option>
+          <option value="salary_gross_annual" {% if income_hybrid_basis == 'salary_gross_annual' %}selected{% endif %}>총급여(연)</option>
+          <option value="salary_income_amount_annual" {% if income_hybrid_basis == 'salary_income_amount_annual' %}selected{% endif %}>근로소득금액(연)</option>
+        </select>
+      </label>
+      {{ text_field(
+        'income_hybrid_note',
+        '기준 메모(선택)',
+        income_hybrid.note if income_hybrid and income_hybrid.note else '',
+        placeholder='예: 2025 종합소득세 신고서 기준',
+        maxlength='200'
+      ) }}
+    </div>
+    <div class="asset-inline">
+      {% set salary_income_value = income_hybrid_fields.get('salary_income_amount_krw') if income_hybrid_fields else none %}
+      {{ number_field(
+        'salary_income_amount_krw',
+        '근로소득(연)',
+        salary_income_value if salary_income_value is not none else '',
+        placeholder='예: 36000000',
+        help='총급여(연) 또는 근로소득금액(연) 중 택1로 통일',
+        data_income_hybrid='1'
+      ) }}
+      {% set pension_income_value = income_hybrid_fields.get('pension_income_amount_krw') if income_hybrid_fields else none %}
+      {{ number_field(
+        'pension_income_amount_krw',
+        '연금소득(연)',
+        pension_income_value if pension_income_value is not none else '',
+        placeholder='예: 12000000',
+        help='연금소득(연)',
+        data_income_hybrid='1'
+      ) }}
+    </div>
+    {% set other_income_value = income_hybrid_fields.get('other_income_amount_krw') if income_hybrid_fields else none %}
+    {{ number_field(
+      'other_income_amount_krw',
+      '기타소득(소득금액, 연)',
+      other_income_value if other_income_value is not none else '',
+      placeholder='예: 3000000',
+      help='기타소득 ‘소득금액’(연)',
+      data_income_hybrid='1'
+    ) }}
+  </div>
+</div>
+{% endif %}
+
+{% if show_other_income %}
+<div class="asset-block">
+  <h3>기타소득</h3>
+  <div class="asset-fields">
+    <div class="asset-field">
+      <span class="asset-label">해당되는 소득 유형(복수 선택)</span>
+      <div class="row" style="gap:8px;flex-wrap:wrap;">
+        {% set selected = assets_ctx.profile.other_income_types or [] %}
+        {% for code in income_type_options %}
+          <label class="chk"><input type="checkbox" name="other_income_{{ code }}" value="1" {% if code in selected %}checked{% endif %}>{{ income_type_labels.get(code, code) }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    {{ number_field(
+      'other_income_annual_krw',
+      '기타 소득 연간 합계(선택, 원)',
+      assets_ctx.profile.other_income_annual_krw if assets_ctx.profile.other_income_annual_krw is not none else '',
+      placeholder='예: 12000000'
+    ) }}
+  </div>
+</div>
+{% endif %}
+
+{% if show_history %}
+<div class="asset-block">
+  <h3>과거 고지 금액(선택)</h3>
+  <div class="asset-sub">연도별로 입력하면 건보료 추정 정확도를 높일 수 있어요.</div>
+  {% set history_rows = assets_ctx.bill_history or [] %}
+  <input type="hidden" name="history_sync_enabled" id="history-sync-enabled" value="{{ history_sync_default }}">
+  <input type="hidden" name="history_rows" id="history-rows-count" value="{{ (history_rows|length) if history_rows else 1 }}">
+  <div id="history-rows-wrap">
+    {% if history_rows %}
+      {% for row in history_rows %}
+        {% set i = loop.index %}
+        <div class="asset-history-row" data-history-row="{{ i }}">
+          <div class="asset-history-grid">
+            <label class="asset-field">
+              <span class="asset-label">연도</span>
+              <input class="asset-input" type="text" name="history_year_{{ i }}" value="{{ row.bill_year }}">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">월(선택)</span>
+              <input class="asset-input" type="text" name="history_month_{{ i }}" value="{{ row.bill_month if row.bill_month else '' }}" placeholder="비우면 연간">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">합계(원)</span>
+              <input class="asset-input" type="text" name="history_total_krw_{{ i }}" value="{{ row.total_krw if row.total_krw is not none else '' }}">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">건보료만(원)</span>
+              <input class="asset-input" type="text" name="history_health_only_krw_{{ i }}" value="{{ row.health_only_krw if row.health_only_krw is not none else '' }}">
+            </label>
+            <label class="asset-field">
+              <span class="asset-label">부과점수(선택)</span>
+              <input class="asset-input" type="text" name="history_score_points_{{ i }}" value="{{ row.score_points if row.score_points is not none else '' }}">
+            </label>
+            <button type="button" class="btn ghost danger asset-history-remove" data-remove-history="1">삭제</button>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="asset-history-row" data-history-row="1">
+        <div class="asset-history-grid">
+          <label class="asset-field">
+            <span class="asset-label">연도</span>
+            <input class="asset-input" type="text" name="history_year_1" value="" placeholder="예: 2025">
+          </label>
+          <label class="asset-field">
+            <span class="asset-label">월(선택)</span>
+            <input class="asset-input" type="text" name="history_month_1" value="" placeholder="비우면 연간">
+          </label>
+          <label class="asset-field">
+            <span class="asset-label">합계(원)</span>
+            <input class="asset-input" type="text" name="history_total_krw_1" value="">
+          </label>
+          <label class="asset-field">
+            <span class="asset-label">건보료만(원)</span>
+            <input class="asset-input" type="text" name="history_health_only_krw_1" value="">
+          </label>
+          <label class="asset-field">
+            <span class="asset-label">부과점수(선택)</span>
+            <input class="asset-input" type="text" name="history_score_points_1" value="">
+          </label>
+          <button type="button" class="btn ghost danger asset-history-remove" data-remove-history="1">삭제</button>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+  <div class="asset-actions">
+    <button class="btn ghost" type="button" id="btn-add-history-row">+ 연도 추가</button>
+    <span class="small-note muted2">입력한 이력은 저장 시 즉시 추정 보정에 반영돼요.</span>
+  </div>
+</div>
+{% endif %}
+
+{% if show_actions %}
+<div class="asset-actions">
+  <button class="btn primary" type="submit">저장하고 다시 계산</button>
+  <a class="btn ghost" href="{{ form_refresh_url if form_refresh_url is defined else url_for('web_profile.assets_page', month=month_key, skip_quiz=1) }}">새로고침</a>
+</div>
+{% endif %}

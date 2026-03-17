@@ -1,0 +1,119 @@
+<div class="rw-step" data-step="3" data-title="결제 내역 연결" data-sub="비슷한 결제 내역 선택 · 업무/개인 확정">
+  <div class="card" style="padding:12px; margin-bottom:12px;">
+    <div class="p" style="opacity:.8; margin-bottom:6px;">영수증 정보</div>
+    <div class="p">가맹점: <b>{{ draft.get('merchant','') }}</b></div>
+    <div class="p">결제일시: <b>{{ draft.get('paid_at','') }}</b></div>
+    <div class="p">총액: <b>{{ draft.get('total_krw','') }}</b>원</div>
+    {% if duplicate_sha_count and duplicate_sha_count > 0 %}
+      <div class="p" style="margin-top:8px; color:#b45309;">
+        같은 영수증으로 보이는 거래가 있어요. 기존 거래에 첨부하는 것을 권장합니다.
+      </div>
+    {% endif %}
+    {% if approx_saving and approx_saving > 0 %}
+      <div class="p" style="margin-top:8px; opacity:.85;">
+        업무로 저장하면 예상 납부세액이 <b>약 {{ "{:,}".format(approx_saving) }}원</b> 줄 수 있어요(추정, 세율 {{ (tax_rate*100)|round(1) }}%).
+      </div>
+    {% endif %}
+  </div>
+
+  {% set show_disclaimer = true %}
+  {% set expense_followup_action = url_for('web_calendar.review_expense_followup_save', tx_id=tx.id, partial=1) %}
+  {% set expense_followup_return_view = 'match' %}
+  {% set expense_followup_partial = true %}
+  {% set expense_reinforcement_action = url_for('web_calendar.review_expense_reinforcement_save', tx_id=tx.id, partial=1) %}
+  {% set expense_reinforcement_return_view = 'match' %}
+  {% set expense_reinforcement_partial = true %}
+  {% include "calendar/partials/receipt_expense_hint.html" %}
+
+  <form method="post" action="{{ url_for('web_calendar.receipt_match_save', tx_id=tx.id, partial=1) }}" data-rw-form="1" data-rw-expect="json">
+    <input type="hidden" name="partial" value="1">
+    <input type="hidden" name="month" value="{{ month_key }}">
+    <input type="hidden" name="focus" value="{{ focus }}">
+    <input type="hidden" name="q" value="{{ q }}">
+    <input type="hidden" name="limit" value="{{ limit }}">
+
+    <div class="card" style="padding:12px; margin-bottom:12px;">
+      <div class="h2" style="margin:0 0 10px 0;">비슷한 결제 내역</div>
+      <div class="p muted2" style="margin:0 0 8px 0;">후보가 있으면 기존 거래에 첨부하는 것이 기본입니다.</div>
+
+      {% for t in candidates %}
+        <label class="row" style="gap:10px; padding:10px 0; border-bottom:1px solid rgba(0,0,0,.06); align-items:flex-start;">
+          <input type="radio" name="chosen_tx_id" value="{{ t.id }}" {% if t.id == default_tx_id %}checked{% endif %}>
+          <div style="flex:1;">
+            <div class="p" style="margin:0;">
+              <b>{{ t.counterparty or t.memo or "알 수 없음" }}</b>
+              <span class="muted2">· {{ t.occurred_at.strftime('%m-%d %H:%M') }}</span>
+            </div>
+            <div class="p muted2" style="margin:4px 0 0 0;">
+              금액: {{ t.amount_krw|krw }} {% if t.id == default_tx_id %} · <b>현재 선택</b>{% endif %}
+            </div>
+            {% set meta = candidate_meta.get(t.id) if candidate_meta else None %}
+            {% if meta %}
+              <div class="p muted2" style="margin:4px 0 0 0;">
+                매칭 점수 {{ "%.2f"|format(meta.score) }}{% if meta.reason %} · {{ meta.reason }}{% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </label>
+      {% endfor %}
+
+      <div class="p" style="opacity:.7; margin-top:10px;">
+        * 기본 선택은 가장 가능성이 높은 기존 거래예요. 다르면 다른 항목을 선택하세요.
+      </div>
+    </div>
+
+    <div class="card" style="padding:12px;">
+      <div class="h2" style="margin:0 0 10px 0;">업무/개인 선택</div>
+
+      <div class="p" style="margin:0 0 8px 0;">
+        추천 계좌:
+        {% if recommended_account_id %}
+          <b>
+            {% for acc in account_options %}
+              {% if acc.id == recommended_account_id %}{{ acc.display_name }}{% endif %}
+            {% endfor %}
+          </b>
+        {% elif receipt_last4 %}
+          <b>끝자리 {{ receipt_last4 }}</b> 기준 확인 필요
+        {% else %}
+          <b>미지정</b>
+        {% endif %}
+      </div>
+      {% if recommended_account_reason %}
+        <div class="p muted2" style="margin:0 0 8px 0;">{{ recommended_account_reason }}</div>
+      {% endif %}
+      <label class="field" style="margin-bottom:10px;">
+        <span class="label">계좌 선택(선택)</span>
+        <select name="bank_account_id">
+          <option value="">미지정</option>
+          {% for acc in account_options %}
+            <option value="{{ acc.id }}" {% if recommended_account_id and acc.id == recommended_account_id %}selected{% endif %}>{{ acc.display_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label class="row" style="gap:10px; margin-bottom:8px;">
+        <input type="radio" name="expense_kind" value="business" checked>
+        <div><b>업무</b><div class="muted2">업무경비로 반영돼 예상세액(추정)이 줄어듭니다. (필수 증빙)</div></div>
+      </label>
+
+      <label class="row" style="gap:10px; margin-bottom:8px;">
+        <input type="radio" name="expense_kind" value="personal">
+        <div><b>개인</b><div class="muted2">세금/패키지에 반영되지 않아요. (증빙 불필요 처리)</div></div>
+      </label>
+
+      <label class="row" style="gap:10px;">
+        <input type="radio" name="expense_kind" value="mixed">
+        <div><b>혼합</b><div class="muted2">일단 첨부로 남겨두고 나중에 확정할 수 있어요.</div></div>
+      </label>
+
+      <div class="row" style="gap:8px; margin-top:12px; flex-wrap:wrap; justify-content:flex-end;">
+        <a class="btn ghost"
+           href="{{ url_for('web_calendar.receipt_confirm_page', tx_id=tx.id, month=month_key, focus=focus, q=q, limit=limit, partial=1) }}"
+           data-rw-link="1">이전</a>
+        <button class="btn primary" type="submit">완료 · 세금에 반영</button>
+        <button class="btn ghost" type="button" data-close>취소</button>
+      </div>
+    </div>
+  </form>
+</div>

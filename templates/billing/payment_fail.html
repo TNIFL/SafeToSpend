@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}결제 실패 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:760px; padding-top:20px;">
+  <div class="card pad">
+    <div class="h2">결제가 완료되지 않았어요.</div>
+    {% if order_id %}
+      <div class="small-note muted2" style="margin-top:8px;">
+        주문 번호: {{ order_id }}
+      </div>
+    {% endif %}
+    <div class="note warn" style="margin-top:12px;">
+      {% if fail_message %}
+        {{ fail_message }}
+      {% else %}
+        결제 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.
+      {% endif %}
+      {% if fail_code %}
+        <div style="margin-top:6px; font-size:12px;">오류 코드: {{ fail_code }}</div>
+      {% endif %}
+    </div>
+    <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+      <a class="btn primary" href="{{ url_for('web_main.pricing') }}">다시 결제하기</a>
+      <a class="btn ghost" href="{{ url_for('web_profile.mypage') }}">내 플랜 상태 보기</a>
+      {% if payment_key %}
+        <a class="btn ghost" href="{{ url_for('web_billing.payment_success', order_id=order_id, paymentKey=payment_key) }}">상태 다시 확인</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}결제 확인 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:760px; padding-top:20px;">
+  <div class="card pad">
+    <div class="h2">결제 내용 확인</div>
+    <div class="small-note muted2" style="margin-top:8px;">결제 의도 번호: {{ intent.id }} · {{ operation_label }}</div>
+
+    {% if is_expired %}
+      <div class="note warn" style="margin-top:12px;">
+        이 결제 요청은 만료되었어요. 다시 시작해 주세요.
+      </div>
+      <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn primary" href="{{ url_for('web_main.pricing') }}">요금제에서 다시 시작</a>
+      </div>
+    {% else %}
+      <div class="panel" style="margin-top:12px;">
+        <div class="panel-title">이번 결제</div>
+        <div class="panel-text" style="line-height:1.7;">
+          유형: <b>{{ operation_label }}</b><br>
+          대상 플랜: <b>{{ target_plan_label }}</b><br>
+          {% if intent.addon_quantity %}추가 계좌: <b>{{ intent.addon_quantity }}개</b><br>{% endif %}
+          결제 금액: <b>{{ "{:,}".format(intent.amount_snapshot_krw|int) }}원</b>
+        </div>
+      </div>
+      <div class="small-note muted2" style="margin-top:10px;">
+        결제 완료 후에도 최종 권한 반영은 내부 확인(reconcile) 후 진행돼요.
+      </div>
+
+      <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+        {% if has_active_billing_method %}
+          <form method="post" action="{{ url_for('web_billing.checkout_confirm_submit') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="intent" value="{{ resume_token }}">
+            <button class="btn primary" type="submit">이 내용으로 결제 진행</button>
+          </form>
+        {% else %}
+          <a class="btn primary" href="{{ url_for('web_billing.register_page', resume=resume_token) }}">결제수단 등록 후 진행</a>
+        {% endif %}
+        <a class="btn ghost" href="{{ url_for('web_main.pricing') }}">취소</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

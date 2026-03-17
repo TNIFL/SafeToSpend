@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}기존 거래에 증빙 첨부{% endblock %}
+
+{% block content %}
+<div class="wrap" style="max-width:760px;">
+
+  <div class="page-head">
+    <div class="page-head-main">
+      <div class="h1">기존 거래에 증빙 첨부</div>
+      <div class="p">
+        {{ month_key }} · {{ tx.counterparty or tx.memo or "거래" }}
+        · {{ tx.occurred_at.strftime('%m-%d %H:%M') }}
+        · {{ tx.amount_krw|krw }}
+      </div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost"
+         href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=limit) }}#tx-{{ tx.id }}">
+        돌아가기
+      </a>
+    </div>
+  </div>
+
+  <div class="card pad">
+    <div class="p" style="margin-bottom:10px; opacity:.8;">
+      이 거래에 영수증 파일을 첨부하면 증빙 상태가 바로 업데이트돼요 · 이미지/PDF만 업로드 가능(최대 20MB)
+    </div>
+
+    {% if ev and ev.file_key %}
+      <div class="note" style="margin-bottom:12px;">
+        이미 업로드된 파일이 있어요: <b>{{ ev.original_filename or "첨부된 파일" }}</b><br>
+        새 파일을 올리면 기존 파일을 교체합니다.
+      </div>
+    {% endif %}
+
+    {% set show_disclaimer = true %}
+    {% include "calendar/partials/receipt_expense_hint.html" %}
+
+    <form method="post"
+          action="{{ url_for('web_calendar.review_evidence_upload', tx_id=tx.id) }}"
+          enctype="multipart/form-data">
+      <input type="hidden" name="month" value="{{ month_key }}">
+      <input type="hidden" name="focus" value="{{ focus }}">
+      <input type="hidden" name="q" value="{{ q }}">
+      <input type="hidden" name="limit" value="{{ limit }}">
+
+      <label class="field" style="display:block; margin-bottom:12px;">
+        <span class="label">파일 선택</span>
+        <input type="file" name="file" accept="image/*,application/pdf" required>
+      </label>
+
+      <div class="row" style="gap:8px; flex-wrap:wrap;">
+        <button class="btn primary" type="submit">업로드</button>
+        <a class="btn ghost"
+           href="{{ url_for('web_calendar.review', month=month_key, focus=focus, q=q, limit=limit) }}#tx-{{ tx.id }}">
+          취소
+        </a>
+      </div>
+    </form>
+
+    <div class="p" style="margin-top:12px; opacity:.7;">
+      * 업로드가 완료되면 이 항목은 “미첨부” 목록에서 자동으로 빠집니다.
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from services.official_data_extractors import build_envelope_from_path
+from services.official_data_parser_registry import resolve_fixture_document
+from services.official_data_parsers import (
+    PARSE_STATUS_NEEDS_REVIEW,
+    PARSE_STATUS_PARSED,
+    PARSE_STATUS_UNSUPPORTED,
+    parse_fixture_for_registry,
+    parse_hometax_business_card_usage,
+    parse_hometax_withholding_statement,
+    parse_nhis_payment_confirmation,
+    write_parser_smoke_report,
+)
+
+
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURES = ROOT / 'tests' / 'fixtures' / 'official_data'
+
+
+class OfficialDataParsersTest(unittest.TestCase):
+    def test_supported_parsers_extract_expected_summary(self) -> None:
+        withholding = parse_hometax_withholding_statement(build_envelope_from_path(FIXTURES / 'hometax_withholding_statement.csv'))
+        self.assertEqual(withholding.parse_status, PARSE_STATUS_PARSED)
+        self.assertEqual(withholding.extracted_key_summary['total_amount_krw'], 1820000)
+
+        card_usage = parse_hometax_business_card_usage(build_envelope_from_path(FIXTURES / 'hometax_business_card_usage.xlsx'))
+        self.assertEqual(card_usage.parse_status, PARSE_STATUS_PARSED)
+        self.assertEqual(card_usage.extracted_key_summary['total_amount_krw'], 485000)
+
+        nhis = parse_nhis_payment_confirmation(build_envelope_from_path(FIXTURES / 'nhis_payment_confirmation.pdf'))
+        self.assertEqual(nhis.parse_status, PARSE_STATUS_PARSED)
+        self.assertEqual(nhis.extracted_key_summary['primary_key_value'], '***-100')
+
+    def test_parser_returns_needs_review_when_required_fields_are_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'missing_fields.csv'
+            path.write_text('문서명,발급기관,기준일\n원천징수 이행상황 신고서,국세청 홈택스,2026-02-10\n', encoding='utf-8')
+            result = parse_hometax_withholding_statement(build_envelope_from_path(path))
+        self.assertEqual(result.parse_status, PARSE_STATUS_NEEDS_REVIEW)
+        self.assertEqual(result.parse_error_code, 'missing_required_fields')
+        self.assertNotIn('record', result.extracted_payload)
+
+    def test_unregistered_parser_falls_back_to_unsupported(self) -> None:
+        result = parse_fixture_for_registry('missing_document_type', build_envelope_from_path(FIXTURES / 'hometax_withholding_statement.csv'))
+        self.assertEqual(result.parse_status, PARSE_STATUS_UNSUPPORTED)
+        self.assertEqual(result.parse_error_code, 'parser_not_registered')
+
+    def test_smoke_report_is_written_from_fixture_resolver(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / 'smoke.json'
+            report = write_parser_smoke_report(
+                fixture_paths=[
+                    FIXTURES / 'hometax_withholding_statement.csv',
+                    FIXTURES / 'hometax_business_card_usage.xlsx',
+                    FIXTURES / 'nhis_payment_confirmation.pdf',
+                    FIXTURES / 'unknown_headers.csv',
+                ],
+                resolver=resolve_fixture_document,
+                output_path=output_path,
+            )
+            written = json.loads(output_path.read_text(encoding='utf-8'))
+        self.assertEqual(report['row_count'], 4)
+        self.assertEqual(written['row_count'], 4)
+        self.assertEqual(written['rows'][0]['parse_status'], PARSE_STATUS_PARSED)
+
+
+if __name__ == '__main__':
+    unittest.main()

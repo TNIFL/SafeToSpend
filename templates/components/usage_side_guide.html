@@ -1,0 +1,26 @@
+{% set _title = guide_title if guide_title else "이 화면 사용법" %}
+{% set _lines = guide_lines if guide_lines else [] %}
+{% set _cta_text = guide_cta_text if guide_cta_text else "전체 사용법" %}
+{% set _cta_href = guide_cta_href if guide_cta_href else url_for('web_dashboard.guide') %}
+<aside class="usage-side-guide" aria-label="화면 사용 가이드">
+  <div class="usage-side-guide__head">
+    <span aria-hidden="true">🧭</span>
+    <b>{{ _title }}</b>
+  </div>
+  {% if _lines %}
+    <ol class="usage-side-guide__list">
+      {% for line in _lines[:3] %}
+        <li>{{ line }}</li>
+      {% endfor %}
+    </ol>
+  {% endif %}
+  {% if guide_hint %}
+    <div class="usage-side-guide__hint">{{ guide_hint }}</div>
+  {% endif %}
+  <div class="usage-side-guide__actions">
+    <a class="btn small ghost" href="{{ _cta_href }}">{{ _cta_text }}</a>
+    {% if guide_more_href %}
+      <a class="small-note muted2" href="{{ guide_more_href }}">상세 사용법</a>
+    {% endif %}
+  </div>
+</aside>

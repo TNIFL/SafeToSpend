@@ -1,0 +1,1416 @@
+{
+  "generated_at": "2026-03-14T10:52:41+00:00",
+  "run_tag": "20260314_105238",
+  "mode": "create",
+  "survey": {
+    "users_total": 98,
+    "users_with_transactions": 17,
+    "tx_count_distribution": {
+      "min": 1,
+      "p50": 8,
+      "p75": 146,
+      "p90": 156,
+      "max": 395
+    },
+    "linked_account_user_ratio_percent": 17.65,
+    "evidence_user_ratio_percent": 94.12,
+    "receipt_attach_ready_user_ratio_percent": 70.59,
+    "field_density_weighted_percent": {
+      "memo": 97.88,
+      "counterparty": 86.26,
+      "source": 100.0,
+      "account": 48.52,
+      "occurred_at": 100.0
+    }
+  },
+  "case_design": [
+    {
+      "case_id": "CASE_A",
+      "title": "월별 거래량 편차 큼",
+      "source_user_token": "SRC_0b7402ae22",
+      "pattern_summary": {
+        "tx_count": 156,
+        "active_months": 3,
+        "monthly_cv": 0.992,
+        "monthly_max_min_gap": 121,
+        "bank_accounts": 1,
+        "bank_links": 0,
+        "detail_rich_score": 0.7356,
+        "memo_density": 0.9423,
+        "counterparty_density": 0.9936,
+        "receipt_attach_ready": 0
+      }
+    },
+    {
+      "case_id": "CASE_B",
+      "title": "계좌 2개 이상 연동",
+      "source_user_token": "SRC_bd5e68b4e2",
+      "pattern_summary": {
+        "tx_count": 395,
+        "active_months": 4,
+        "monthly_cv": 0.4048,
+        "monthly_max_min_gap": 109,
+        "bank_accounts": 2,
+        "bank_links": 1,
+        "detail_rich_score": 0.9892,
+        "memo_density": 0.9975,
+        "counterparty_density": 1.0,
+        "receipt_attach_ready": 270
+      }
+    },
+    {
+      "case_id": "CASE_C",
+      "title": "memo/counterparty 풍부",
+      "source_user_token": "SRC_11bd4ced02",
+      "pattern_summary": {
+        "tx_count": 146,
+        "active_months": 2,
+        "monthly_cv": 0.589,
+        "monthly_max_min_gap": 86,
+        "bank_accounts": 1,
+        "bank_links": 0,
+        "detail_rich_score": 1.0,
+        "memo_density": 1.0,
+        "counterparty_density": 1.0,
+        "receipt_attach_ready": 123
+      }
+    },
+    {
+      "case_id": "CASE_D",
+      "title": "detail 필드 빈약",
+      "source_user_token": "SRC_df2c73b708",
+      "pattern_summary": {
+        "tx_count": 146,
+        "active_months": 2,
+        "monthly_cv": 0.589,
+        "monthly_max_min_gap": 86,
+        "bank_accounts": 0,
+        "bank_links": 0,
+        "detail_rich_score": 0.5,
+        "memo_density": 1.0,
+        "counterparty_density": 0.0,
+        "receipt_attach_ready": 123
+      }
+    },
+    {
+      "case_id": "CASE_E",
+      "title": "receipt_attach 검증 가능",
+      "source_user_token": "SRC_bd5e68b4e2",
+      "pattern_summary": {
+        "tx_count": 395,
+        "active_months": 4,
+        "monthly_cv": 0.4048,
+        "monthly_max_min_gap": 109,
+        "bank_accounts": 2,
+        "bank_links": 1,
+        "detail_rich_score": 0.9892,
+        "memo_density": 0.9975,
+        "counterparty_density": 1.0,
+        "receipt_attach_ready": 270
+      }
+    },
+    {
+      "case_id": "CASE_F",
+      "title": "거래량 많음",
+      "source_user_token": "SRC_9ec95b44b5",
+      "pattern_summary": {
+        "tx_count": 156,
+        "active_months": 2,
+        "monthly_cv": 0.6154,
+        "monthly_max_min_gap": 96,
+        "bank_accounts": 0,
+        "bank_links": 0,
+        "detail_rich_score": 0.7324,
+        "memo_density": 0.9423,
+        "counterparty_density": 0.9872,
+        "receipt_attach_ready": 0
+      }
+    },
+    {
+      "case_id": "CASE_G",
+      "title": "거래량 적음",
+      "source_user_token": "SRC_788dcc84d8",
+      "pattern_summary": {
+        "tx_count": 8,
+        "active_months": 1,
+        "monthly_cv": 0.0,
+        "monthly_max_min_gap": 0,
+        "bank_accounts": 0,
+        "bank_links": 0,
+        "detail_rich_score": 0.75,
+        "memo_density": 1.0,
+        "counterparty_density": 1.0,
+        "receipt_attach_ready": 6
+      }
+    }
+  ],
+  "created_cases": [
+    {
+      "case_id": "CASE_A",
+      "title": "월별 거래량 편차 큼",
+      "test_account_email": "qa_issue_case_a_20260314_105238_ac267428@example.test",
+      "test_account_token": "CASEUSER_223c8c9db3",
+      "tx_count": 156,
+      "active_months": 3,
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03"
+      ],
+      "monthly_cv": 0.992,
+      "bank_account_count": 1,
+      "bank_link_count": 0,
+      "detail_density_percent": {
+        "memo": 94.23,
+        "counterparty": 99.36,
+        "source": 100.0
+      },
+      "receipt_attach_ready_count": 0,
+      "pattern_notes": [
+        "source pattern copied from SRC_0b7402ae22",
+        "counterparty/memo/account identifiers were anonymized",
+        "transactions/evidence copied without changing source user records"
+      ]
+    },
+    {
+      "case_id": "CASE_B",
+      "title": "계좌 2개 이상 연동",
+      "test_account_email": "qa_issue_case_b_20260314_105238_b5a1c544@example.test",
+      "test_account_token": "CASEUSER_e9a19962b3",
+      "tx_count": 395,
+      "active_months": 4,
+      "months": [
+        "2025-12",
+        "2026-01",
+        "2026-02",
+        "2026-03"
+      ],
+      "monthly_cv": 0.4048,
+      "bank_account_count": 2,
+      "bank_link_count": 1,
+      "detail_density_percent": {
+        "memo": 99.75,
+        "counterparty": 100.0,
+        "source": 100.0
+      },
+      "receipt_attach_ready_count": 270,
+      "pattern_notes": [
+        "source pattern copied from SRC_bd5e68b4e2",
+        "counterparty/memo/account identifiers were anonymized",
+        "transactions/evidence copied without changing source user records"
+      ]
+    },
+    {
+      "case_id": "CASE_C",
+      "title": "memo/counterparty 풍부",
+      "test_account_email": "qa_issue_case_c_20260314_105238_a78eb754@example.test",
+      "test_account_token": "CASEUSER_31e6892927",
+      "tx_count": 146,
+      "active_months": 2,
+      "months": [
+        "2026-01",
+        "2026-02"
+      ],
+      "monthly_cv": 0.589,
+      "bank_account_count": 1,
+      "bank_link_count": 0,
+      "detail_density_percent": {
+        "memo": 100.0,
+        "counterparty": 100.0,
+        "source": 100.0
+      },
+      "receipt_attach_ready_count": 123,
+      "pattern_notes": [
+        "source pattern copied from SRC_11bd4ced02",
+        "counterparty/memo/account identifiers were anonymized",
+        "transactions/evidence copied without changing source user records"
+      ]
+    },
+    {
+      "case_id": "CASE_D",
+      "title": "detail 필드 빈약",
+      "test_account_email": "qa_issue_case_d_20260314_105238_ac689961@example.test",
+      "test_account_token": "CASEUSER_1fe35a5634",
+      "tx_count": 146,
+      "active_months": 2,
+      "months": [
+        "2026-01",
+        "2026-02"
+      ],
+      "monthly_cv": 0.589,
+      "bank_account_count": 0,
+      "bank_link_count": 0,
+      "detail_density_percent": {
+        "memo": 100.0,
+        "counterparty": 0.0,
+        "source": 100.0
+      },
+      "receipt_attach_ready_count": 123,
+      "pattern_notes": [
+        "source pattern copied from SRC_df2c73b708",
+        "counterparty/memo/account identifiers were anonymized",
+        "transactions/evidence copied without changing source user records"
+      ]
+    },
+    {
+      "case_id": "CASE_E",
+      "title": "receipt_attach 검증 가능",
+      "test_account_email": "qa_issue_case_e_20260314_105238_847c7794@example.test",
+      "test_account_token": "CASEUSER_6a826f0a7f",
+      "tx_count": 360,
+      "active_months": 4,
+      "months": [
+        "2025-12",
+        "2026-01",
+        "2026-02",
+        "2026-03"
+      ],
+      "monthly_cv": 0.5074,
+      "bank_account_count": 2,
+      "bank_link_count": 1,
+      "detail_density_percent": {
+        "memo": 99.72,
+        "counterparty": 100.0,
+        "source": 100.0
+      },
+      "receipt_attach_ready_count": 240,
+      "pattern_notes": [
+        "source pattern copied from SRC_bd5e68b4e2",
+        "counterparty/memo/account identifiers were anonymized",
+        "transactions/evidence copied without changing source user records"
+      ]
+    },
+    {
+      "case_id": "CASE_F",
+      "title": "거래량 많음",
+      "test_account_email": "qa_issue_case_f_20260314_105238_183f6736@example.test",
+      "test_account_token": "CASEUSER_fc027cd7e3",
+      "tx_count": 156,
+      "active_months": 2,
+      "months": [
+        "2026-01",
+        "2026-02"
+      ],
+      "monthly_cv": 0.6154,
+      "bank_account_count": 0,
+      "bank_link_count": 0,
+      "detail_density_percent": {
+        "memo": 94.23,
+        "counterparty": 98.72,
+        "source": 100.0
+      },
+      "receipt_attach_ready_count": 0,
+      "pattern_notes": [
+        "source pattern copied from SRC_9ec95b44b5",
+        "counterparty/memo/account identifiers were anonymized",
+        "transactions/evidence copied without changing source user records"
+      ]
+    },
+    {
+      "case_id": "CASE_G",
+      "title": "거래량 적음",
+      "test_account_email": "qa_issue_case_g_20260314_105238_777e01ca@example.test",
+      "test_account_token": "CASEUSER_dee1524201",
+      "tx_count": 8,
+      "active_months": 1,
+      "months": [
+        "2026-02"
+      ],
+      "monthly_cv": 0.0,
+      "bank_account_count": 0,
+      "bank_link_count": 0,
+      "detail_density_percent": {
+        "memo": 100.0,
+        "counterparty": 100.0,
+        "source": 100.0
+      },
+      "receipt_attach_ready_count": 6,
+      "pattern_notes": [
+        "source pattern copied from SRC_788dcc84d8",
+        "counterparty/memo/account identifiers were anonymized",
+        "transactions/evidence copied without changing source user records"
+      ]
+    }
+  ],
+  "revalidation": {
+    "generated_at": "2026-03-14T12:18:36+00:00",
+    "cases_total": 7,
+    "cases_available": 7,
+    "issue_1": {
+      "issue_key": "issue_1_calendar_tax_fixed",
+      "tested_cases": 7,
+      "reproduced_cases": 0,
+      "reproduced_case_ratio_percent": 0.0,
+      "reproduced_with_tx_variation_cases": 0,
+      "overall_pattern": "미재현 또는 희소 재현",
+      "case_results": [
+        {
+          "case_id": "CASE_A",
+          "tested": true,
+          "verdict": "미재현",
+          "condition": "월별 값 변화 확인",
+          "months": [
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "compute_tax_estimate": [
+            {
+              "month_key": "2026-01",
+              "buffer_target_krw": 302500,
+              "tax_due_est_krw": 302500,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "income_hybrid_total_income_proxy",
+              "taxable_income_used_annual_krw": 38000000
+            },
+            {
+              "month_key": "2026-02",
+              "buffer_target_krw": 302500,
+              "tax_due_est_krw": 302500,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "income_hybrid_total_income_proxy",
+              "taxable_income_used_annual_krw": 38000000
+            },
+            {
+              "month_key": "2026-03",
+              "buffer_target_krw": 302500,
+              "tax_due_est_krw": 302500,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "income_hybrid_total_income_proxy",
+              "taxable_income_used_annual_krw": 38000000
+            }
+          ],
+          "calendar_render": [
+            {
+              "month_key": "2026-01",
+              "status_code": 200,
+              "tax_display_text": "123,871원"
+            },
+            {
+              "month_key": "2026-02",
+              "status_code": 200,
+              "tax_display_text": "915,320원"
+            },
+            {
+              "month_key": "2026-03",
+              "status_code": 200,
+              "tax_display_text": "43,063원"
+            }
+          ],
+          "monthly_tx": [
+            {
+              "month_key": "2026-01",
+              "tx_count": 31,
+              "tx_amount_krw": 3779102
+            },
+            {
+              "month_key": "2026-02",
+              "tx_count": 123,
+              "tx_amount_krw": 10103144
+            },
+            {
+              "month_key": "2026-03",
+              "tx_count": 2,
+              "tx_amount_krw": 1201234
+            }
+          ]
+        },
+        {
+          "case_id": "CASE_B",
+          "tested": true,
+          "verdict": "미재현",
+          "condition": "월별 값 변화 확인",
+          "months": [
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "compute_tax_estimate": [
+            {
+              "month_key": "2026-01",
+              "buffer_target_krw": 27225,
+              "tax_due_est_krw": 27225,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "income_hybrid_total_income_proxy",
+              "taxable_income_used_annual_krw": 9900000
+            },
+            {
+              "month_key": "2026-02",
+              "buffer_target_krw": 27225,
+              "tax_due_est_krw": 27225,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "income_hybrid_total_income_proxy",
+              "taxable_income_used_annual_krw": 9900000
+            },
+            {
+              "month_key": "2026-03",
+              "buffer_target_krw": 27225,
+              "tax_due_est_krw": 27225,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "income_hybrid_total_income_proxy",
+              "taxable_income_used_annual_krw": 9900000
+            }
+          ],
+          "calendar_render": [
+            {
+              "month_key": "2026-01",
+              "status_code": 200,
+              "tax_display_text": "924,173원"
+            },
+            {
+              "month_key": "2026-02",
+              "status_code": 200,
+              "tax_display_text": "1,051,580,909원"
+            },
+            {
+              "month_key": "2026-03",
+              "status_code": 200,
+              "tax_display_text": "0원"
+            }
+          ],
+          "monthly_tx": [
+            {
+              "month_key": "2026-01",
+              "tx_count": 114,
+              "tx_amount_krw": 15605866
+            },
+            {
+              "month_key": "2026-02",
+              "tx_count": 153,
+              "tx_amount_krw": 2299655359
+            },
+            {
+              "month_key": "2026-03",
+              "tx_count": 44,
+              "tx_amount_krw": 543980
+            }
+          ]
+        },
+        {
+          "case_id": "CASE_C",
+          "tested": true,
+          "verdict": "미재현",
+          "condition": "월별 값 변화 확인",
+          "months": [
+            "2025-12",
+            "2026-01",
+            "2026-02"
+          ],
+          "compute_tax_estimate": [
+            {
+              "month_key": "2025-12",
+              "buffer_target_krw": 0,
+              "tax_due_est_krw": 0,
+              "mode": "blocked",
+              "taxable_income_input_source": "missing",
+              "taxable_income_used_annual_krw": 0
+            },
+            {
+              "month_key": "2026-01",
+              "buffer_target_krw": 195058,
+              "tax_due_est_krw": 195058,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "monthly_profit_annualized_proxy",
+              "taxable_income_used_annual_krw": 22586064
+            },
+            {
+              "month_key": "2026-02",
+              "buffer_target_krw": 366285,
+              "tax_due_est_krw": 366285,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "monthly_profit_annualized_proxy",
+              "taxable_income_used_annual_krw": 35038908
+            }
+          ],
+          "calendar_render": [
+            {
+              "month_key": "2025-12",
+              "status_code": 200,
+              "tax_display_text": "0원"
+            },
+            {
+              "month_key": "2026-01",
+              "status_code": 200,
+              "tax_display_text": "195,058원"
+            },
+            {
+              "month_key": "2026-02",
+              "status_code": 200,
+              "tax_display_text": "366,285원"
+            }
+          ],
+          "monthly_tx": [
+            {
+              "month_key": "2025-12",
+              "tx_count": 0,
+              "tx_amount_krw": 0
+            },
+            {
+              "month_key": "2026-01",
+              "tx_count": 30,
+              "tx_amount_krw": 3724102
+            },
+            {
+              "month_key": "2026-02",
+              "tx_count": 116,
+              "tx_amount_krw": 5515344
+            }
+          ]
+        },
+        {
+          "case_id": "CASE_D",
+          "tested": true,
+          "verdict": "미재현",
+          "condition": "월별 값 변화 확인",
+          "months": [
+            "2025-12",
+            "2026-01",
+            "2026-02"
+          ],
+          "compute_tax_estimate": [
+            {
+              "month_key": "2025-12",
+              "buffer_target_krw": 0,
+              "tax_due_est_krw": 0,
+              "mode": "blocked",
+              "taxable_income_input_source": "missing",
+              "taxable_income_used_annual_krw": 0
+            },
+            {
+              "month_key": "2026-01",
+              "buffer_target_krw": 195058,
+              "tax_due_est_krw": 195058,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "monthly_profit_annualized_proxy",
+              "taxable_income_used_annual_krw": 22586064
+            },
+            {
+              "month_key": "2026-02",
+              "buffer_target_krw": 366285,
+              "tax_due_est_krw": 366285,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "monthly_profit_annualized_proxy",
+              "taxable_income_used_annual_krw": 35038908
+            }
+          ],
+          "calendar_render": [
+            {
+              "month_key": "2025-12",
+              "status_code": 200,
+              "tax_display_text": "0원"
+            },
+            {
+              "month_key": "2026-01",
+              "status_code": 200,
+              "tax_display_text": "195,058원"
+            },
+            {
+              "month_key": "2026-02",
+              "status_code": 200,
+              "tax_display_text": "366,285원"
+            }
+          ],
+          "monthly_tx": [
+            {
+              "month_key": "2025-12",
+              "tx_count": 0,
+              "tx_amount_krw": 0
+            },
+            {
+              "month_key": "2026-01",
+              "tx_count": 30,
+              "tx_amount_krw": 3724102
+            },
+            {
+              "month_key": "2026-02",
+              "tx_count": 116,
+              "tx_amount_krw": 5515344
+            }
+          ]
+        },
+        {
+          "case_id": "CASE_E",
+          "tested": true,
+          "verdict": "미재현",
+          "condition": "월별 값 변화 확인",
+          "months": [
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "compute_tax_estimate": [
+            {
+              "month_key": "2026-01",
+              "buffer_target_krw": 27225,
+              "tax_due_est_krw": 27225,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "income_hybrid_total_income_proxy",
+              "taxable_income_used_annual_krw": 9900000
+            },
+            {
+              "month_key": "2026-02",
+              "buffer_target_krw": 27225,
+              "tax_due_est_krw": 27225,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "income_hybrid_total_income_proxy",
+              "taxable_income_used_annual_krw": 9900000
+            },
+            {
+              "month_key": "2026-03",
+              "buffer_target_krw": 27225,
+              "tax_due_est_krw": 27225,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "income_hybrid_total_income_proxy",
+              "taxable_income_used_annual_krw": 9900000
+            }
+          ],
+          "calendar_render": [
+            {
+              "month_key": "2026-01",
+              "status_code": 200,
+              "tax_display_text": "924,173원"
+            },
+            {
+              "month_key": "2026-02",
+              "status_code": 200,
+              "tax_display_text": "1,051,580,909원"
+            },
+            {
+              "month_key": "2026-03",
+              "status_code": 200,
+              "tax_display_text": "0원"
+            }
+          ],
+          "monthly_tx": [
+            {
+              "month_key": "2026-01",
+              "tx_count": 114,
+              "tx_amount_krw": 15605866
+            },
+            {
+              "month_key": "2026-02",
+              "tx_count": 153,
+              "tx_amount_krw": 2299655359
+            },
+            {
+              "month_key": "2026-03",
+              "tx_count": 44,
+              "tx_amount_krw": 543980
+            }
+          ]
+        },
+        {
+          "case_id": "CASE_F",
+          "tested": true,
+          "verdict": "미재현",
+          "condition": "월별 값 변화 확인",
+          "months": [
+            "2025-12",
+            "2026-01",
+            "2026-02"
+          ],
+          "compute_tax_estimate": [
+            {
+              "month_key": "2025-12",
+              "buffer_target_krw": 0,
+              "tax_due_est_krw": 0,
+              "mode": "blocked",
+              "taxable_income_input_source": "missing",
+              "taxable_income_used_annual_krw": 0
+            },
+            {
+              "month_key": "2026-01",
+              "buffer_target_krw": 0,
+              "tax_due_est_krw": 0,
+              "mode": "blocked",
+              "taxable_income_input_source": "missing",
+              "taxable_income_used_annual_krw": 0
+            },
+            {
+              "month_key": "2026-02",
+              "buffer_target_krw": 47046482,
+              "tax_due_est_krw": 47046482,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "monthly_profit_annualized_proxy",
+              "taxable_income_used_annual_krw": 1485332580
+            }
+          ],
+          "calendar_render": [
+            {
+              "month_key": "2025-12",
+              "status_code": 200,
+              "tax_display_text": "0원"
+            },
+            {
+              "month_key": "2026-01",
+              "status_code": 200,
+              "tax_display_text": "0원"
+            },
+            {
+              "month_key": "2026-02",
+              "status_code": 200,
+              "tax_display_text": "47,046,482원"
+            }
+          ],
+          "monthly_tx": [
+            {
+              "month_key": "2025-12",
+              "tx_count": 0,
+              "tx_amount_krw": 0
+            },
+            {
+              "month_key": "2026-01",
+              "tx_count": 30,
+              "tx_amount_krw": 3724102
+            },
+            {
+              "month_key": "2026-02",
+              "tx_count": 126,
+              "tx_amount_krw": 375685039
+            }
+          ]
+        },
+        {
+          "case_id": "CASE_G",
+          "tested": true,
+          "verdict": "미재현",
+          "condition": "월별 값 변화 확인",
+          "months": [
+            "2025-12",
+            "2026-01",
+            "2026-02"
+          ],
+          "compute_tax_estimate": [
+            {
+              "month_key": "2025-12",
+              "buffer_target_krw": 0,
+              "tax_due_est_krw": 0,
+              "mode": "blocked",
+              "taxable_income_input_source": "missing",
+              "taxable_income_used_annual_krw": 0
+            },
+            {
+              "month_key": "2026-01",
+              "buffer_target_krw": 0,
+              "tax_due_est_krw": 0,
+              "mode": "blocked",
+              "taxable_income_input_source": "missing",
+              "taxable_income_used_annual_krw": 0
+            },
+            {
+              "month_key": "2026-02",
+              "buffer_target_krw": 222750,
+              "tax_due_est_krw": 222750,
+              "mode": "limited_proxy",
+              "taxable_income_input_source": "monthly_profit_annualized_proxy",
+              "taxable_income_used_annual_krw": 24600000
+            }
+          ],
+          "calendar_render": [
+            {
+              "month_key": "2025-12",
+              "status_code": 200,
+              "tax_display_text": "0원"
+            },
+            {
+              "month_key": "2026-01",
+              "status_code": 200,
+              "tax_display_text": "0원"
+            },
+            {
+              "month_key": "2026-02",
+              "status_code": 200,
+              "tax_display_text": "222,750원"
+            }
+          ],
+          "monthly_tx": [
+            {
+              "month_key": "2025-12",
+              "tx_count": 0,
+              "tx_amount_krw": 0
+            },
+            {
+              "month_key": "2026-01",
+              "tx_count": 0,
+              "tx_amount_krw": 0
+            },
+            {
+              "month_key": "2026-02",
+              "tx_count": 8,
+              "tx_amount_krw": 2782300
+            }
+          ]
+        }
+      ]
+    },
+    "issue_2": {
+      "issue_key": "issue_2_review_detail_sparse",
+      "tested_cases": 7,
+      "classification_distribution": {
+        "UI 누락 중심": 0,
+        "원천데이터 부족 중심": 0,
+        "혼합형": 2,
+        "미재현": 5
+      },
+      "case_results": [
+        {
+          "case_id": "CASE_A",
+          "tested": true,
+          "month_key": "2026-03",
+          "verdict": "혼합형",
+          "tx_count": 2,
+          "density_overall": {
+            "memo_density": 0.5,
+            "counterparty_density": 0.5,
+            "source_density": 1.0,
+            "occurred_at_density": 1.0,
+            "account_density": 0.5
+          },
+          "density_outgoing": {
+            "count": 0,
+            "memo_density": 0.0,
+            "counterparty_density": 0.0,
+            "source_density": 0.0,
+            "account_density": 0.0
+          },
+          "density_incoming": {
+            "count": 2,
+            "memo_density": 0.5,
+            "counterparty_density": 0.5,
+            "source_density": 1.0,
+            "account_density": 0.5
+          },
+          "ui_checks": {
+            "shows_display_title": true,
+            "shows_display_time": true,
+            "shows_display_amount": true,
+            "shows_display_account": true,
+            "shows_display_source": true,
+            "shows_display_memo": true,
+            "removes_single_line_counterparty_or_memo": true,
+            "route_passes_tx_raw": true,
+            "route_builds_display_fields": true
+          }
+        },
+        {
+          "case_id": "CASE_B",
+          "tested": true,
+          "month_key": "2026-03",
+          "verdict": "미재현",
+          "tx_count": 44,
+          "density_overall": {
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "occurred_at_density": 1.0,
+            "account_density": 0.9773
+          },
+          "density_outgoing": {
+            "count": 40,
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "account_density": 0.975
+          },
+          "density_incoming": {
+            "count": 4,
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "account_density": 1.0
+          },
+          "ui_checks": {
+            "shows_display_title": true,
+            "shows_display_time": true,
+            "shows_display_amount": true,
+            "shows_display_account": true,
+            "shows_display_source": true,
+            "shows_display_memo": true,
+            "removes_single_line_counterparty_or_memo": true,
+            "route_passes_tx_raw": true,
+            "route_builds_display_fields": true
+          }
+        },
+        {
+          "case_id": "CASE_C",
+          "tested": true,
+          "month_key": "2026-02",
+          "verdict": "미재현",
+          "tx_count": 116,
+          "density_overall": {
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "occurred_at_density": 1.0,
+            "account_density": 1.0
+          },
+          "density_outgoing": {
+            "count": 98,
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "account_density": 1.0
+          },
+          "density_incoming": {
+            "count": 18,
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "account_density": 1.0
+          },
+          "ui_checks": {
+            "shows_display_title": true,
+            "shows_display_time": true,
+            "shows_display_amount": true,
+            "shows_display_account": true,
+            "shows_display_source": true,
+            "shows_display_memo": true,
+            "removes_single_line_counterparty_or_memo": true,
+            "route_passes_tx_raw": true,
+            "route_builds_display_fields": true
+          }
+        },
+        {
+          "case_id": "CASE_D",
+          "tested": true,
+          "month_key": "2026-02",
+          "verdict": "혼합형",
+          "tx_count": 116,
+          "density_overall": {
+            "memo_density": 1.0,
+            "counterparty_density": 0.0,
+            "source_density": 1.0,
+            "occurred_at_density": 1.0,
+            "account_density": 0.0
+          },
+          "density_outgoing": {
+            "count": 98,
+            "memo_density": 1.0,
+            "counterparty_density": 0.0,
+            "source_density": 1.0,
+            "account_density": 0.0
+          },
+          "density_incoming": {
+            "count": 18,
+            "memo_density": 1.0,
+            "counterparty_density": 0.0,
+            "source_density": 1.0,
+            "account_density": 0.0
+          },
+          "ui_checks": {
+            "shows_display_title": true,
+            "shows_display_time": true,
+            "shows_display_amount": true,
+            "shows_display_account": true,
+            "shows_display_source": true,
+            "shows_display_memo": true,
+            "removes_single_line_counterparty_or_memo": true,
+            "route_passes_tx_raw": true,
+            "route_builds_display_fields": true
+          }
+        },
+        {
+          "case_id": "CASE_E",
+          "tested": true,
+          "month_key": "2026-03",
+          "verdict": "미재현",
+          "tx_count": 44,
+          "density_overall": {
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "occurred_at_density": 1.0,
+            "account_density": 0.9773
+          },
+          "density_outgoing": {
+            "count": 40,
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "account_density": 0.975
+          },
+          "density_incoming": {
+            "count": 4,
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "account_density": 1.0
+          },
+          "ui_checks": {
+            "shows_display_title": true,
+            "shows_display_time": true,
+            "shows_display_amount": true,
+            "shows_display_account": true,
+            "shows_display_source": true,
+            "shows_display_memo": true,
+            "removes_single_line_counterparty_or_memo": true,
+            "route_passes_tx_raw": true,
+            "route_builds_display_fields": true
+          }
+        },
+        {
+          "case_id": "CASE_F",
+          "tested": true,
+          "month_key": "2026-02",
+          "verdict": "미재현",
+          "tx_count": 126,
+          "density_overall": {
+            "memo_density": 0.9286,
+            "counterparty_density": 0.9841,
+            "source_density": 1.0,
+            "occurred_at_density": 1.0,
+            "account_density": 0.0
+          },
+          "density_outgoing": {
+            "count": 104,
+            "memo_density": 0.9423,
+            "counterparty_density": 0.9904,
+            "source_density": 1.0,
+            "account_density": 0.0
+          },
+          "density_incoming": {
+            "count": 22,
+            "memo_density": 0.8636,
+            "counterparty_density": 0.9545,
+            "source_density": 1.0,
+            "account_density": 0.0
+          },
+          "ui_checks": {
+            "shows_display_title": true,
+            "shows_display_time": true,
+            "shows_display_amount": true,
+            "shows_display_account": true,
+            "shows_display_source": true,
+            "shows_display_memo": true,
+            "removes_single_line_counterparty_or_memo": true,
+            "route_passes_tx_raw": true,
+            "route_builds_display_fields": true
+          }
+        },
+        {
+          "case_id": "CASE_G",
+          "tested": true,
+          "month_key": "2026-02",
+          "verdict": "미재현",
+          "tx_count": 8,
+          "density_overall": {
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "occurred_at_density": 1.0,
+            "account_density": 0.0
+          },
+          "density_outgoing": {
+            "count": 6,
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "account_density": 0.0
+          },
+          "density_incoming": {
+            "count": 2,
+            "memo_density": 1.0,
+            "counterparty_density": 1.0,
+            "source_density": 1.0,
+            "account_density": 0.0
+          },
+          "ui_checks": {
+            "shows_display_title": true,
+            "shows_display_time": true,
+            "shows_display_amount": true,
+            "shows_display_account": true,
+            "shows_display_source": true,
+            "shows_display_memo": true,
+            "removes_single_line_counterparty_or_memo": true,
+            "route_passes_tx_raw": true,
+            "route_builds_display_fields": true
+          }
+        }
+      ]
+    },
+    "issue_3": {
+      "issue_key": "issue_3_receipt_attach_kakao",
+      "tested_cases": 5,
+      "failed_or_partial_cases": 0,
+      "failed_or_partial_ratio_percent": 0.0,
+      "sample_failure_distribution": {},
+      "case_results": [
+        {
+          "case_id": "CASE_A",
+          "tested": false,
+          "verdict": "판단불가",
+          "reason": "no_receipt_attach_candidate"
+        },
+        {
+          "case_id": "CASE_B",
+          "tested": true,
+          "verdict": "전반 미재현",
+          "sample_results": [
+            {
+              "sample_id": "kakao_electronic_receipt",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            },
+            {
+              "sample_id": "kakao_transfer_confirm",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            },
+            {
+              "sample_id": "kakao_short_partial",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            }
+          ]
+        },
+        {
+          "case_id": "CASE_C",
+          "tested": true,
+          "verdict": "전반 미재현",
+          "sample_results": [
+            {
+              "sample_id": "kakao_electronic_receipt",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            },
+            {
+              "sample_id": "kakao_transfer_confirm",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            },
+            {
+              "sample_id": "kakao_short_partial",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            }
+          ]
+        },
+        {
+          "case_id": "CASE_D",
+          "tested": true,
+          "verdict": "전반 미재현",
+          "sample_results": [
+            {
+              "sample_id": "kakao_electronic_receipt",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            },
+            {
+              "sample_id": "kakao_transfer_confirm",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            },
+            {
+              "sample_id": "kakao_short_partial",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            }
+          ]
+        },
+        {
+          "case_id": "CASE_E",
+          "tested": true,
+          "verdict": "전반 미재현",
+          "sample_results": [
+            {
+              "sample_id": "kakao_electronic_receipt",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            },
+            {
+              "sample_id": "kakao_transfer_confirm",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            },
+            {
+              "sample_id": "kakao_short_partial",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            }
+          ]
+        },
+        {
+          "case_id": "CASE_F",
+          "tested": false,
+          "verdict": "판단불가",
+          "reason": "no_receipt_attach_candidate"
+        },
+        {
+          "case_id": "CASE_G",
+          "tested": true,
+          "verdict": "전반 미재현",
+          "sample_results": [
+            {
+              "sample_id": "kakao_electronic_receipt",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            },
+            {
+              "sample_id": "kakao_transfer_confirm",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            },
+            {
+              "sample_id": "kakao_short_partial",
+              "status_code": 200,
+              "step_advanced": true,
+              "evidence_attached": true,
+              "sample_verdict": "정상"
+            }
+          ]
+        }
+      ]
+    },
+    "issue_4": {
+      "issue_key": "issue_4_toast_not_in_notice_center",
+      "tested_cases": 7,
+      "template_checks": {
+        "base_has_push_notice": true,
+        "base_has_poll_nav_queue": true,
+        "base_flash_to_notice": true,
+        "nhis_has_local_show_toast": true,
+        "nhis_has_push_notice_bridge": false
+      },
+      "overall_verdict": "현재 설계상 분리됨",
+      "case_results": [
+        {
+          "case_id": "CASE_A",
+          "tested": true,
+          "overview_status_code": 404,
+          "nhis_status_code": 200,
+          "verdict": "현재 설계상 분리됨"
+        },
+        {
+          "case_id": "CASE_B",
+          "tested": true,
+          "overview_status_code": 404,
+          "nhis_status_code": 200,
+          "verdict": "현재 설계상 분리됨"
+        },
+        {
+          "case_id": "CASE_C",
+          "tested": true,
+          "overview_status_code": 404,
+          "nhis_status_code": 200,
+          "verdict": "현재 설계상 분리됨"
+        },
+        {
+          "case_id": "CASE_D",
+          "tested": true,
+          "overview_status_code": 404,
+          "nhis_status_code": 200,
+          "verdict": "현재 설계상 분리됨"
+        },
+        {
+          "case_id": "CASE_E",
+          "tested": true,
+          "overview_status_code": 404,
+          "nhis_status_code": 200,
+          "verdict": "현재 설계상 분리됨"
+        },
+        {
+          "case_id": "CASE_F",
+          "tested": true,
+          "overview_status_code": 404,
+          "nhis_status_code": 200,
+          "verdict": "현재 설계상 분리됨"
+        },
+        {
+          "case_id": "CASE_G",
+          "tested": true,
+          "overview_status_code": 404,
+          "nhis_status_code": 200,
+          "verdict": "현재 설계상 분리됨"
+        }
+      ]
+    },
+    "issue_5": {
+      "issue_key": "issue_5_bank_auto_sync_30m",
+      "tested_cases": 7,
+      "linked_cases": 2,
+      "reproduced_in_linked_cases": 2,
+      "reproduced_ratio_in_linked_percent": 100.0,
+      "code_checks": {
+        "has_manual_sync_route": true,
+        "has_manual_notice_text": true,
+        "has_scheduler_keywords": false,
+        "plan_interval_30_exists": false,
+        "plan_interval_60_exists": true,
+        "plan_interval_240_exists": true
+      },
+      "overall_verdict": "재현됨",
+      "case_results": [
+        {
+          "case_id": "CASE_A",
+          "tested": true,
+          "bank_link_count": 0,
+          "verdict": "판단보류(연동 계좌 없음)"
+        },
+        {
+          "case_id": "CASE_B",
+          "tested": true,
+          "bank_link_count": 1,
+          "verdict": "재현됨(자동 동기화 미구현/미연결)"
+        },
+        {
+          "case_id": "CASE_C",
+          "tested": true,
+          "bank_link_count": 0,
+          "verdict": "판단보류(연동 계좌 없음)"
+        },
+        {
+          "case_id": "CASE_D",
+          "tested": true,
+          "bank_link_count": 0,
+          "verdict": "판단보류(연동 계좌 없음)"
+        },
+        {
+          "case_id": "CASE_E",
+          "tested": true,
+          "bank_link_count": 1,
+          "verdict": "재현됨(자동 동기화 미구현/미연결)"
+        },
+        {
+          "case_id": "CASE_F",
+          "tested": true,
+          "bank_link_count": 0,
+          "verdict": "판단보류(연동 계좌 없음)"
+        },
+        {
+          "case_id": "CASE_G",
+          "tested": true,
+          "bank_link_count": 0,
+          "verdict": "판단보류(연동 계좌 없음)"
+        }
+      ]
+    }
+  }
+}

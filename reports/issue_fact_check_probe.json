@@ -1,0 +1,425 @@
+{
+  "generated_at": "2026-03-14T19:12:41",
+  "inputs": {
+    "user_pk": 1,
+    "months": [
+      "2026-01",
+      "2026-02",
+      "2026-03"
+    ],
+    "month_for_review": "2026-03"
+  },
+  "issues": [
+    {
+      "issue_key": "issue_1_calendar_tax_fixed",
+      "verdict": "재현됨",
+      "reproduced": true,
+      "evidence": {
+        "user_pk": 1,
+        "months": [
+          "2026-01",
+          "2026-02",
+          "2026-03"
+        ],
+        "compute_tax_estimate": [
+          {
+            "month_key": "2026-01",
+            "buffer_target_krw": 27225,
+            "tax_due_est_krw": 27225,
+            "mode": "limited_proxy",
+            "taxable_income_input_source": "income_hybrid_total_income_proxy",
+            "taxable_income_used_annual_krw": 9900000,
+            "income_included_krw": 825000,
+            "expense_business_krw": 0,
+            "official_taxable_income_annual_krw": 0
+          },
+          {
+            "month_key": "2026-02",
+            "buffer_target_krw": 27225,
+            "tax_due_est_krw": 27225,
+            "mode": "limited_proxy",
+            "taxable_income_input_source": "income_hybrid_total_income_proxy",
+            "taxable_income_used_annual_krw": 9900000,
+            "income_included_krw": 825000,
+            "expense_business_krw": 3250000,
+            "official_taxable_income_annual_krw": 0
+          },
+          {
+            "month_key": "2026-03",
+            "buffer_target_krw": 27225,
+            "tax_due_est_krw": 27225,
+            "mode": "limited_proxy",
+            "taxable_income_input_source": "income_hybrid_total_income_proxy",
+            "taxable_income_used_annual_krw": 9900000,
+            "income_included_krw": 825000,
+            "expense_business_krw": 66100,
+            "official_taxable_income_annual_krw": 0
+          }
+        ],
+        "calendar_render": [
+          {
+            "month_key": "2026-01",
+            "status_code": 200,
+            "tax_display_text": "27,225원"
+          },
+          {
+            "month_key": "2026-02",
+            "status_code": 200,
+            "tax_display_text": "27,225원"
+          },
+          {
+            "month_key": "2026-03",
+            "status_code": 200,
+            "tax_display_text": "27,225원"
+          }
+        ],
+        "same_target": true,
+        "same_render_text": true
+      },
+      "expected": "월별 거래/입력 변화에 따라 월별 세금 표시값이 달라져야 함",
+      "actual": "월별 계산값=[27225, 27225, 27225], 월별 렌더값=['27,225원', '27,225원', '27,225원']",
+      "code_paths": [
+        "routes/web/web_calendar.py:737-748",
+        "templates/calendar/month.html:338-343",
+        "services/risk.py:843-1160"
+      ],
+      "cause_candidates": [
+        "월별 화면 값은 동일하지만 계산 모드가 `limited_proxy`/`official_exact`로 월별 동일 월환산값을 사용",
+        "과세표준 대체 입력(source)이 월별 동일하고, 연간 과세소득 사용값이 고정",
+        "월별 포함수입이 동일(또는 월별 거래 반영 대신 연간 입력 소스 우선)"
+      ]
+    },
+    {
+      "issue_key": "issue_2_review_detail_sparse",
+      "verdict": "부분 재현됨",
+      "reproduced": true,
+      "evidence": {
+        "user_pk": 1,
+        "month_key": "2026-03",
+        "sample_transactions": [
+          {
+            "id": 3640,
+            "direction": "out",
+            "occurred_at": "2026-03-14 00:28:08",
+            "amount_krw": 3900,
+            "counterparty": "KB카드",
+            "memo": "GS25중동랜드마크점 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3641,
+            "direction": "out",
+            "occurred_at": "2026-03-13 22:13:38",
+            "amount_krw": 1000,
+            "counterparty": "KB카드",
+            "memo": "라라랜드 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3642,
+            "direction": "out",
+            "occurred_at": "2026-03-13 22:11:50",
+            "amount_krw": 1000,
+            "counterparty": "KB카드",
+            "memo": "라라랜드 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3643,
+            "direction": "out",
+            "occurred_at": "2026-03-13 22:06:59",
+            "amount_krw": 1000,
+            "counterparty": "KB카드",
+            "memo": "(주)드림월드플러스 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3644,
+            "direction": "out",
+            "occurred_at": "2026-03-13 22:06:16",
+            "amount_krw": 1000,
+            "counterparty": "KB카드",
+            "memo": "(주)드림월드플러스 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3645,
+            "direction": "out",
+            "occurred_at": "2026-03-13 22:05:32",
+            "amount_krw": 1000,
+            "counterparty": "KB카드",
+            "memo": "(주)드림월드플러스 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3646,
+            "direction": "out",
+            "occurred_at": "2026-03-13 22:03:38",
+            "amount_krw": 6500,
+            "counterparty": "KB카드",
+            "memo": "(주)드림월드플러스 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3647,
+            "direction": "out",
+            "occurred_at": "2026-03-13 21:42:40",
+            "amount_krw": 1000,
+            "counterparty": "KB카드",
+            "memo": "사격팡부천점 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3648,
+            "direction": "out",
+            "occurred_at": "2026-03-13 21:41:56",
+            "amount_krw": 1000,
+            "counterparty": "KB카드",
+            "memo": "사격팡부천점 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3649,
+            "direction": "out",
+            "occurred_at": "2026-03-13 17:02:16",
+            "amount_krw": 20000,
+            "counterparty": "KB카드",
+            "memo": "우아한형제들 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3650,
+            "direction": "in",
+            "occurred_at": "2026-03-13 17:01:28",
+            "amount_krw": 20000,
+            "counterparty": "하나은행",
+            "memo": "허동주 | 하나은행 | 전자금융",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3651,
+            "direction": "out",
+            "occurred_at": "2026-03-13 11:02:35",
+            "amount_krw": 3500,
+            "counterparty": "KB카드",
+            "memo": "금동마트 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3652,
+            "direction": "out",
+            "occurred_at": "2026-03-12 12:31:43",
+            "amount_krw": 3900,
+            "counterparty": "KB카드",
+            "memo": "이마트24유한대점 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3653,
+            "direction": "out",
+            "occurred_at": "2026-03-12 12:09:44",
+            "amount_krw": 5500,
+            "counterparty": "KB카드",
+            "memo": "(주)리앤이라마띠네 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3654,
+            "direction": "out",
+            "occurred_at": "2026-03-12 08:24:26",
+            "amount_krw": 4600,
+            "counterparty": "KB카드",
+            "memo": "지에스25중동길주 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3655,
+            "direction": "out",
+            "occurred_at": "2026-03-12 00:44:19",
+            "amount_krw": 25000,
+            "counterparty": "KB카드",
+            "memo": "(주)야놀자 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3656,
+            "direction": "out",
+            "occurred_at": "2026-03-11 15:22:30",
+            "amount_krw": 37820,
+            "counterparty": "KB카드",
+            "memo": "지에스더프레시부천 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3657,
+            "direction": "out",
+            "occurred_at": "2026-03-10 20:19:33",
+            "amount_krw": 7700,
+            "counterparty": "KB카드",
+            "memo": "씨유중동설레임점 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3658,
+            "direction": "in",
+            "occurred_at": "2026-03-10 16:07:06",
+            "amount_krw": 1,
+            "counterparty": "케이뱅크",
+            "memo": "KT377 | 케이뱅크 | 전자금융",
+            "source": "popbill",
+            "bank_account_id": 5
+          },
+          {
+            "id": 3659,
+            "direction": "out",
+            "occurred_at": "2026-03-09 22:58:35",
+            "amount_krw": 37760,
+            "counterparty": "KB카드",
+            "memo": "쿠팡 | KB카드 | 체크카드",
+            "source": "popbill",
+            "bank_account_id": 5
+          }
+        ],
+        "ui_field_checks": {
+          "shows_counterparty": true,
+          "shows_occurred_at": true,
+          "shows_amount": true,
+          "shows_account_badge_name": true,
+          "shows_tx_source": false,
+          "shows_tx_memo_separately": false
+        },
+        "model_field_checks": {
+          "tx_has_source_field": true,
+          "tx_has_counterparty_field": true,
+          "tx_has_memo_field": true,
+          "tx_has_sender_field": false,
+          "tx_has_full_account_number_field": true
+        },
+        "route_field_checks": {
+          "review_query_uses_tx_entity": true,
+          "review_item_passes_raw_tx": true
+        }
+      },
+      "expected": "review 목록에서 상대방/메모/출처/계좌 맥락 정보가 충분히 식별 가능해야 함",
+      "actual": "거래 원천 데이터(메모/소스)는 존재하지만 review 목록에서 핵심 일부만 표시됨",
+      "code_paths": [
+        "routes/web/calendar/review.py:1582-1840",
+        "templates/calendar/review.html:540-590",
+        "domain/models.py:90-123"
+      ],
+      "cause_candidates": [
+        "DB에는 memo/source가 있으나 review 목록 카드에서 별도 노출하지 않음",
+        "송신자/수취인 전용 컬럼이 모델에 없어 상대방 정보는 counterparty/memo 문자열에 의존"
+      ]
+    },
+    {
+      "issue_key": "issue_3_receipt_attach_kakao",
+      "verdict": "미재현",
+      "reproduced": false,
+      "evidence": {
+        "user_pk": 1,
+        "month_key": "2026-03",
+        "candidate": {
+          "tx_id": 3137,
+          "requirement": "maybe",
+          "status": "missing"
+        },
+        "upload_status_code": 200,
+        "upload_step_advance_detected": true,
+        "upload_html_markers": {
+          "has_rw_step": true,
+          "has_parser_badge": true,
+          "has_confirm_title": true
+        },
+        "evidence_state_after_upload": {
+          "tx_id": 3137,
+          "status": "attached",
+          "file_key_exists": true,
+          "note_prefix": "receipt_meta:{\"receipt_type\": "
+        }
+      },
+      "expected": "입력 후 submit 시 저장/처리/다음 단계(또는 오류 피드백)가 보여야 함",
+      "actual": "텍스트 입력 후 업로드 시 확인 단계(step2)로 전환되고 EvidenceItem이 attached로 저장됨",
+      "code_paths": [
+        "templates/calendar/partials/receipt_wizard_upload.html",
+        "routes/web/calendar/review.py:2925-3040",
+        "services/evidence_vault.py:630-668"
+      ],
+      "cause_candidates": [
+        "현재 샘플 텍스트에서는 무반응이 재현되지 않음",
+        "단, partial 모달 경로에서 flash 기반 에러 문구가 모달 내부에 직접 노출되지 않아 실패 시 체감 피드백이 약할 가능성"
+      ]
+    },
+    {
+      "issue_key": "issue_4_toast_not_in_notice_center",
+      "verdict": "현재 설계상 분리됨",
+      "reproduced": true,
+      "evidence": {
+        "base_template_checks": {
+          "has_notice_localstorage": true,
+          "push_notice_called_from_queue": true,
+          "flash_ingest_to_notice": true
+        },
+        "nhis_template_checks": {
+          "has_local_toast_stack": true,
+          "has_push_notice_bridge": false
+        }
+      },
+      "expected": "우측 토스트가 알림센터와 동일 스토어로 적재되어야 함(사용자 기대 기준)",
+      "actual": "알림센터는 receipt queue 완료/실패 이벤트 기반(localStorage)이고, 화면 토스트/flash는 자동 적재되지 않음",
+      "code_paths": [
+        "templates/base.html:610-1040",
+        "templates/nhis.html:1109-1290"
+      ],
+      "cause_candidates": [
+        "알림센터 저장소가 localStorage 기반으로 receipt queue 알림만 수집",
+        "flash/페이지별 toast와 알림센터 사이의 브리지 로직 부재"
+      ]
+    },
+    {
+      "issue_key": "issue_5_bank_auto_sync_30m",
+      "verdict": "재현됨",
+      "reproduced": true,
+      "evidence": {
+        "has_manual_sync_route": true,
+        "has_manual_notice_text": true,
+        "sync_function_calls_detected": 5,
+        "has_scheduler_keywords": false,
+        "plan_interval_minutes": {
+          "basic_240": true,
+          "pro_60": true
+        }
+      },
+      "expected": "30분 주기 자동 동기화가 백그라운드로 실행되어야 함",
+      "actual": "자동 30분 주기 실행체는 확인되지 않았고, 수동 /bank/sync 경로가 유일한 동기화 트리거로 확인됨",
+      "code_paths": [
+        "routes/web/bank.py:501-590",
+        "templates/bank/index.html:387-395",
+        "services/plan.py:129-136"
+      ],
+      "cause_candidates": [
+        "sync_interval_minutes는 권한/표시 메타로만 보이며 실제 스케줄 실행체와 연결되지 않음",
+        "동기화 로직 호출이 수동 POST /bank/sync 경로에 한정됨",
+        "주기 스케줄러/워커(cron, APScheduler, Celery) 코드 경로 미확인"
+      ]
+    }
+  ]
+}
