@@ -20,6 +20,13 @@ SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_m
   tests.test_official_data_upload_routes
 ```
 
+- `tests/fixtures/official_data/`의 변형 fixture까지 포함해
+  - shifted header
+  - alias header
+  - 날짜/금액 포맷 차이
+  - known-source-but-unrecognized
+  회귀를 함께 확인한다.
+
 ## 3. 정적 검증
 
 ```bash

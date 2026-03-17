@@ -3,12 +3,16 @@ from __future__ import annotations
 import io
 import tempfile
 import unittest
+from pathlib import Path
 from uuid import uuid4
 
 from app import create_app
 from core.extensions import db
 from domain.models import OfficialDataDocument, User
 from services.official_data_store import delete_official_data_file
+
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "official_data"
 
 
 class OfficialDataUploadRoutesTest(unittest.TestCase):
@@ -80,6 +84,24 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
             self.assertEqual(docs[0].document_type, "hometax_tax_payment_history")
             self.assertEqual(docs[0].trust_grade, "B")
 
+    def test_upload_shifted_withholding_variant_marks_parsed(self) -> None:
+        response = self._upload(
+            filename="withholding_shifted.csv",
+            content=(FIXTURES / "hometax_withholding_statement_shifted_headers.csv").read_bytes(),
+        )
+        body = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("반영 가능", body)
+        self.assertIn("홈택스 원천징수 관련 문서", body)
+
+        with self.app.app_context():
+            doc = OfficialDataDocument.query.filter_by(user_pk=self.user_pk).one()
+            self.assertEqual(doc.parse_status, "parsed")
+            self.assertEqual(doc.document_type, "hometax_withholding_statement")
+            self.assertEqual(doc.extracted_key_summary_json["withheld_tax_total_krw"], 1820000)
+            self.assertEqual(doc.trust_grade, "B")
+
     def test_upload_known_document_with_incomplete_structure_marks_review(self) -> None:
         payload = (
             "국세청 홈택스\n"
@@ -97,6 +119,39 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
             doc = OfficialDataDocument.query.filter_by(user_pk=self.user_pk).one()
             self.assertEqual(doc.parse_status, "needs_review")
             self.assertEqual(doc.trust_grade, "C")
+
+    def test_upload_known_source_but_unrecognized_document_stays_review(self) -> None:
+        response = self._upload(
+            filename="hometax_known_source_unrecognized.csv",
+            content=(FIXTURES / "hometax_known_source_unrecognized.csv").read_bytes(),
+        )
+        body = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("검토 필요", body)
+
+        with self.app.app_context():
+            doc = OfficialDataDocument.query.filter_by(user_pk=self.user_pk).one()
+            self.assertEqual(doc.parse_status, "needs_review")
+            self.assertIsNone(doc.document_type)
+            self.assertEqual(doc.trust_grade, "C")
+
+    def test_upload_nhis_variant_pdf_marks_parsed(self) -> None:
+        response = self._upload(
+            filename="nhis_payment_variant.pdf",
+            content=(FIXTURES / "nhis_payment_confirmation_variant.pdf").read_bytes(),
+        )
+        body = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("반영 가능", body)
+        self.assertIn("건강보험 납부확인서", body)
+
+        with self.app.app_context():
+            doc = OfficialDataDocument.query.filter_by(user_pk=self.user_pk).one()
+            self.assertEqual(doc.parse_status, "parsed")
+            self.assertEqual(doc.document_type, "nhis_payment_confirmation")
+            self.assertEqual(doc.extracted_key_summary_json["latest_paid_amount_krw"], 352000)
 
     def test_upload_supported_extension_but_unsupported_document_marks_unsupported(self) -> None:
         payload = (
