@@ -6,7 +6,7 @@ import calendar
 import hashlib
 from uuid import uuid4
 
-from flask import Blueprint, render_template, request, session, url_for, current_app, redirect, flash, send_file
+from flask import Blueprint, render_template, request, session, url_for, current_app, redirect, flash
 from sqlalchemy import func, case, cast, Date, or_, and_
 from werkzeug.exceptions import Unauthorized
 from sqlalchemy.exc import IntegrityError
@@ -20,9 +20,6 @@ from domain.models import (
 )
 
 from services.risk import compute_risk_summary
-from services.tax_package import build_tax_package_zip
-
-
 web_calendar_bp = Blueprint("web_calendar", __name__, url_prefix="/dashboard")
 
 
@@ -77,23 +74,8 @@ def _uid() -> int:
 # -----------------------------
 @web_calendar_bp.get("/tax-package")
 def tax_package():
-    """월별 세무사 전달 패키지(zip) 다운로드."""
-    user_pk = _uid()
     month_key = (request.args.get("month") or "").strip()
-
-    zip_io, filename = build_tax_package_zip(user_pk=user_pk, month_key=month_key)
-    try:
-        zip_io.seek(0)
-    except Exception:
-        pass
-
-    return send_file(
-        zip_io,
-        mimetype="application/zip",
-        as_attachment=True,
-        download_name=filename,
-        max_age=0,
-    )
+    return redirect(url_for("web_package.download", month=month_key))
 
 
 def _day_expr_assuming_kst_naive():

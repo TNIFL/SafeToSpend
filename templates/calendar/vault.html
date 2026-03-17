@@ -14,7 +14,7 @@
       </div>
       <div class="row" style="gap:8px; flex-wrap:wrap;">
         <a class="btn small" href="{{ url_for('web_vault.export_all') }}">전체 백업</a>
-        <a class="btn small" href="{{ url_for('web_calendar.tax_package', month=month_key) }}">세무사 패키지</a>
+        <a class="btn small" href="{{ url_for('web_package.download', month=month_key) }}">세무사 패키지</a>
       </div>
     </div>
 

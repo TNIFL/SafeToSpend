@@ -1,98 +1,39 @@
-# services/tax_package.py
 from __future__ import annotations
 
-import csv
 import io
-import json
+import re
 import zipfile
 from dataclasses import dataclass
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 from sqlalchemy import and_, func
-from werkzeug.utils import secure_filename
 
 from core.extensions import db
 from core.time import utcnow
 from domain.models import (
     EvidenceItem,
     ExpenseLabel,
+    ImportJob,
     IncomeLabel,
     SafeToSpendSettings,
     TaxBufferLedger,
     Transaction,
+    User,
 )
 from services.evidence_vault import resolve_file_path
 
 
 KST = ZoneInfo("Asia/Seoul")
-
-
-# -----------------------------
-# Month utils
-# -----------------------------
-def _month_range_kst_naive(month_key: str) -> tuple[datetime, datetime]:
-    """month_key(YYYY-MM)의 '한국시간 월 경계'를 **naive datetime** 범위로 반환.
-
-    프로젝트 전반(캘린더/보관함/리포트)에서 occurred_at을 timezone 없는 datetime으로 쓰는 전제가 많아서,
-    여기서는 KST 기준 월 경계를 naive로 맞춘다.
-    """
-
-    y, m = month_key.split("-")
-    y = int(y)
-    m = int(m)
-
-    start = datetime(y, m, 1, 0, 0, 0)
-    if m == 12:
-        end = datetime(y + 1, 1, 1, 0, 0, 0)
-    else:
-        end = datetime(y, m + 1, 1, 0, 0, 0)
-    return start, end
-
-
-def _ensure_settings(user_pk: int) -> SafeToSpendSettings:
-    s = SafeToSpendSettings.query.get(user_pk)
-    if not s:
-        s = SafeToSpendSettings(user_pk=user_pk, default_tax_rate=0.15, custom_rates={})
-        db.session.add(s)
-        db.session.commit()
-    return s
-
-
-def _tax_rate(s: SafeToSpendSettings) -> float:
-    r = float(getattr(s, "default_tax_rate", 0.15) or 0.15)
-    # 15(%) 형태도 들어올 수 있으니 보정
-    if r > 1:
-        r = r / 100.0
-    return max(0.0, min(r, 0.95))
-
-
-def _krw(n: int) -> str:
-    return f"{int(n or 0):,}원"
-
-
-def _to_kst(dt: datetime | None) -> datetime | None:
-    if not dt:
-        return None
-
-    # 프로젝트의 DateTime 컬럼들이 tz 없는 값이 많은 편
-    # → tz 없는 값은 KST로 간주(화면/월경계/사용자 체감과 일치)
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=KST)
-    return dt.astimezone(KST)
-
-
-def _fmt_kst(dt: datetime | None, fmt: str) -> str:
-    dtk = _to_kst(dt)
-    return dtk.strftime(fmt) if dtk else ""
-
-
-def _safe_int(v: Any, default: int = 0) -> int:
-    try:
-        return int(v)
-    except Exception:
-        return default
+HEADER_FILL = PatternFill("solid", fgColor="E8EEF8")
+HEADER_FONT = Font(bold=True)
+TOP_ALIGN = Alignment(vertical="top")
+PACKAGE_VERSION = "거래+증빙 패키지 v1"
 
 
 @dataclass(frozen=True)
@@ -101,66 +42,329 @@ class PackageStats:
     period_start_kst: str
     period_end_kst: str
     generated_at_kst: str
-
     tx_total: int
     tx_in_count: int
     tx_out_count: int
     sum_in_total: int
     sum_out_total: int
-
     income_included_total: int
     income_excluded_non_income_total: int
     income_unknown_count: int
-
     expense_business_total: int
     expense_personal_total: int
     expense_mixed_total: int
     expense_unknown_total: int
-
     evidence_missing_required_count: int
     evidence_missing_required_amount: int
     evidence_missing_maybe_count: int
     evidence_missing_maybe_amount: int
-
+    evidence_attached_count: int
+    review_needed_count: int
     tax_rate: float
     tax_buffer_total: int
     tax_buffer_target: int
     tax_buffer_shortage: int
 
 
-# -----------------------------
-# Public API
-# -----------------------------
-def build_tax_package_zip(user_pk: int, month_key: str) -> tuple[io.BytesIO, str]:
-    """월별 세무사 전달 패키지(zip)를 메모리에서 생성해 반환.
+@dataclass(frozen=True)
+class PackageSnapshot:
+    root_name: str
+    download_name: str
+    display_name: str
+    stats: PackageStats
+    transactions: list[dict[str, Any]]
+    evidences: list[dict[str, Any]]
+    review_items: list[dict[str, Any]]
+    evidence_missing_items: list[dict[str, Any]]
+    review_trade_items: list[dict[str, Any]]
+    included_source_labels: list[str]
 
-    ZIP 구조(루트 폴더 포함):
-    - SafeToSpend_TaxPackage_<YYYY-MM>/
-      - README_세무사용.txt
-      - manifest.json
-      - transactions.csv
-      - evidence_index.csv
-      - missing_evidence.csv
-      - attachments/ ... (가능한 경우 실제 파일 포함)
 
-    ✅ reportlab 같은 외부 PDF 의존성 없이 동작하도록 설계(로컬 환경에서 바로 실행 가능).
-    """
+def _month_range_kst_naive(month_key: str) -> tuple[datetime, datetime]:
+    y, m = month_key.split("-")
+    y = int(y)
+    m = int(m)
+    start = datetime(y, m, 1, 0, 0, 0)
+    if m == 12:
+        end = datetime(y + 1, 1, 1, 0, 0, 0)
+    else:
+        end = datetime(y, m + 1, 1, 0, 0, 0)
+    return start, end
 
+
+def _get_settings(user_pk: int) -> SafeToSpendSettings | None:
+    return SafeToSpendSettings.query.get(user_pk)
+
+
+def _tax_rate(settings: SafeToSpendSettings | None) -> float:
+    rate = float(getattr(settings, "default_tax_rate", 0.15) or 0.15)
+    if rate > 1:
+        rate = rate / 100.0
+    return max(0.0, min(rate, 0.95))
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def _krw(value: int) -> str:
+    return f"{int(value or 0):,}원"
+
+
+def _to_kst(dt: datetime | None) -> datetime | None:
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=KST)
+    return dt.astimezone(KST)
+
+
+def _fmt_kst(dt: datetime | None, fmt: str) -> str:
+    converted = _to_kst(dt)
+    return converted.strftime(fmt) if converted else ""
+
+
+def _safe_package_label(value: str | None, fallback: str) -> str:
+    text = (value or "").strip() or fallback
+    text = re.sub(r'[\\/:*?"<>|]+', "_", text)
+    text = re.sub(r"\s+", "_", text)
+    text = text.strip("._")
+    return text or fallback
+
+
+def _safe_attachment_name(filename: str | None, fallback: str) -> str:
+    text = (filename or "").strip() or fallback
+    text = re.sub(r'[\\/:*?"<>|]+', "_", text)
+    text = text.replace("..", ".")
+    return text[:160] or fallback
+
+
+def _source_labels(source: str | None) -> tuple[str, str]:
+    raw = (source or "").strip().lower()
+    if raw == "manual":
+        return "수동입력", "없음"
+    if raw == "csv":
+        return "수동업로드", "없음"
+    if raw == "popbill":
+        return "자동연동", "은행연동"
+    if raw:
+        return "기타", "없음"
+    return "기타", "없음"
+
+
+def _classification_labels(tx: dict[str, Any]) -> tuple[str, str, str, bool, str, str]:
+    direction = tx.get("direction")
+    reasons: list[str] = []
+
+    if direction == "in":
+        income_status = tx.get("income_label_status") or "unknown"
+        if income_status == "income":
+            classification = "수입"
+            business = "해당없음"
+            calculation = "예"
+        elif income_status == "non_income":
+            classification = "수입 아님"
+            business = "해당없음"
+            calculation = "아니오"
+        else:
+            classification = "미확정"
+            business = "해당없음"
+            calculation = "보류"
+            reasons.append("수입 분류가 아직 확정되지 않았습니다")
+    else:
+        expense_status = tx.get("expense_label_status") or "unknown"
+        evidence_requirement = tx.get("evidence_requirement") or ""
+        evidence_status = tx.get("evidence_status") or ""
+
+        if expense_status == "business":
+            classification = "업무지출"
+            business = "예"
+            calculation = "예"
+        elif expense_status == "personal":
+            classification = "개인지출"
+            business = "아니오"
+            calculation = "아니오"
+        elif expense_status == "mixed":
+            classification = "혼합지출"
+            business = "혼합"
+            calculation = "보류"
+            reasons.append("업무/개인 지출 구분이 혼합 상태입니다")
+        else:
+            classification = "미확정"
+            business = "미확정"
+            calculation = "보류"
+            reasons.append("지출 분류가 아직 확정되지 않았습니다")
+
+        if evidence_status == "missing" and evidence_requirement == "required":
+            calculation = "보류"
+            reasons.append("필수 증빙이 아직 첨부되지 않았습니다")
+        elif evidence_status == "missing" and evidence_requirement == "maybe":
+            calculation = "보류"
+            reasons.append("증빙 확인이 필요한 거래입니다")
+
+    recheck_required = bool(reasons)
+    recheck_reason = " / ".join(reasons)
+
+    if recheck_required:
+        trust = "재확인필요"
+    elif tx.get("source") == "manual":
+        trust = "참고용"
+    else:
+        trust = "반영됨"
+
+    return classification, business, calculation, recheck_required, recheck_reason, trust
+
+
+def _evidence_status_label(requirement: str | None, status: str | None) -> str:
+    requirement = (requirement or "").strip()
+    status = (status or "").strip()
+    if status == "attached":
+        return "첨부됨"
+    if requirement == "not_needed" or status == "not_needed":
+        return "불필요"
+    if status == "missing" and requirement == "required":
+        return "필수 누락"
+    if status == "missing" and requirement == "maybe":
+        return "확인 필요"
+    return "상태 확인 필요"
+
+
+def _evidence_type_label(mime_type: str | None, filename: str | None) -> str:
+    mime = (mime_type or "").strip().lower()
+    ext = Path(filename or "").suffix.lower()
+    if mime.startswith("image/") or ext in {".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".heif"}:
+        return "이미지 증빙"
+    if mime == "application/pdf" or ext == ".pdf":
+        return "PDF 증빙"
+    return "증빙파일"
+
+
+def _build_review_items(transactions: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    combined: list[dict[str, Any]] = []
+    evidence_missing: list[dict[str, Any]] = []
+    review_trades: list[dict[str, Any]] = []
+
+    item_no = 1
+    for tx in transactions:
+        reasons: list[str] = []
+        needed: list[str] = []
+        current: list[str] = []
+        related_material = "거래내역"
+        item_type = "거래검토"
+        priority = "보통"
+
+        if tx.get("direction") == "out":
+            if tx.get("evidence_status") == "missing" and tx.get("evidence_requirement") == "required":
+                reasons.append("필수 증빙이 누락되었습니다")
+                needed.append("대표 증빙을 첨부하거나 불필요 여부를 다시 판단해 주세요")
+                current.append("필수 누락")
+                related_material = "증빙자료"
+                item_type = "증빙누락"
+                priority = "높음"
+                evidence_missing.append(
+                    {
+                        "거래번호": tx["tx_id"],
+                        "거래일시": tx["occurred_at_kst"],
+                        "거래처": tx["counterparty"],
+                        "금액": tx["amount_krw"],
+                        "증빙상태": "필수 누락",
+                        "필요한확인내용": needed[-1],
+                        "우선순위": priority,
+                    }
+                )
+            elif tx.get("evidence_status") == "missing" and tx.get("evidence_requirement") == "maybe":
+                reasons.append("증빙 확인이 필요한 거래입니다")
+                needed.append("업무 관련이면 증빙을 첨부하고, 아니면 불필요로 표시해 주세요")
+                current.append("확인 필요")
+                related_material = "증빙자료"
+                item_type = "증빙검토"
+                priority = "보통"
+                evidence_missing.append(
+                    {
+                        "거래번호": tx["tx_id"],
+                        "거래일시": tx["occurred_at_kst"],
+                        "거래처": tx["counterparty"],
+                        "금액": tx["amount_krw"],
+                        "증빙상태": "확인 필요",
+                        "필요한확인내용": needed[-1],
+                        "우선순위": priority,
+                    }
+                )
+
+            if tx.get("expense_label_status") in {"unknown", "mixed", ""}:
+                reasons.append("지출 분류가 확정되지 않았습니다")
+                needed.append("업무/개인/혼합 중 하나로 확정해 주세요")
+                current.append("분류 미확정")
+                review_trades.append(
+                    {
+                        "거래번호": tx["tx_id"],
+                        "거래일시": tx["occurred_at_kst"],
+                        "자료출처": tx["source_label"],
+                        "거래처": tx["counterparty"],
+                        "금액": tx["amount_krw"],
+                        "현재상태": tx["classification_result_label"],
+                        "재확인사유": "업무/개인 판단이 확정되지 않았습니다",
+                        "필요한확인내용": "업무/개인/혼합 중 하나로 확정해 주세요",
+                    }
+                )
+        else:
+            if tx.get("income_label_status") in {"unknown", ""}:
+                reasons.append("수입 분류가 확정되지 않았습니다")
+                needed.append("수입인지 수입 아님인지 확인해 주세요")
+                current.append("분류 미확정")
+                review_trades.append(
+                    {
+                        "거래번호": tx["tx_id"],
+                        "거래일시": tx["occurred_at_kst"],
+                        "자료출처": tx["source_label"],
+                        "거래처": tx["counterparty"],
+                        "금액": tx["amount_krw"],
+                        "현재상태": tx["classification_result_label"],
+                        "재확인사유": "수입/비수입 판단이 확정되지 않았습니다",
+                        "필요한확인내용": "수입인지 수입 아님인지 확인해 주세요",
+                    }
+                )
+
+        if not reasons:
+            continue
+
+        combined.append(
+            {
+                "항목번호": item_no,
+                "항목유형": item_type,
+                "관련자료구분": related_material,
+                "관련번호": tx["tx_id"],
+                "요약설명": " / ".join(reasons),
+                "현재상태": " / ".join(current) or tx["trust_label"],
+                "필요한확인내용": " / ".join(needed),
+                "우선순위": priority,
+                "메모": tx.get("memo") or "",
+            }
+        )
+        item_no += 1
+
+    return combined, evidence_missing, review_trades
+
+
+def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
     month_key = (month_key or "").strip()
     if not month_key or len(month_key) != 7 or month_key[4] != "-":
         month_key = utcnow().strftime("%Y-%m")
 
     start_dt, end_dt = _month_range_kst_naive(month_key)
-
-    # 안내문/manifest는 KST 표기
     period_start_kst = start_dt.strftime("%Y-%m-%d")
-    try:
-        last_day = (end_dt - datetime.resolution).date()
-        period_end_kst = last_day.strftime("%Y-%m-%d")
-    except Exception:
-        period_end_kst = ""
+    last_day = (end_dt - datetime.resolution).date()
+    period_end_kst = last_day.strftime("%Y-%m-%d")
 
-    # ---- Load transactions (month scoped) + labels/evidence
+    user = User.query.get(user_pk)
+    display_name = getattr(user, "nickname", None) or f"user{user_pk}"
+    package_label = _safe_package_label(display_name, f"user{user_pk}")
+    root_name = f"세무사전달패키지_{month_key}_{package_label}"
+    download_name = f"{root_name}.zip"
+
     rows = (
         db.session.query(Transaction, IncomeLabel, ExpenseLabel, EvidenceItem)
         .outerjoin(IncomeLabel, and_(IncomeLabel.transaction_id == Transaction.id, IncomeLabel.user_pk == user_pk))
@@ -172,169 +376,180 @@ def build_tax_package_zip(user_pk: int, month_key: str) -> tuple[io.BytesIO, str
         .all()
     )
 
-    # ---- Totals / Records
-    tx_records: list[dict[str, Any]] = []
-    evidence_index_records: list[dict[str, Any]] = []
-    attachments: list[dict[str, Any]] = []  # {zip_path, abs_path}
+    import_job_ids = sorted({int(tx.import_job_id) for tx, _il, _el, _ev in rows if tx.import_job_id})
+    import_job_map: dict[int, ImportJob] = {}
+    if import_job_ids:
+        for job in ImportJob.query.filter(ImportJob.id.in_(import_job_ids)).all():
+            import_job_map[int(job.id)] = job
 
+    tx_rows: list[dict[str, Any]] = []
+    evidence_rows: list[dict[str, Any]] = []
     tx_in_count = 0
     tx_out_count = 0
     sum_in_total = 0
     sum_out_total = 0
-
     income_included_total = 0
     income_excluded_non_income_total = 0
     income_unknown_count = 0
-
     expense_business_total = 0
     expense_personal_total = 0
     expense_mixed_total = 0
     expense_unknown_total = 0
+    evidence_missing_required_count = 0
+    evidence_missing_required_amount = 0
+    evidence_missing_maybe_count = 0
+    evidence_missing_maybe_amount = 0
+    evidence_attached_count = 0
+    source_labels: set[str] = set()
 
-    ev_req_cnt = 0
-    ev_req_amt = 0
-    ev_maybe_cnt = 0
-    ev_maybe_amt = 0
+    for tx, income_label, expense_label, evidence in rows:
+        amount = _safe_int(tx.amount_krw)
+        source_label, provider_label = _source_labels(tx.source)
+        source_labels.add(source_label)
+        import_job = import_job_map.get(int(tx.import_job_id)) if tx.import_job_id else None
 
-    for tx, il, el, ev in rows:
-        amt = _safe_int(tx.amount_krw)
-        occurred_kst_str = _fmt_kst(tx.occurred_at, "%Y-%m-%d %H:%M")
-        date_kst_str = _fmt_kst(tx.occurred_at, "%Y-%m-%d")
+        evidence_requirement = (evidence.requirement if evidence else "") or ""
+        evidence_status = (evidence.status if evidence else "") or ""
+        evidence_filename = (evidence.original_filename if evidence else "") or ""
+        evidence_mime = (evidence.mime_type if evidence else "") or ""
+        evidence_type = _evidence_type_label(evidence_mime, evidence_filename)
+        evidence_zip_path = ""
+        evidence_abs_path: Path | None = None
+        evidence_count = 0
+
+        if evidence and evidence.file_key and evidence.deleted_at is None:
+            try:
+                evidence_abs_path = resolve_file_path(evidence.file_key)
+                if evidence_abs_path.exists() and evidence_abs_path.is_file():
+                    safe_name = _safe_attachment_name(evidence_filename, evidence_abs_path.name)
+                    evidence_zip_path = f"증빙자료/{tx.id}_{safe_name}"
+                    evidence_count = 1
+                    evidence_attached_count += 1
+            except Exception:
+                evidence_abs_path = None
+                evidence_zip_path = ""
+                evidence_count = 0
+
+        tx_row = {
+            "tx_id": int(tx.id),
+            "occurred_at_kst": _fmt_kst(tx.occurred_at, "%Y-%m-%d %H:%M"),
+            "date_kst": _fmt_kst(tx.occurred_at, "%Y-%m-%d"),
+            "direction": tx.direction,
+            "direction_label": "입금" if tx.direction == "in" else "출금",
+            "amount_krw": amount,
+            "counterparty": tx.counterparty or "",
+            "memo": tx.memo or "",
+            "source": tx.source or "",
+            "source_label": source_label,
+            "provider_label": provider_label,
+            "external_hash": tx.external_hash or "",
+            "import_job_id": int(tx.import_job_id) if tx.import_job_id else "",
+            "import_filename": (import_job.filename if import_job else "") or "",
+            "income_label_status": (income_label.status if income_label else "") or "",
+            "income_label_confidence": _safe_int(income_label.confidence) if income_label else 0,
+            "income_labeled_by": (income_label.labeled_by if income_label else "") or "",
+            "expense_label_status": (expense_label.status if expense_label else "") or "",
+            "expense_label_confidence": _safe_int(expense_label.confidence) if expense_label else 0,
+            "expense_labeled_by": (expense_label.labeled_by if expense_label else "") or "",
+            "evidence_id": int(evidence.id) if evidence else "",
+            "evidence_requirement": evidence_requirement,
+            "evidence_status": evidence_status,
+            "evidence_status_label": _evidence_status_label(evidence_requirement, evidence_status),
+            "evidence_note": (evidence.note if evidence else "") or "",
+            "evidence_original_filename": evidence_filename,
+            "evidence_mime_type": evidence_mime,
+            "evidence_size_bytes": _safe_int(evidence.size_bytes) if evidence and evidence.size_bytes is not None else 0,
+            "evidence_sha256": (evidence.sha256 if evidence else "") or "",
+            "evidence_uploaded_at_kst": _fmt_kst(evidence.uploaded_at if evidence else None, "%Y-%m-%d %H:%M"),
+            "evidence_deleted_at_kst": _fmt_kst(evidence.deleted_at if evidence else None, "%Y-%m-%d %H:%M"),
+            "evidence_retention_until": evidence.retention_until.isoformat() if evidence and evidence.retention_until else "",
+            "representative_evidence_type": evidence_type,
+            "evidence_count": evidence_count,
+            "evidence_zip_path": evidence_zip_path,
+            "evidence_abs_path": evidence_abs_path,
+        }
+
+        (
+            tx_row["classification_result_label"],
+            tx_row["business_related_label"],
+            tx_row["calculation_included_label"],
+            tx_row["recheck_required"],
+            tx_row["recheck_reason"],
+            tx_row["trust_label"],
+        ) = _classification_labels(tx_row)
+
+        tx_row["recheck_required_label"] = "예" if tx_row["recheck_required"] else "아니오"
 
         if tx.direction == "in":
             tx_in_count += 1
-            sum_in_total += amt
+            sum_in_total += amount
+            if tx_row["income_label_status"] == "non_income":
+                income_excluded_non_income_total += amount
+            else:
+                income_included_total += amount
+                if tx_row["income_label_status"] in {"", "unknown"}:
+                    income_unknown_count += 1
         else:
             tx_out_count += 1
-            sum_out_total += amt
-
-        income_status = (il.status if il else "") if tx.direction == "in" else ""
-        income_conf = _safe_int(il.confidence) if il and tx.direction == "in" else ""
-        income_by = (il.labeled_by if il else "") if tx.direction == "in" else ""
-
-        expense_status = (el.status if el else "") if tx.direction == "out" else ""
-        expense_conf = _safe_int(el.confidence) if el and tx.direction == "out" else ""
-        expense_by = (el.labeled_by if el else "") if tx.direction == "out" else ""
-
-        ev_req = (ev.requirement if ev else "") if tx.direction == "out" else ""
-        ev_status = (ev.status if ev else "") if tx.direction == "out" else ""
-        ev_note = (ev.note if ev else "") if tx.direction == "out" else ""
-
-        # ---- income totals
-        if tx.direction == "in":
-            if income_status == "non_income":
-                income_excluded_non_income_total += amt
+            sum_out_total += amount
+            if tx_row["expense_label_status"] == "business":
+                expense_business_total += amount
+            elif tx_row["expense_label_status"] == "personal":
+                expense_personal_total += amount
+            elif tx_row["expense_label_status"] == "mixed":
+                expense_mixed_total += amount
             else:
-                income_included_total += amt
-                if not income_status or income_status == "unknown":
-                    income_unknown_count += 1
+                expense_unknown_total += amount
 
-        # ---- expense totals
-        if tx.direction == "out":
-            if expense_status == "business":
-                expense_business_total += amt
-            elif expense_status == "personal":
-                expense_personal_total += amt
-            elif expense_status == "mixed":
-                expense_mixed_total += amt
-            else:
-                expense_unknown_total += amt
+            if evidence_status == "missing" and evidence_requirement == "required":
+                evidence_missing_required_count += 1
+                evidence_missing_required_amount += amount
+            elif evidence_status == "missing" and evidence_requirement == "maybe":
+                evidence_missing_maybe_count += 1
+                evidence_missing_maybe_amount += amount
 
-            # evidence missing (required/maybe)
-            if ev_status == "missing" and ev_req in ("required", "maybe"):
-                if ev_req == "required":
-                    ev_req_cnt += 1
-                    ev_req_amt += amt
-                else:
-                    ev_maybe_cnt += 1
-                    ev_maybe_amt += amt
+        tx_rows.append(tx_row)
 
-        # ---- attachment path inside zip (if exists)
-        attachment_zip_path = ""
-        if tx.direction == "out" and ev and ev.file_key and (ev.deleted_at is None):
-            try:
-                abs_path = resolve_file_path(ev.file_key)
-                if abs_path.exists() and abs_path.is_file():
-                    base = secure_filename(ev.original_filename or "evidence")
-                    if not base:
-                        base = "evidence"
-                    # tx_id prefix로 중복/충돌 방지
-                    base = f"{tx.id}_{base}"
-                    attachment_zip_path = f"attachments/{base}"
-                    attachments.append({"zip_path": attachment_zip_path, "abs_path": abs_path})
-            except Exception:
-                attachment_zip_path = ""
-
-        # ---- transactions.csv row
-        tx_records.append(
-            {
-                "tx_id": tx.id,
-                "occurred_at_kst": occurred_kst_str,
-                "date_kst": date_kst_str,
-                "direction": tx.direction,
-                "amount_krw": amt,
-                "counterparty": tx.counterparty or "",
-                "memo": tx.memo or "",
-                "source": tx.source or "",
-                "external_hash": tx.external_hash or "",
-                "income_label_status": income_status or "",
-                "income_label_confidence": income_conf,
-                "income_labeled_by": income_by or "",
-                "expense_label_status": expense_status or "",
-                "expense_label_confidence": expense_conf,
-                "expense_labeled_by": expense_by or "",
-                "evidence_requirement": ev_req or "",
-                "evidence_status": ev_status or "",
-                "evidence_note": ev_note or "",
-                "evidence_original_filename": (ev.original_filename if ev else "") or "",
-                "evidence_sha256": (ev.sha256 if ev else "") or "",
-                "evidence_uploaded_at_kst": _fmt_kst(ev.uploaded_at if ev else None, "%Y-%m-%d %H:%M"),
-                "attachment_zip_path": attachment_zip_path,
-            }
-        )
-
-        # ---- evidence_index.csv row (out only)
-        if tx.direction == "out" and ev:
-            evidence_index_records.append(
+        if evidence_count == 1:
+            evidence_rows.append(
                 {
-                    "tx_id": tx.id,
-                    "requirement": ev.requirement or "",
-                    "status": ev.status or "",
-                    "note": ev.note or "",
-                    "file_key": ev.file_key or "",
-                    "original_filename": ev.original_filename or "",
-                    "mime_type": ev.mime_type or "",
-                    "size_bytes": _safe_int(ev.size_bytes, 0) if ev.size_bytes is not None else "",
-                    "sha256": ev.sha256 or "",
-                    "uploaded_at_kst": _fmt_kst(ev.uploaded_at, "%Y-%m-%d %H:%M"),
-                    "retention_until": (ev.retention_until.isoformat() if isinstance(ev.retention_until, date) else ""),
-                    "deleted_at_kst": _fmt_kst(ev.deleted_at, "%Y-%m-%d %H:%M"),
-                    "attachment_zip_path": attachment_zip_path,
+                    "증빙번호": tx_row["evidence_id"],
+                    "연결거래번호": tx_row["tx_id"],
+                    "거래일시": tx_row["occurred_at_kst"],
+                    "거래처": tx_row["counterparty"],
+                    "금액": tx_row["amount_krw"],
+                    "증빙종류": evidence_type,
+                    "파일명": evidence_filename,
+                    "파일열기": ("열기", evidence_zip_path),
+                    "저장위치": evidence_zip_path,
+                    "업로드일시": tx_row["evidence_uploaded_at_kst"],
+                    "신뢰구분": tx_row["trust_label"],
+                    "계산반영여부": tx_row["calculation_included_label"],
+                    "재확인필요여부": tx_row["recheck_required_label"],
+                    "메모": tx_row["evidence_note"],
+                    "_zip_path": evidence_zip_path,
+                    "_abs_path": evidence_abs_path,
                 }
             )
 
-    # ---- settings/tax buffer
-    s = _ensure_settings(user_pk)
-    rate = _tax_rate(s)
+    review_items, evidence_missing_items, review_trade_items = _build_review_items(tx_rows)
 
+    settings = _get_settings(user_pk)
+    rate = _tax_rate(settings)
     tax_buffer_total = (
         db.session.query(func.coalesce(func.sum(TaxBufferLedger.delta_amount_krw), 0))
         .filter(TaxBufferLedger.user_pk == user_pk)
         .scalar()
     ) or 0
-
-    # 권장액(단순): 포함 수입(included) * 세율
     tax_buffer_target = int(int(income_included_total) * float(rate))
     tax_buffer_shortage = max(0, int(tax_buffer_target) - int(tax_buffer_total))
-
-    generated_at_kst = _fmt_kst(utcnow(), "%Y-%m-%d %H:%M") or utcnow().strftime("%Y-%m-%d %H:%M")
 
     stats = PackageStats(
         month_key=month_key,
         period_start_kst=period_start_kst,
         period_end_kst=period_end_kst,
-        generated_at_kst=generated_at_kst,
-        tx_total=len(tx_records),
+        generated_at_kst=_fmt_kst(utcnow(), "%Y-%m-%d %H:%M") or utcnow().strftime("%Y-%m-%d %H:%M"),
+        tx_total=len(tx_rows),
         tx_in_count=int(tx_in_count),
         tx_out_count=int(tx_out_count),
         sum_in_total=int(sum_in_total),
@@ -346,321 +561,452 @@ def build_tax_package_zip(user_pk: int, month_key: str) -> tuple[io.BytesIO, str
         expense_personal_total=int(expense_personal_total),
         expense_mixed_total=int(expense_mixed_total),
         expense_unknown_total=int(expense_unknown_total),
-        evidence_missing_required_count=int(ev_req_cnt),
-        evidence_missing_required_amount=int(ev_req_amt),
-        evidence_missing_maybe_count=int(ev_maybe_cnt),
-        evidence_missing_maybe_amount=int(ev_maybe_amt),
+        evidence_missing_required_count=int(evidence_missing_required_count),
+        evidence_missing_required_amount=int(evidence_missing_required_amount),
+        evidence_missing_maybe_count=int(evidence_missing_maybe_count),
+        evidence_missing_maybe_amount=int(evidence_missing_maybe_amount),
+        evidence_attached_count=int(evidence_attached_count),
+        review_needed_count=len(review_items),
         tax_rate=float(rate),
         tax_buffer_total=int(tax_buffer_total),
         tax_buffer_target=int(tax_buffer_target),
         tax_buffer_shortage=int(tax_buffer_shortage),
     )
 
-    missing_list = _build_missing_list(tx_records)
+    return PackageSnapshot(
+        root_name=root_name,
+        download_name=download_name,
+        display_name=display_name,
+        stats=stats,
+        transactions=tx_rows,
+        evidences=evidence_rows,
+        review_items=review_items,
+        evidence_missing_items=evidence_missing_items,
+        review_trade_items=review_trade_items,
+        included_source_labels=sorted(source_labels),
+    )
 
-    # ---- ZIP build
-    root = f"SafeToSpend_TaxPackage_{month_key}"
+
+def _write_table_sheet(ws, headers: list[str], rows: list[dict[str, Any]], freeze: str = "A2") -> None:
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = TOP_ALIGN
+
+    for row in rows:
+        values = []
+        links: list[tuple[int, str]] = []
+        for idx, header in enumerate(headers, start=1):
+            value = row.get(header, "")
+            if isinstance(value, tuple) and len(value) == 2:
+                display, target = value
+                values.append(display)
+                if target:
+                    links.append((idx, target))
+            else:
+                values.append(value)
+        ws.append(values)
+        current_row = ws.max_row
+        for col_idx, target in links:
+            cell = ws.cell(current_row, col_idx)
+            cell.hyperlink = target
+            cell.style = "Hyperlink"
+        for cell in ws[current_row]:
+            cell.alignment = TOP_ALIGN
+
+    ws.freeze_panes = freeze
+    if rows:
+        ws.auto_filter.ref = ws.dimensions
+    _autosize(ws)
+
+
+def _autosize(ws) -> None:
+    for column_cells in ws.columns:
+        values = ["" if c.value is None else str(c.value) for c in column_cells]
+        width = min(max((len(v) for v in values), default=10) + 2, 40)
+        ws.column_dimensions[get_column_letter(column_cells[0].column)].width = max(10, width)
+
+
+def _workbook_bytes(builder) -> bytes:
+    wb = builder()
     out = io.BytesIO()
-    z = zipfile.ZipFile(out, mode="w", compression=zipfile.ZIP_DEFLATED)
+    wb.save(out)
+    return out.getvalue()
 
-    def _wtext(rel_path: str, text: str) -> None:
-        z.writestr(f"{root}/{rel_path}", text)
 
-    def _wjson(rel_path: str, payload: dict[str, Any]) -> None:
-        _wtext(rel_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
+    stats = snapshot.stats
 
-    def _wcsv(rel_path: str, header: list[str], records: list[dict[str, Any]]) -> None:
-        buf = io.StringIO(newline="")
-        writer = csv.writer(buf)
-        writer.writerow(header)
-        for r in records:
-            writer.writerow([r.get(h, "") for h in header])
-        # Excel-friendly UTF-8 with BOM
-        z.writestr(f"{root}/{rel_path}", buf.getvalue().encode("utf-8-sig"))
+    def build() -> Workbook:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "전체요약"
+        summary_rows = [
+            {"항목명": "사용자명", "값": snapshot.display_name},
+            {"항목명": "대상 기간", "값": f"{stats.period_start_kst} ~ {stats.period_end_kst}"},
+            {"항목명": "생성일시", "값": stats.generated_at_kst},
+            {"항목명": "총 거래 수", "값": stats.tx_total},
+            {"항목명": "총 수입", "값": stats.sum_in_total},
+            {"항목명": "총 지출", "값": stats.sum_out_total},
+            {"항목명": "업무 관련 지출 합계", "값": stats.expense_business_total},
+            {"항목명": "증빙 첨부 수", "값": stats.evidence_attached_count},
+            {"항목명": "확인 필요 항목 수", "값": stats.review_needed_count},
+            {"항목명": "참고", "값": "공식자료는 현재 패키지 범위에서 제외됩니다."},
+        ]
+        _write_table_sheet(ws, ["항목명", "값"], summary_rows)
 
-    # 1) README (세무사용 안내문)
-    _wtext("README_세무사용.txt", _render_accountant_readme(stats))
+        ws2 = wb.create_sheet("신뢰구분안내")
+        _write_table_sheet(
+            ws2,
+            ["구분", "의미", "계산 반영 여부", "세무사 확인 필요 여부", "예시"],
+            [
+                {
+                    "구분": "반영됨",
+                    "의미": "구조화된 거래가 분류 완료되고 필요한 증빙 상태가 정리된 항목",
+                    "계산 반영 여부": "예 또는 아니오",
+                    "세무사 확인 필요 여부": "낮음",
+                    "예시": "자동연동/수동업로드 거래 + 분류 완료 + 증빙 첨부 또는 불필요",
+                },
+                {
+                    "구분": "참고용",
+                    "의미": "현재 자료는 있으나 구조화 근거가 상대적으로 약한 항목",
+                    "계산 반영 여부": "예/아니오를 함께 표기",
+                    "세무사 확인 필요 여부": "보통",
+                    "예시": "수동입력 거래처럼 사용자가 직접 입력한 거래",
+                },
+                {
+                    "구분": "재확인필요",
+                    "의미": "분류 미확정, 필수 증빙 누락, 혼합 판단 등으로 추가 확인이 필요한 항목",
+                    "계산 반영 여부": "보류 중심",
+                    "세무사 확인 필요 여부": "높음",
+                    "예시": "지출 분류 미확정 거래, 필수 증빙 미첨부 거래",
+                },
+            ],
+        )
 
-    # 2) manifest
-    manifest = {
-        "schema": "SafeToSpend_TaxPackage",
-        "schema_version": 1,
-        "month_key": stats.month_key,
-        "generated_at_kst": stats.generated_at_kst,
-        "period_kst": {"start": stats.period_start_kst, "end": stats.period_end_kst},
-        "counts": {
-            "transactions_total": stats.tx_total,
-            "transactions_in": stats.tx_in_count,
-            "transactions_out": stats.tx_out_count,
-            "income_unknown_count": stats.income_unknown_count,
-            "evidence_missing_required_count": stats.evidence_missing_required_count,
-            "evidence_missing_maybe_count": stats.evidence_missing_maybe_count,
-        },
-        "sums_krw": {
-            "sum_in_total": stats.sum_in_total,
-            "sum_out_total": stats.sum_out_total,
-            "income_included_total": stats.income_included_total,
-            "income_excluded_non_income_total": stats.income_excluded_non_income_total,
-            "expense_business_total": stats.expense_business_total,
-            "expense_personal_total": stats.expense_personal_total,
-            "expense_mixed_total": stats.expense_mixed_total,
-            "expense_unknown_total": stats.expense_unknown_total,
-            "evidence_missing_required_amount": stats.evidence_missing_required_amount,
-            "evidence_missing_maybe_amount": stats.evidence_missing_maybe_amount,
-        },
-        "tax_buffer": {
-            "default_tax_rate": stats.tax_rate,
-            "tax_buffer_total": stats.tax_buffer_total,
-            "tax_buffer_target": stats.tax_buffer_target,
-            "tax_buffer_shortage": stats.tax_buffer_shortage,
-        },
-        "files": {
-            "transactions_csv": "transactions.csv",
-            "evidence_index_csv": "evidence_index.csv",
-            "missing_evidence_csv": "missing_evidence.csv",
-            "attachments_dir": "attachments/",
-        },
-        "notes": {
-            "generated_by": "SafeToSpend(쓸수있어)",
-            "disclaimer": "본 자료는 사용자가 제공/연동한 거래 및 업로드된 증빙을 정리한 참고 자료이며, 최종 신고 판단은 세무사/국세청 기준에 따릅니다.",
-        },
-    }
-    _wjson("manifest.json", manifest)
+        tx_status = _count_by_trust(snapshot.transactions)
+        ev_status = _count_by_trust(snapshot.evidences)
+        review_status = _count_by_trust(snapshot.review_items)
+        ws3 = wb.create_sheet("반영현황")
+        _write_table_sheet(
+            ws3,
+            ["자료 구분", "개수", "반영 건수", "참고용 건수", "재확인 건수"],
+            [
+                {"자료 구분": "거래내역", "개수": len(snapshot.transactions), "반영 건수": tx_status["반영됨"], "참고용 건수": tx_status["참고용"], "재확인 건수": tx_status["재확인필요"]},
+                {"자료 구분": "증빙자료", "개수": len(snapshot.evidences), "반영 건수": ev_status["반영됨"], "참고용 건수": ev_status["참고용"], "재확인 건수": ev_status["재확인필요"]},
+                {"자료 구분": "확인필요항목", "개수": len(snapshot.review_items), "반영 건수": review_status["반영됨"], "참고용 건수": review_status["참고용"], "재확인 건수": review_status["재확인필요"]},
+            ],
+        )
 
-    # 3) CSVs
-    tx_header = [
-        "tx_id",
-        "occurred_at_kst",
-        "date_kst",
-        "direction",
-        "amount_krw",
-        "counterparty",
-        "memo",
-        "source",
-        "external_hash",
-        "income_label_status",
-        "income_label_confidence",
-        "income_labeled_by",
-        "expense_label_status",
-        "expense_label_confidence",
-        "expense_labeled_by",
-        "evidence_requirement",
-        "evidence_status",
-        "evidence_note",
-        "evidence_original_filename",
-        "evidence_sha256",
-        "evidence_uploaded_at_kst",
-        "attachment_zip_path",
+        ws4 = wb.create_sheet("기본정보")
+        _write_table_sheet(
+            ws4,
+            ["항목명", "값"],
+            [
+                {"항목명": "패키지 버전", "값": PACKAGE_VERSION},
+                {"항목명": "생성 기준 월", "값": stats.month_key},
+                {"항목명": "포함 파일 수", "값": 6},
+                {"항목명": "포함 증빙 수", "값": len(snapshot.evidences)},
+                {"항목명": "연동 포함 여부", "값": ", ".join(snapshot.included_source_labels) if snapshot.included_source_labels else "없음"},
+            ],
+        )
+        return wb
+
+    return _workbook_bytes(build)
+
+
+def _count_by_trust(rows: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {"반영됨": 0, "참고용": 0, "재확인필요": 0}
+    for row in rows:
+        label = row.get("trust_label") or row.get("신뢰구분") or "재확인필요"
+        if label not in counts:
+            label = "재확인필요"
+        counts[label] += 1
+    return counts
+
+
+def _build_transactions_workbook(snapshot: PackageSnapshot) -> bytes:
+    stats = snapshot.stats
+
+    def build() -> Workbook:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "거래정리"
+        rows = []
+        for tx in snapshot.transactions:
+            rows.append(
+                {
+                    "거래번호": tx.get("tx_id", ""),
+                    "거래일시": tx.get("occurred_at_kst", ""),
+                    "입출금구분": tx.get("direction_label", ""),
+                    "금액": tx.get("amount_krw", 0),
+                    "거래처": tx.get("counterparty", ""),
+                    "적요": tx.get("memo", ""),
+                    "자료출처": tx.get("source_label", ""),
+                    "연동공급자": tx.get("provider_label", ""),
+                    "분류결과": tx.get("classification_result_label", ""),
+                    "업무관련여부": tx.get("business_related_label", ""),
+                    "증빙상태": tx.get("evidence_status_label", ""),
+                    "대표증빙종류": tx.get("representative_evidence_type", ""),
+                    "증빙개수": tx.get("evidence_count", 0),
+                    "증빙바로열기": ("열기", tx.get("evidence_zip_path")) if tx.get("evidence_zip_path") else "",
+                    "신뢰구분": tx.get("trust_label", "재확인필요"),
+                    "계산반영여부": tx.get("calculation_included_label", "보류"),
+                    "재확인필요여부": tx.get("recheck_required_label", "아니오"),
+                    "재확인사유": tx.get("recheck_reason", ""),
+                    "메모": tx.get("evidence_note", ""),
+                }
+            )
+        _write_table_sheet(
+            ws,
+            [
+                "거래번호",
+                "거래일시",
+                "입출금구분",
+                "금액",
+                "거래처",
+                "적요",
+                "자료출처",
+                "연동공급자",
+                "분류결과",
+                "업무관련여부",
+                "증빙상태",
+                "대표증빙종류",
+                "증빙개수",
+                "증빙바로열기",
+                "신뢰구분",
+                "계산반영여부",
+                "재확인필요여부",
+                "재확인사유",
+                "메모",
+            ],
+            rows,
+        )
+
+        ws2 = wb.create_sheet("거래원본")
+        raw_rows = []
+        for tx in snapshot.transactions:
+            raw_rows.append(
+                {
+                    "거래번호": tx.get("tx_id", ""),
+                    "원본자료유형": tx.get("source_label", ""),
+                    "원본파일명(있으면)": tx.get("import_filename", ""),
+                    "원본행번호(있으면)": "",
+                    "원본거래일시": tx.get("occurred_at_kst", ""),
+                    "원본금액": tx.get("amount_krw", 0),
+                    "원본거래처": tx.get("counterparty", ""),
+                    "정규화메모": tx.get("memo", ""),
+                }
+            )
+        _write_table_sheet(
+            ws2,
+            ["거래번호", "원본자료유형", "원본파일명(있으면)", "원본행번호(있으면)", "원본거래일시", "원본금액", "원본거래처", "정규화메모"],
+            raw_rows,
+        )
+
+        ws3 = wb.create_sheet("월별요약")
+        _write_table_sheet(
+            ws3,
+            ["항목", "값"],
+            [
+                {"항목": "대상 월", "값": stats.month_key},
+                {"항목": "총 거래 수", "값": stats.tx_total},
+                {"항목": "총 수입", "값": stats.sum_in_total},
+                {"항목": "총 지출", "값": stats.sum_out_total},
+                {"항목": "업무 관련 지출", "값": stats.expense_business_total},
+                {"항목": "첨부된 증빙 수", "값": stats.evidence_attached_count},
+                {"항목": "확인 필요 항목 수", "값": stats.review_needed_count},
+            ],
+        )
+
+        ws4 = wb.create_sheet("분류요약")
+        summary_map: dict[tuple[str, str], dict[str, int]] = {}
+        for tx in snapshot.transactions:
+            key = (tx.get("classification_result_label", ""), tx.get("trust_label", "재확인필요"))
+            bucket = summary_map.setdefault(key, {"count": 0, "amount": 0})
+            bucket["count"] += 1
+            bucket["amount"] += int(tx.get("amount_krw", 0))
+        rows4 = []
+        for (classification, trust), bucket in sorted(summary_map.items()):
+            rows4.append(
+                {
+                    "분류결과": classification,
+                    "신뢰구분": trust,
+                    "거래 수": bucket["count"],
+                    "금액 합계": bucket["amount"],
+                }
+            )
+        _write_table_sheet(ws4, ["분류결과", "신뢰구분", "거래 수", "금액 합계"], rows4)
+        return wb
+
+    return _workbook_bytes(build)
+
+
+def _build_evidence_workbook(snapshot: PackageSnapshot) -> bytes:
+    def build() -> Workbook:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "증빙목록"
+        evidence_rows = []
+        for evidence in snapshot.evidences:
+            evidence_rows.append(
+                {
+                    "증빙번호": evidence.get("증빙번호", ""),
+                    "연결거래번호": evidence.get("연결거래번호", ""),
+                    "증빙종류": evidence.get("증빙종류", "증빙파일"),
+                    "파일명": evidence.get("파일명", ""),
+                    "파일열기": evidence.get("파일열기", ""),
+                    "저장위치": evidence.get("저장위치", ""),
+                    "업로드일시": evidence.get("업로드일시", ""),
+                    "신뢰구분": evidence.get("신뢰구분", "재확인필요"),
+                    "계산반영여부": evidence.get("계산반영여부", "보류"),
+                    "재확인필요여부": evidence.get("재확인필요여부", "아니오"),
+                    "메모": evidence.get("메모", ""),
+                }
+            )
+        _write_table_sheet(
+            ws,
+            ["증빙번호", "연결거래번호", "증빙종류", "파일명", "파일열기", "저장위치", "업로드일시", "신뢰구분", "계산반영여부", "재확인필요여부", "메모"],
+            evidence_rows,
+        )
+
+        ws2 = wb.create_sheet("거래별증빙연결")
+        linked_rows = []
+        for tx in snapshot.transactions:
+            linked_rows.append(
+                {
+                    "거래번호": tx.get("tx_id", ""),
+                    "거래일시": tx.get("occurred_at_kst", ""),
+                    "거래처": tx.get("counterparty", ""),
+                    "금액": tx.get("amount_krw", 0),
+                    "증빙상태": tx.get("evidence_status_label", ""),
+                    "대표증빙종류": tx.get("representative_evidence_type", "") if tx.get("evidence_count") else "",
+                    "증빙개수": tx.get("evidence_count", 0),
+                    "대표증빙열기": ("열기", tx.get("evidence_zip_path")) if tx.get("evidence_zip_path") else "",
+                }
+            )
+        _write_table_sheet(
+            ws2,
+            ["거래번호", "거래일시", "거래처", "금액", "증빙상태", "대표증빙종류", "증빙개수", "대표증빙열기"],
+            linked_rows,
+        )
+
+        ws3 = wb.create_sheet("증빙요약")
+        summary = {}
+        for tx in snapshot.transactions:
+            key = (
+                tx.get("evidence_status_label", ""),
+                tx.get("representative_evidence_type", "") if tx.get("evidence_count") else "미첨부",
+            )
+            summary[key] = summary.get(key, 0) + 1
+        rows3 = []
+        for (status, ev_type), count in sorted(summary.items()):
+            rows3.append({"증빙상태": status, "증빙종류": ev_type, "개수": count})
+        _write_table_sheet(ws3, ["증빙상태", "증빙종류", "개수"], rows3)
+        return wb
+
+    return _workbook_bytes(build)
+
+
+def _build_review_workbook(snapshot: PackageSnapshot) -> bytes:
+    def build() -> Workbook:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "확인필요항목"
+        _write_table_sheet(
+            ws,
+            ["항목번호", "항목유형", "관련자료구분", "관련번호", "요약설명", "현재상태", "필요한확인내용", "우선순위", "메모"],
+            snapshot.review_items,
+        )
+
+        ws2 = wb.create_sheet("증빙누락")
+        _write_table_sheet(
+            ws2,
+            ["거래번호", "거래일시", "거래처", "금액", "증빙상태", "필요한확인내용", "우선순위"],
+            snapshot.evidence_missing_items,
+        )
+
+        ws3 = wb.create_sheet("검토필요거래")
+        _write_table_sheet(
+            ws3,
+            ["거래번호", "거래일시", "자료출처", "거래처", "금액", "현재상태", "재확인사유", "필요한확인내용"],
+            snapshot.review_trade_items,
+        )
+        return wb
+
+    return _workbook_bytes(build)
+
+
+def _render_package_guide(snapshot: PackageSnapshot) -> str:
+    stats = snapshot.stats
+    lines = [
+        "[쓸수있어(SafeToSpend) 거래+증빙 중심 세무사 전달 패키지]",
+        f"- 패키지 버전: {PACKAGE_VERSION}",
+        f"- 대상 기간: {stats.period_start_kst} ~ {stats.period_end_kst}",
+        f"- 생성 시각(KST): {stats.generated_at_kst}",
+        f"- 사용자명: {snapshot.display_name}",
+        "",
+        "[포함 파일]",
+        "- 00_패키지안내.txt : 현재 패키지 범위와 한계, 신뢰 구분 안내",
+        "- 01_패키지요약.xlsx : 전체 요약, 신뢰 구분 안내, 반영 현황",
+        "- 02_거래정리.xlsx : 거래 목록, 원본 정보, 분류/증빙 연결",
+        "- 03_증빙목록.xlsx : 첨부된 증빙 목록과 거래별 연결",
+        "- 05_확인필요항목.xlsx : 필수 누락/분류 미확정 등 재확인 목록",
+        "- 증빙자료/ : 현재 연결된 대표 증빙 파일",
+        "",
+        "[현재 포함되는 자료 범위]",
+        "- 수동입력 거래",
+        "- 수동업로드(CSV) 거래",
+        "- 자동연동 거래",
+        "- 거래에 연결된 대표 증빙 1개",
+        "- 누락/검토 필요 상태",
+        "",
+        "[현재 포함되지 않는 자료 범위]",
+        "- 공식자료 목록/공식자료 폴더",
+        "- 참고자료 폴더",
+        "- 추가설명 폴더",
+        "- 거래당 다중 증빙 구조",
+        "",
+        "[신뢰 구분 기준]",
+        "- 반영됨: 구조화된 거래가 분류 완료되고 필요한 증빙 상태가 정리된 항목",
+        "- 참고용: 수동입력처럼 구조화 근거가 상대적으로 약한 항목",
+        "- 재확인필요: 분류 미확정, 필수 증빙 누락, 혼합 판단 등 추가 확인이 필요한 항목",
+        "",
+        "[현재 한계]",
+        "- 거래당 대표 증빙 1개 기준으로 정리됩니다.",
+        "- 공식자료 교차검증은 현재 패키지 범위에 포함되지 않습니다.",
+        "- ZIP 내부 링크는 압축을 푼 뒤 여는 방식이 가장 안정적입니다.",
     ]
-    _wcsv("transactions.csv", tx_header, tx_records)
-
-    ev_header = [
-        "tx_id",
-        "requirement",
-        "status",
-        "note",
-        "file_key",
-        "original_filename",
-        "mime_type",
-        "size_bytes",
-        "sha256",
-        "uploaded_at_kst",
-        "retention_until",
-        "deleted_at_kst",
-        "attachment_zip_path",
-    ]
-    _wcsv("evidence_index.csv", ev_header, evidence_index_records)
-
-    miss_header = [
-        "priority",
-        "tx_id",
-        "date_kst",
-        "amount_krw",
-        "counterparty",
-        "memo",
-        "requirement",
-        "why",
-        "next_action",
-    ]
-    _wcsv("missing_evidence.csv", miss_header, missing_list[:200])
-
-    # 4) attachments
-    _wtext("attachments/README.txt", "증빙 파일(첨부된 경우)이 이 폴더에 포함됩니다.\n")
-    for a in attachments:
-        try:
-            zip_path = a["zip_path"]
-            abs_path = a["abs_path"]
-            with abs_path.open("rb") as f:
-                z.writestr(f"{root}/{zip_path}", f.read())
-        except Exception:
-            continue
-
-    z.close()
-    out.seek(0)
-
-    filename = f"SafeToSpend_TaxPackage_{month_key}.zip"
-    return out, filename
-
-
-# -----------------------------
-# Helpers
-# -----------------------------
-def _build_missing_list(tx_records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """월 거래 중 '사용자/세무사 액션이 필요한 것'만 뽑아 우선순위 리스트로."""
-
-    candidates: list[dict[str, Any]] = []
-
-    for r in tx_records:
-        direction = r.get("direction")
-        amt = _safe_int(r.get("amount_krw"))
-        cp = r.get("counterparty") or ""
-        memo = r.get("memo") or ""
-        date_kst = r.get("date_kst") or ""
-        tx_id = r.get("tx_id")
-
-        # P0: 필수 증빙 누락
-        if (
-            direction == "out"
-            and r.get("evidence_status") == "missing"
-            and r.get("evidence_requirement") == "required"
-        ):
-            candidates.append(
-                {
-                    "priority": "P0",
-                    "tx_id": tx_id,
-                    "date_kst": date_kst,
-                    "amount_krw": amt,
-                    "counterparty": cp,
-                    "memo": memo,
-                    "requirement": "required",
-                    "why": "필수 증빙 누락",
-                    "next_action": "카드전표/현금영수증/세금계산서 등 첨부 또는 '불필요'로 처리",
-                    "_score": 100_000_000 + amt,
-                }
-            )
-            continue
-
-        # P1: 수입 분류 미확정
-        if direction == "in" and (not r.get("income_label_status") or r.get("income_label_status") == "unknown"):
-            candidates.append(
-                {
-                    "priority": "P1",
-                    "tx_id": tx_id,
-                    "date_kst": date_kst,
-                    "amount_krw": amt,
-                    "counterparty": cp,
-                    "memo": memo,
-                    "requirement": "",
-                    "why": "수입/비수입 미확정",
-                    "next_action": "수입이면 '수입' 확정, 아니면 '비수입'으로 표시",
-                    "_score": 80_000_000 + amt,
-                }
-            )
-            continue
-
-        # P1: 지출 분류 미확정/혼재
-        if direction == "out" and (not r.get("expense_label_status") or r.get("expense_label_status") in ("unknown", "mixed")):
-            candidates.append(
-                {
-                    "priority": "P1",
-                    "tx_id": tx_id,
-                    "date_kst": date_kst,
-                    "amount_krw": amt,
-                    "counterparty": cp,
-                    "memo": memo,
-                    "requirement": "",
-                    "why": "지출(업무/개인) 미확정",
-                    "next_action": "업무/개인/혼합 중 하나로 확정",
-                    "_score": 70_000_000 + amt,
-                }
-            )
-            continue
-
-        # P2: 검토 증빙 누락
-        if (
-            direction == "out"
-            and r.get("evidence_status") == "missing"
-            and r.get("evidence_requirement") == "maybe"
-        ):
-            candidates.append(
-                {
-                    "priority": "P2",
-                    "tx_id": tx_id,
-                    "date_kst": date_kst,
-                    "amount_krw": amt,
-                    "counterparty": cp,
-                    "memo": memo,
-                    "requirement": "maybe",
-                    "why": "증빙 확인 필요(미첨부)",
-                    "next_action": "업무비면 증빙 첨부, 개인/불필요면 표시",
-                    "_score": 60_000_000 + amt,
-                }
-            )
-
-    candidates.sort(key=lambda x: x.get("_score", 0), reverse=True)
-
-    out: list[dict[str, Any]] = []
-    for c in candidates:
-        c.pop("_score", None)
-        out.append(c)
-    return out
-
-
-def _render_accountant_readme(stats: PackageStats) -> str:
-    """세무사용 안내문(텍스트 1장 분량). 과장 없이, 실무 흐름에 맞춰 작성."""
-
-    est_profit = stats.income_included_total - stats.expense_business_total
-    has_uncertain = (
-        stats.income_unknown_count
-        + (1 if stats.expense_mixed_total > 0 else 0)
-        + (1 if stats.expense_unknown_total > 0 else 0)
-        + stats.evidence_missing_required_count
-        + stats.evidence_missing_maybe_count
-    ) > 0
-
-    lines: list[str] = []
-    lines.append("[쓸수있어(SafeToSpend) 세무사 전달 패키지]")
-    lines.append(f"- 대상 월: {stats.month_key}")
-    lines.append(f"- 기간(KST): {stats.period_start_kst} ~ {stats.period_end_kst}")
-    lines.append(f"- 생성일(KST): {stats.generated_at_kst}")
-    lines.append("")
-
-    lines.append("1) 포함 파일")
-    lines.append("- transactions.csv : 거래 원장(입/출금) + 분류(수입/지출) + 증빙 상태")
-    lines.append("- evidence_index.csv : 증빙(첨부/누락/보관) 인덱스")
-    lines.append("- missing_evidence.csv : 우선 처리(필수 누락/미확정) 리스트")
-    lines.append("- attachments/ : 사용자가 실제 업로드한 증빙 파일(있는 경우)")
-    lines.append("- manifest.json : 패키지 메타/집계(검증용)")
-    lines.append("")
-
-    lines.append("2) 핵심 요약(참고용)")
-    lines.append(f"- 총 입금 합계: {_krw(stats.sum_in_total)}")
-    lines.append(f"- 총 출금 합계: {_krw(stats.sum_out_total)}")
-    lines.append(f"- 포함 수입(비수입 제외): {_krw(stats.income_included_total)}")
-    lines.append(f"- 비수입(제외): {_krw(stats.income_excluded_non_income_total)}")
-    lines.append(f"- 사업 경비(업무 확정): {_krw(stats.expense_business_total)}")
-    lines.append(f"- 순이익(단순 추정): {_krw(est_profit)}")
-    lines.append("  * 위 추정치는 분류/증빙 상태에 따라 달라질 수 있습니다.")
-    lines.append("")
-
-    lines.append("3) 확인이 필요한 항목")
-    lines.append(f"- 증빙 누락(필수): {stats.evidence_missing_required_count}건 / {_krw(stats.evidence_missing_required_amount)}")
-    lines.append(f"- 증빙 확인(검토): {stats.evidence_missing_maybe_count}건 / {_krw(stats.evidence_missing_maybe_amount)}")
-    lines.append(f"- 수입 미확정: {stats.income_unknown_count}건")
-    lines.append(f"- 경비 혼재/미확정: {_krw(stats.expense_mixed_total + stats.expense_unknown_total)}")
-    lines.append(f"- 상태: {'추정(검토 필요 포함)' if has_uncertain else '확정(검토 필요 0)'}")
-    lines.append("")
-
-    lines.append("4) 사용 방법(권장)")
-    lines.append("- (A) missing_evidence.csv의 P0(필수 누락)부터 우선 확인")
-    lines.append("- (B) transactions.csv에서 업무경비(business) 기준으로 필요 경비 취합")
-    lines.append("- (C) attachments/에 있는 파일은 tx_id로 거래와 매칭 가능")
-    lines.append("- (D) 분류/증빙은 사용자 입력 기반이므로, 최종 확정은 세무사 판단")
-    lines.append("")
-
-    lines.append("[주의]")
-    lines.append("- 본 자료는 사용자가 제공/연동한 거래 및 업로드된 증빙을 정리한 참고 자료입니다.")
-    lines.append("- 누락/미확정 항목이 있으면 추정치가 포함될 수 있습니다.")
-    lines.append("- 최종 신고 판단 및 세법 적용은 세무사/국세청 기준에 따릅니다.")
-
     return "\n".join(lines) + "\n"
+
+
+def build_tax_package_zip_from_snapshot(snapshot: PackageSnapshot) -> tuple[io.BytesIO, str]:
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        root = snapshot.root_name
+        zf.writestr(f"{root}/00_패키지안내.txt", _render_package_guide(snapshot))
+        zf.writestr(f"{root}/01_패키지요약.xlsx", _build_summary_workbook(snapshot))
+        zf.writestr(f"{root}/02_거래정리.xlsx", _build_transactions_workbook(snapshot))
+        zf.writestr(f"{root}/03_증빙목록.xlsx", _build_evidence_workbook(snapshot))
+        zf.writestr(f"{root}/05_확인필요항목.xlsx", _build_review_workbook(snapshot))
+        zf.writestr(f"{root}/증빙자료/", b"")
+
+        for evidence in snapshot.evidences:
+            zip_path = evidence.get("_zip_path") or ""
+            abs_path = evidence.get("_abs_path")
+            if not zip_path or not abs_path:
+                continue
+            try:
+                with Path(abs_path).open("rb") as f:
+                    zf.writestr(f"{root}/{zip_path}", f.read())
+            except Exception:
+                continue
+
+    out.seek(0)
+    return out, snapshot.download_name
+
+
+def build_tax_package_zip(user_pk: int, month_key: str) -> tuple[io.BytesIO, str]:
+    snapshot = _collect_package_snapshot(user_pk=user_pk, month_key=month_key)
+    return build_tax_package_zip_from_snapshot(snapshot)
