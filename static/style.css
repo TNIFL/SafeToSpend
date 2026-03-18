@@ -1602,12 +1602,13 @@ body.receipt-modal-open{
   background: rgba(248,250,252,.95);
 }
 .receipt-modal-body{
-  overflow: hidden;
+  overflow: auto;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-height: 0;
+  scrollbar-gutter: stable;
 }
 .receipt-modal-body > section{
   min-height: 0;
@@ -1753,19 +1754,19 @@ body.receipt-modal-open{
 }
 .receipt-modal-body > section[data-receipt-step="2"],
 .receipt-modal-body > section[data-receipt-step="3"]{
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  min-height: auto;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
   gap: 16px;
-  overflow: hidden;
+  overflow: visible;
 }
 .receipt-step-layout{
   display: grid;
   grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
   gap: 16px;
-  height: 100%;
-  min-height: 0;
+  height: auto;
+  min-height: clamp(760px, 88vh, 1240px);
   align-items: stretch;
 }
 .receipt-step-layout > *{
@@ -1775,16 +1776,16 @@ body.receipt-modal-open{
 .receipt-step-detail{
   display: grid;
   gap: 12px;
-  min-height: 0;
+  min-height: 360px;
   overflow: hidden;
   align-content: start;
 }
 .receipt-parse-list{
   display: grid;
   gap: 10px;
-  min-height: 0;
+  min-height: clamp(360px, 52vh, 760px);
   overflow: auto;
-  max-height: 100%;
+  max-height: none;
   scrollbar-gutter: stable;
 }
 .receipt-empty-state{
@@ -1869,6 +1870,7 @@ body.receipt-modal-open{
 }
 .receipt-step-detail{
   overflow: auto;
+  min-height: clamp(420px, 58vh, 860px);
   padding-right: 6px;
   scrollbar-gutter: stable;
 }
@@ -1961,8 +1963,8 @@ body.receipt-modal-open{
 .receipt-result-shell{
   display: grid;
   gap: 16px;
-  min-height: 0;
-  overflow: hidden;
+  min-height: clamp(720px, 84vh, 1160px);
+  overflow: visible;
 }
 .receipt-result-grid{
   display: grid;
@@ -1980,7 +1982,7 @@ body.receipt-modal-open{
 .receipt-result-list{
   display: grid;
   gap: 12px;
-  min-height: 0;
+  min-height: clamp(360px, 48vh, 760px);
   overflow: auto;
   padding-right: 4px;
   scrollbar-gutter: stable;
@@ -2101,10 +2103,23 @@ body.receipt-modal-open{
   }
   .receipt-step-layout{
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(220px, 32vh) minmax(0, 1fr);
+    grid-template-rows: minmax(280px, 36vh) minmax(420px, auto);
+    min-height: auto;
   }
   .receipt-result-grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .receipt-parse-list{
+    min-height: clamp(280px, 34vh, 520px);
+  }
+  .receipt-step-detail{
+    min-height: clamp(420px, 44vh, 760px);
+  }
+  .receipt-result-shell{
+    min-height: auto;
+  }
+  .receipt-result-list{
+    min-height: clamp(320px, 38vh, 640px);
   }
 }
 
@@ -2116,11 +2131,20 @@ body.receipt-modal-open{
   .receipt-modal-body{
     padding: 14px;
   }
+  .receipt-modal-body > section[data-receipt-step="2"],
+  .receipt-modal-body > section[data-receipt-step="3"]{
+    gap: 12px;
+  }
   .receipt-step-badge{
     min-height: 44px;
     font-size: .88rem;
   }
   .receipt-step-actions .btn{
     width: 100%;
+  }
+  .receipt-parse-list,
+  .receipt-step-detail,
+  .receipt-result-list{
+    min-height: 280px;
   }
 }
