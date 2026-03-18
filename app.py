@@ -3,8 +3,9 @@ import os, click, sys
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, jsonify, request
 from flask_migrate import Migrate
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from core.extensions import db
 from services.evidence_store import purge_expired_evidence
@@ -39,9 +40,12 @@ def create_app():
     app.config["EVIDENCE_UPLOAD_DIR"] = os.getenv("EVIDENCE_UPLOAD_DIR") or str(BASE_DIR / "uploads" / "evidence")
     app.config["OFFICIAL_DATA_UPLOAD_DIR"] = os.getenv("OFFICIAL_DATA_UPLOAD_DIR") or str(BASE_DIR / "uploads" / "official_data")
     app.config["REFERENCE_MATERIAL_UPLOAD_DIR"] = os.getenv("REFERENCE_MATERIAL_UPLOAD_DIR") or str(BASE_DIR / "uploads" / "reference_materials")
-    app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_UPLOAD_BYTES") or (20 * 1024 * 1024))
-    app.config["OFFICIAL_DATA_MAX_BYTES"] = int(os.getenv("OFFICIAL_DATA_MAX_BYTES") or app.config["MAX_CONTENT_LENGTH"])
-    app.config["REFERENCE_MATERIAL_MAX_BYTES"] = int(os.getenv("REFERENCE_MATERIAL_MAX_BYTES") or app.config["MAX_CONTENT_LENGTH"])
+    default_upload_max = int(os.getenv("MAX_UPLOAD_BYTES") or (20 * 1024 * 1024))
+    receipt_modal_max = int(os.getenv("RECEIPT_MODAL_MAX_BYTES") or (100 * 1024 * 1024))
+    app.config["MAX_CONTENT_LENGTH"] = max(default_upload_max, receipt_modal_max)
+    app.config["RECEIPT_MODAL_MAX_BYTES"] = receipt_modal_max
+    app.config["OFFICIAL_DATA_MAX_BYTES"] = int(os.getenv("OFFICIAL_DATA_MAX_BYTES") or default_upload_max)
+    app.config["REFERENCE_MATERIAL_MAX_BYTES"] = int(os.getenv("REFERENCE_MATERIAL_MAX_BYTES") or default_upload_max)
     
     @app.cli.command("purge-evidence")
     def purge_evidence_cmd():
@@ -60,6 +64,22 @@ def create_app():
     @app.context_processor
     def inject_global_nav_flags():
         return {"nav_is_admin": current_user_is_admin()}
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_request_too_large(_error):
+        if request.path.startswith("/dashboard/receipt-modal"):
+            max_bytes = int(app.config.get("RECEIPT_MODAL_MAX_BYTES", app.config.get("MAX_CONTENT_LENGTH", 0)) or 0)
+            max_mb = max(1, max_bytes // (1024 * 1024))
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": f"업로드 전체 용량이 너무 큽니다. 한 번에 약 {max_mb}MB 이하로 올려 주세요.",
+                    }
+                ),
+                413,
+            )
+        return "업로드 용량이 너무 큽니다.", 413
 
     # ✅ 핵심: flask db 명령은 "웹 라우트"가 필요 없는데,
     # 라우트 import가 깨져 있으면 db 명령까지 같이 죽어버림.

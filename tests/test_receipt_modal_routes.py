@@ -102,6 +102,27 @@ class ReceiptModalRoutesTest(unittest.TestCase):
         self.assertFalse(payload["ok"])
         self.assertIn("최대 50개", payload["error"])
 
+    def test_preview_returns_json_when_request_body_is_too_large(self) -> None:
+        self._login()
+        self.app.config["MAX_CONTENT_LENGTH"] = 128
+        self.app.config["RECEIPT_MODAL_MAX_BYTES"] = 128
+
+        response = self.client.post(
+            "/dashboard/receipt-modal/preview",
+            data={
+                "files": [
+                    (io.BytesIO(b"x" * 4096), "too-large.jpg"),
+                ]
+            },
+            content_type="multipart/form-data",
+        )
+
+        self.assertEqual(response.status_code, 413)
+        payload = response.get_json()
+        self.assertIsNotNone(payload)
+        self.assertFalse(payload["ok"])
+        self.assertIn("업로드 전체 용량이 너무 큽니다", payload["error"])
+
     def test_preview_returns_parse_draft_and_account_options(self) -> None:
         self._login()
 

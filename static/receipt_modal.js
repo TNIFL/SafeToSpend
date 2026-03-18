@@ -220,6 +220,23 @@
     return { payload, hasError };
   }
 
+  async function readApiPayload(response) {
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
+
+    const text = await response.text();
+    if (response.status === 413) {
+      return {
+        ok: false,
+        error: "업로드 전체 용량이 너무 큽니다. 파일 수를 줄이거나 나눠서 올려 주세요.",
+      };
+    }
+
+    throw new Error(text || "요청 처리 중 문제가 발생했습니다.");
+  }
+
   async function requestPreview() {
     if (!state.files.length || state.busy) {
       return;
@@ -238,7 +255,7 @@
         body: formData,
         credentials: "same-origin",
       });
-      const data = await response.json();
+      const data = await readApiPayload(response);
       if (!response.ok || !data) {
         throw new Error((data && data.error) || "초안 생성에 실패했습니다.");
       }
@@ -308,7 +325,7 @@
         body: formData,
         credentials: "same-origin",
       });
-      const data = await response.json();
+      const data = await readApiPayload(response);
       if (!response.ok || !data) {
         throw new Error((data && data.error) || "거래 생성에 실패했습니다.");
       }
