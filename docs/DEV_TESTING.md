@@ -133,3 +133,44 @@ PYTHONPATH=. .venv/bin/python -m py_compile \
 - `일치 / 부분일치 / 참고용 / 재확인필요 / 불일치` 한글 표현이 그대로 노출되는지
 - 금액/날짜가 명확한 공식자료는 거래와 비교되고, 비교 대상이 약한 문서는 `참고용`으로 남는지
 - 교차검증 결과가 곧바로 `완전 확정`처럼 읽히지 않는지
+
+# 가격/플랜 안내 1차 회귀
+
+main 브랜치에서 가격/플랜/구독 안내 변경을 점검할 때는 아래 순서로 실행한다.
+
+## 1. baseline 확인
+
+```bash
+git status --short --branch
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db heads
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db current
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db upgrade
+```
+
+## 2. 가격/플랜 안내 회귀
+
+```bash
+PYTHONPATH=. .venv/bin/python -m unittest \
+  tests.test_plan_pricing \
+  tests.test_billing_routes
+```
+
+## 3. 정적 검증
+
+```bash
+PYTHONPATH=. .venv/bin/python -m py_compile \
+  routes/__init__.py \
+  routes/web/billing.py \
+  services/plan.py \
+  services/billing/constants.py \
+  services/billing/pricing.py \
+  tests/test_plan_pricing.py \
+  tests/test_billing_routes.py
+```
+
+## 4. 수동 확인
+
+- `/pricing`에서 무료 / 베이직 / 프로 카드가 보이는지
+- `구독 준비 중` 문구가 노출되는지
+- `9,900원/월` 잔존 문구가 landing/base에서 사라졌는지
+- `/dashboard/billing`이 로그인 전에는 로그인으로 이동하고, 로그인 후에는 안내 화면이 보이는지

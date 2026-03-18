@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}구독 안내 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:960px">
+  <section class="card pad">
+    <div class="cardTitle">
+      <span>구독 안내</span>
+      <span class="badge warn">{{ runtime_state.status_label }}</span>
+    </div>
+    <div class="p" style="margin-top:12px">
+      {{ runtime_state.note }}
+    </div>
+    <div class="small-note" style="margin-top:10px">
+      현재는 가격/플랜 안내만 복구했고, 결제 승인 완료, 정기결제 상태머신, 웹훅 반영, 구독 영속 처리는 아직 main에 붙이지 않았습니다.
+    </div>
+    <div class="row" style="margin-top:14px">
+      <a class="btn primary" href="{{ url_for('web_billing.pricing_page') }}">플랜 안내 보기</a>
+      <a class="btn ghost" href="{{ url_for('web_overview.overview') }}">요약으로 돌아가기</a>
+    </div>
+  </section>
+
+  <section class="grid cols-3 section">
+    {% for plan in plans %}
+      <article class="card pad">
+        <div class="cardTitle">
+          <span>{{ plan.label }}</span>
+          <span class="badge">{{ plan.price_label }}</span>
+        </div>
+        <div class="small-note" style="margin-top:8px">{{ plan.title }}</div>
+        <div class="small-note" style="margin-top:8px">{{ plan.account_limit_label }} · {{ plan.sync_label }}</div>
+      </article>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

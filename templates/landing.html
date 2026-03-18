@@ -29,7 +29,7 @@
             <a class="btn primary" href="{{ url_for('web_auth.register') }}">바로 시작</a>
             <a class="btn" href="{{ url_for('web_auth.login') }}">로그인</a>
           {% endif %}
-          <span class="badge primary">9,900원/월</span>
+          <a class="badge primary" href="{{ url_for('web_billing.pricing_page') }}">플랜 안내</a>
         </div>
 
         <div class="row" style="gap:8px;margin-top:6px;">
@@ -157,7 +157,7 @@
           {% endif %}
         </div>
         <div class="small-note" style="margin-top:10px;">
-          초기 가격: 9,900원/월 · CSV(반자동) · 공식 연동은 병렬 준비
+          <a href="{{ url_for('web_billing.pricing_page') }}">플랜 안내</a>: 무료 / 베이직 6,900원 / 프로 12,900원 · 현재 구독 연결 준비 중
         </div>
       </div>
     </div>
