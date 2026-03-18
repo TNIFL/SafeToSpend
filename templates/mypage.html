@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}내 계정 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .account-wrap{max-width:1080px;margin:0 auto;padding:28px 16px 60px}
+  .account-grid{display:grid;grid-template-columns:1.2fr .9fr;gap:16px;align-items:start}
+  .account-card{padding:18px;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:var(--shadow-sm)}
+  .account-title{margin:0;font-size:1.35rem;font-weight:950;letter-spacing:-.4px}
+  .account-sub{margin:6px 0 0;color:var(--muted);line-height:1.6}
+  .account-kv{display:grid;grid-template-columns:120px 1fr;gap:8px 14px;margin-top:14px}
+  .account-kv dt{color:var(--muted-2);font-weight:800}
+  .account-kv dd{margin:0;font-weight:850}
+  .account-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+  .summary-item{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+  .summary-label{display:block;color:var(--muted-2);font-size:.84rem;font-weight:800}
+  .summary-value{display:block;margin-top:4px;font-size:1.05rem;font-weight:950}
+  .account-links{display:grid;gap:8px;margin-top:14px}
+  .account-link{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+  .account-link strong{display:block;font-size:.92rem}
+  .account-link span{display:block;margin-top:3px;color:var(--muted);font-size:.82rem;line-height:1.5}
+  .account-note{border:1px solid rgba(37,99,235,.18);background:rgba(37,99,235,.06);border-radius:16px;padding:14px}
+  .account-note-title{font-size:.94rem;font-weight:900}
+  .account-note-body{margin-top:6px;color:var(--muted);line-height:1.6}
+  .account-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  @media (max-width:980px){
+    .account-grid{grid-template-columns:1fr}
+    .account-summary{grid-template-columns:1fr}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="account-wrap">
+  <div class="page-head">
+    <div class="page-head-main">
+      <h1 class="account-title">내 계정</h1>
+      <p class="account-sub">현재 로그인한 계정 정보와 지금 `main`에서 실제로 사용하는 데이터 범위만 보여줍니다.</p>
+    </div>
+  </div>
+
+  <div class="account-grid">
+    <section class="account-card">
+      <h2 class="h2" style="margin-top:0;">기본 정보</h2>
+      <dl class="account-kv">
+        <dt>이메일</dt>
+        <dd>{{ user.email }}</dd>
+        <dt>표시 이름</dt>
+        <dd>{{ user.nickname }}</dd>
+        <dt>가입일</dt>
+        <dd>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}</dd>
+        <dt>플랜 상태</dt>
+        <dd>{{ plan_state.status_label }}</dd>
+      </dl>
+
+      <div class="account-summary">
+        <div class="summary-item">
+          <span class="summary-label">거래 수</span>
+          <span class="summary-value">{{ account_summary.transaction_count }}건</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">증빙 첨부</span>
+          <span class="summary-value">{{ account_summary.evidence_attached }}/{{ account_summary.evidence_total }}건</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">공식자료</span>
+          <span class="summary-value">{{ account_summary.official_data_count }}건</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">참고자료</span>
+          <span class="summary-value">{{ account_summary.reference_material_count }}건</span>
+        </div>
+      </div>
+
+      <div class="account-summary">
+        <div class="summary-item">
+          <span class="summary-label">기록된 총수입</span>
+          <span class="summary-value">{{ "{:,}".format(account_summary.gross_income) }}원</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">기록된 총지출</span>
+          <span class="summary-value">{{ "{:,}".format(account_summary.expenses) }}원</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">기본 세율</span>
+          <span class="summary-value">{{ account_summary.tax_rate_percent }}%</span>
+        </div>
+      </div>
+
+      <div class="account-actions">
+        <a class="btn ghost" href="{{ url_for('web_overview.overview') }}">요약으로</a>
+        <a class="btn ghost" href="{{ url_for('web_billing.index') }}">구독 안내</a>
+        <a class="btn ghost" href="{{ url_for('web_auth.logout') }}">로그아웃</a>
+      </div>
+    </section>
+
+    <div style="display:grid;gap:16px;">
+      <section class="account-card">
+        <h2 class="h2" style="margin-top:0;">바로 가기</h2>
+        <div class="account-links">
+          <a class="account-link" href="{{ url_for('web_package.page') }}">
+            <div>
+              <strong>세무사 패키지</strong>
+              <span>거래, 증빙, 공식자료 묶음을 바로 확인합니다.</span>
+            </div>
+            <span>열기</span>
+          </a>
+          <a class="account-link" href="{{ url_for('web_official_data.index') }}">
+            <div>
+              <strong>공식자료 업로드</strong>
+              <span>홈택스/NHIS 문서를 공식자료 채널로 관리합니다.</span>
+            </div>
+            <span>열기</span>
+          </a>
+          <a class="account-link" href="{{ url_for('web_reference_material.index') }}">
+            <div>
+              <strong>참고자료 업로드</strong>
+              <span>추가 설명과 참고용 파일을 별도로 보관합니다.</span>
+            </div>
+            <span>열기</span>
+          </a>
+          <a class="account-link" href="{{ url_for('web_support.support_home') }}">
+            <div>
+              <strong>문의 안내</strong>
+              <span>현재는 저장형 지원센터 대신 안내 채널만 제공합니다.</span>
+            </div>
+            <span>열기</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="account-note">
+        <div class="account-note-title">현재 범위 안내</div>
+        <div class="account-note-body">
+          구독/결제 상태와 관리자 권한 분리는 아직 `main`에 완전히 연결되지 않았습니다.
+          이 화면은 현재 저장된 사용자 정보와 실제 사용 데이터만 보수적으로 보여줍니다.
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -174,3 +174,41 @@ PYTHONPATH=. .venv/bin/python -m py_compile \
 - `구독 준비 중` 문구가 노출되는지
 - `9,900원/월` 잔존 문구가 landing/base에서 사라졌는지
 - `/dashboard/billing`이 로그인 전에는 로그인으로 이동하고, 로그인 후에는 안내 화면이 보이는지
+
+# 프로필/문의/관리자 1차 회수 회귀
+
+main 브랜치에서 프로필/문의/관리자 1차 회수를 점검할 때는 아래 순서로 실행한다.
+
+## 1. baseline 확인
+
+```bash
+git status --short --branch
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db heads
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db current
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db upgrade
+```
+
+## 2. 프로필/문의/관리자 회귀
+
+```bash
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' PYTHONPATH=. .venv/bin/python -m unittest \
+  tests.test_profile_support_admin_routes
+```
+
+## 3. 정적 검증
+
+```bash
+PYTHONPATH=. .venv/bin/python -m py_compile \
+  core/admin_guard.py \
+  routes/__init__.py \
+  routes/web/profile.py \
+  routes/web/support.py \
+  routes/web/admin.py \
+  tests/test_profile_support_admin_routes.py
+```
+
+## 4. 수동 확인
+
+- `/mypage`가 로그인 전에는 로그인으로 이동하고, 로그인 후에는 이메일/가입일/거래·증빙 요약을 보여주는지
+- `/support`에서 문의 저장이 아직 미연결임을 숨기지 않고 안내하는지
+- `/admin`이 기본적으로 403을 반환하고, `ADMIN_EMAILS`에 등록된 계정만 접근 가능한지

@@ -7,6 +7,9 @@ from routes.web.auth import web_auth_bp  # 네 프로젝트에 이미 있다고 
 from routes.web.bank import web_bank_bp
 from routes.web.web_calendar import web_calendar_bp
 from routes.web.billing import web_billing_bp
+from routes.web.profile import web_profile_bp
+from routes.web.support import web_support_bp
+from routes.web.admin import web_admin_bp
 from routes.web.official_data import web_official_data_bp
 from routes.web.reference_material import web_reference_material_bp
 
@@ -28,6 +31,9 @@ def register_blueprints(app):
     app.register_blueprint(web_auth_bp)
     app.register_blueprint(web_bank_bp)
     app.register_blueprint(web_billing_bp)
+    app.register_blueprint(web_profile_bp)
+    app.register_blueprint(web_support_bp)
+    app.register_blueprint(web_admin_bp)
     app.register_blueprint(web_calendar_bp)
     app.register_blueprint(web_official_data_bp)
     app.register_blueprint(web_reference_material_bp)

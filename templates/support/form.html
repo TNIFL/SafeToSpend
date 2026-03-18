@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}문의 안내 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .support-wrap{max-width:860px;margin:0 auto;padding:28px 16px 56px}
+  .support-card{padding:18px;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:var(--shadow-sm)}
+  .support-note{margin-bottom:14px;padding:14px;border:1px solid rgba(245,158,11,.24);border-radius:14px;background:rgba(245,158,11,.08)}
+  .support-note strong{display:block;font-size:.94rem}
+  .support-note p{margin:6px 0 0;color:var(--muted);line-height:1.6}
+  .support-preview{margin-top:14px;padding:14px;border:1px solid rgba(37,99,235,.18);border-radius:14px;background:rgba(37,99,235,.06)}
+  .support-preview-title{font-weight:900}
+  .support-preview-body{margin-top:8px;color:var(--muted);line-height:1.65;white-space:pre-wrap}
+  .field{display:grid;gap:8px;margin-top:12px}
+  .field input,.field textarea{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:#fff}
+  .field textarea{min-height:180px;resize:vertical}
+  .field-label{font-size:.88rem;font-weight:850;color:var(--muted-2)}
+  .support-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="support-wrap">
+  <div class="page-head">
+    <div class="page-head-main">
+      <h1 class="h1">문의 안내</h1>
+      <div class="p">현재 `main`에서는 문의 저장형 지원센터가 아니라, 안내용 문의 채널만 먼저 복구했습니다.</div>
+    </div>
+  </div>
+
+  <section class="support-card">
+    <div class="support-note">
+      <strong>현재 범위</strong>
+      <p>
+        이 화면은 문의 내용을 작성해 확인할 수 있지만, 아직 DB에 저장되거나 운영 답변 흐름으로 연결되지는 않습니다.
+        지금은 참고용 초안 확인과 안내 문구 제공까지만 동작합니다.
+      </p>
+    </div>
+
+    <dl class="account-kv" style="display:grid;grid-template-columns:120px 1fr;gap:8px 12px;margin:0 0 14px;">
+      <dt style="color:var(--muted-2);font-weight:800;">현재 계정</dt>
+      <dd style="margin:0;font-weight:850;">{{ user.email }}</dd>
+      <dt style="color:var(--muted-2);font-weight:800;">지원 상태</dt>
+      <dd style="margin:0;font-weight:850;">문의 저장 준비 중</dd>
+    </dl>
+
+    <form method="post">
+      <label class="field">
+        <span class="field-label">제목</span>
+        <input type="text" name="subject" maxlength="200" value="{{ draft_subject }}" placeholder="예) 내 계정에서 거래 수가 이상하게 보여요">
+      </label>
+      <label class="field">
+        <span class="field-label">문의 내용</span>
+        <textarea name="message" maxlength="5000" placeholder="현재는 저장되지 않는 안내용 입력입니다. 문제 상황을 정리해 두는 용도로만 사용하세요.">{{ draft_message }}</textarea>
+      </label>
+      <div class="support-actions">
+        <a class="btn ghost" href="{{ url_for('web_profile.mypage') }}">내 계정으로</a>
+        <button type="submit" class="btn primary">문의 초안 확인</button>
+      </div>
+    </form>
+
+    {% if submitted_preview %}
+      <div class="support-preview">
+        <div class="support-preview-title">입력한 문의 초안</div>
+        <div class="support-preview-body"><strong>{{ submitted_preview.subject }}</strong></div>
+        <div class="support-preview-body">{{ submitted_preview.message }}</div>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

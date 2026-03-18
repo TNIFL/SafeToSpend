@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}관리자 기본 화면 | 쓸수있어{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <div class="page-head-main">
+      <h1>관리자 기본 화면</h1>
+      <p class="muted2">현재 `main`에서 안전하게 보여줄 수 있는 기본 상태만 제공합니다.</p>
+    </div>
+  </div>
+
+  <section class="card pad" style="max-width:880px;display:grid;gap:12px;">
+    <div class="small-note">
+      운영/권한/문의 처리 상태머신은 아직 회수하지 않았습니다. 이 화면은 관리자 접근 게이트와 기본 집계 확인용입니다.
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+      <div class="card pad">
+        <div class="muted2 small-note">가입 사용자</div>
+        <div style="font-size:1.3rem;font-weight:950;margin-top:4px;">{{ snapshot.user_count }}명</div>
+      </div>
+      <div class="card pad">
+        <div class="muted2 small-note">거래 수</div>
+        <div style="font-size:1.3rem;font-weight:950;margin-top:4px;">{{ snapshot.transaction_count }}건</div>
+      </div>
+      <div class="card pad">
+        <div class="muted2 small-note">공식자료 수</div>
+        <div style="font-size:1.3rem;font-weight:950;margin-top:4px;">{{ snapshot.official_data_count }}건</div>
+      </div>
+      <div class="card pad">
+        <div class="muted2 small-note">참고자료 수</div>
+        <div style="font-size:1.3rem;font-weight:950;margin-top:4px;">{{ snapshot.reference_material_count }}건</div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
