@@ -47,8 +47,8 @@ class CalendarUxBlocksTest(unittest.TestCase):
         self.assertIn("참고자료 업로드", body)
         self.assertIn("건보료 안내", body)
         self.assertIn("세무사 패키지", body)
+        self.assertIn("대사 리포트", body)
         self.assertNotIn("세금 설정", body)
-        self.assertNotIn("대사 리포트", body)
 
     def test_tax_buffer_page_renders_guidance_blocks_and_safe_ctas(self) -> None:
         self._login()
@@ -63,6 +63,7 @@ class CalendarUxBlocksTest(unittest.TestCase):
         self.assertIn("참고자료 업로드", body)
         self.assertIn("건보료 안내", body)
         self.assertIn("세무사 패키지", body)
+        self.assertIn("대사 리포트", body)
         self.assertNotIn("세금 설정", body)
         self.assertNotIn("정밀 계산", body)
 

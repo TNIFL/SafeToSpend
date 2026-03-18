@@ -318,4 +318,43 @@ PYTHONPATH=. .venv/bin/python -m py_compile \
 - `/dashboard/review`에서 `이번 달 정리 순서`, `자료 보강 경로` 블록이 보이는지
 - `/dashboard/tax-buffer`에서 `이 숫자를 이렇게 보세요`, `수치를 보강하는 방법` 블록이 보이는지
 - 두 화면에서 `공식자료 업로드`, `참고자료 업로드`, `건보료 안내`, `세무사 패키지` CTA가 노출되는지
-- `세금 설정`, `대사 리포트`, `정밀 계산` 같은 비범위 기능이 암시되지 않는지
+- `세금 설정`, `정밀 계산` 같은 비범위 기능이 암시되지 않는지
+
+# 대사 리포트 최소 버전 회귀
+
+main 브랜치에서 대사 리포트 최소 버전을 점검할 때는 아래 순서로 실행한다.
+
+## 1. baseline 확인
+
+```bash
+git status --short --branch
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db heads
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db current
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db upgrade
+```
+
+## 2. 대사 리포트 회귀
+
+```bash
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' PYTHONPATH=. .venv/bin/python -m unittest \
+  tests.test_reconcile_routes \
+  tests.test_calendar_ux_blocks \
+  tests.test_navigation_ux
+```
+
+## 3. 정적 검증
+
+```bash
+PYTHONPATH=. .venv/bin/python -m py_compile \
+  routes/web/web_calendar.py \
+  tests/test_reconcile_routes.py \
+  tests/test_calendar_ux_blocks.py \
+  tests/test_navigation_ux.py
+```
+
+## 4. 수동 확인
+
+- `/dashboard/reconcile?month=2026-03`에서 `이번 달 거래`, `지금 해야 할 일`, `자료 채널 준비 상태` 블록이 보이는지
+- `정리하기`, `세금 보관함`, `공식자료 업로드`, `참고자료 업로드`, `세무사 패키지`, `건보료 안내` CTA가 모두 실제 화면으로 연결되는지
+- review / tax-buffer / overview / dashboard / package 에서 `대사 리포트` 진입을 찾을 수 있는지
+- `대사 완료`, `자동 검증 완료`, `모두 확인됨`, `정확히 맞음`, `세금 설정` 같은 비범위 표현이 없는지

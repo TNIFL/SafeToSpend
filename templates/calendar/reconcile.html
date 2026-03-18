@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}대사 리포트{% endblock %}
+
+{% block content %}
+<div class="wrap cal-wrap">
+
+  <div class="page-head">
+    <div>
+      <div class="h1">대사 리포트</div>
+      <div class="p">{{ month_first.strftime('%Y-%m') }} · 이번 달에 무엇을 더 정리해야 하는지 한눈에 보는 요약 화면입니다.</div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="{{ url_for('web_calendar.reconcile', month=prev_month) }}">◀ {{ prev_month }}</a>
+      <a class="btn ghost" href="{{ url_for('web_calendar.reconcile', month=next_month) }}">{{ next_month }} ▶</a>
+      <a class="btn" href="{{ url_for('web_calendar.review', month=month_key) }}">정리하기</a>
+      <a class="btn" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금 보관함</a>
+      <a class="btn primary" href="{{ url_for('web_package.page', month=month_key) }}">세무사 패키지</a>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:12px; box-shadow:none; background:var(--surface-2);">
+    <div class="cardTitle">
+      <span>안내</span>
+      <span class="badge warn">참고용</span>
+    </div>
+    <div class="small-note muted2" style="margin-top:12px;">
+      이 화면은 이번 달 거래·증빙·자료 채널을 한 번에 보는 요약 화면입니다. 자동 대사나 자동으로 모두 확인된 상태를 뜻하지 않으며, 남은 확인 항목을 찾는 용도로 보는 것이 안전합니다.
+    </div>
+  </div>
+
+  <div class="kpiRow">
+    <div class="kpi">
+      <div class="label">이번 달 거래</div>
+      <div class="value big">{{ tx_total }}건</div>
+      <div class="hint">수입 {{ gross_income|krw }} · 지출 {{ total_out|krw }}</div>
+    </div>
+    <div class="kpi">
+      <div class="label">증빙 확인 필요</div>
+      <div class="value big">{{ missing_total }}건</div>
+      <div class="hint">필수 {{ missing_required }} · 검토 {{ missing_maybe }}</div>
+    </div>
+    <div class="kpi">
+      <div class="label">분류 확인 필요</div>
+      <div class="value big">{{ classification_total }}건</div>
+      <div class="hint">수입 {{ income_unknown_count }} · 지출 {{ expense_unknown_count }}</div>
+    </div>
+    <div class="kpi">
+      <div class="label">증빙 준비도</div>
+      <div class="value big">{{ evidence_ready_pct }}%</div>
+      <div class="hint">{{ evidence_state_label }}</div>
+    </div>
+  </div>
+
+  <div class="grid cols-2" style="margin-top:12px;">
+    <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+      <div class="cardTitle">
+        <span>지금 해야 할 일</span>
+        <span class="badge primary">우선순위</span>
+      </div>
+
+      {% if action_items %}
+        <div class="stack" style="margin-top:12px;gap:10px;">
+          {% for item in action_items %}
+            <div class="card pad" style="box-shadow:none;background:#fff;">
+              <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px;">
+                <div style="min-width:0;">
+                  <div style="font-weight:900;">{{ item.title }}</div>
+                  <div class="small-note muted2" style="margin-top:6px;">{{ item.desc }}</div>
+                </div>
+                <a class="btn small ghost" href="{{ item.href }}">{{ item.cta }}</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="small-note muted2" style="margin-top:12px;">
+          지금 바로 표시할 우선 작업은 많지 않습니다. 패키지 화면에서 전달 준비 상태를 점검해 보세요.
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+      <div class="cardTitle">
+        <span>자료 채널 준비 상태</span>
+        <span class="badge">현재 보관 기준</span>
+      </div>
+
+      <div class="stack" style="margin-top:12px;gap:10px;">
+        <div class="row" style="justify-content:space-between;">
+          <span class="muted">공식자료</span>
+          <span class="badge">{{ official_state_label }}</span>
+        </div>
+        <div class="small-note muted2">
+          반영 가능 {{ official_parsed }}건 · 검토 필요 {{ official_needs_review }}건
+        </div>
+
+        <div class="row" style="justify-content:space-between;">
+          <span class="muted">참고자료</span>
+          <span class="badge">{{ reference_state_label }}</span>
+        </div>
+        <div class="small-note muted2">
+          참고자료 {{ reference_files }}건 · 추가설명 {{ note_attachments }}건
+        </div>
+
+        <div class="row" style="justify-content:space-between;">
+          <span class="muted">세무사 패키지</span>
+          {% if missing_required > 0 %}
+            <span class="badge warn">누락 먼저 확인</span>
+          {% else %}
+            <span class="badge">진입 가능</span>
+          {% endif %}
+        </div>
+        <div class="small-note muted2">
+          이 화면의 숫자는 자동 대사 결과가 아니라, 현재 정리 상태를 모아본 요약입니다. 공식자료와 참고자료는 월 기준 자동 연결 없이 보관 상태만 함께 보여줍니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not has_transactions %}
+    <div class="card pad" style="margin-top:12px;">
+      <div class="cardTitle">
+        <span>이번 달 거래가 아직 많지 않습니다</span>
+        <span class="badge">안내</span>
+      </div>
+      <div class="small-note muted2" style="margin-top:12px;">
+        거래가 적더라도 공식자료, 참고자료, 건보료 관련 자료를 먼저 모아둘 수 있습니다. 이후 정리하기와 세무사 패키지에서 설명이 더 쉬워집니다.
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card pad" style="margin-top:12px;">
+    <div class="cardTitle">
+      <span>지금 할 수 있는 이동</span>
+      <span class="badge">현재 기능</span>
+    </div>
+    <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
+      <a class="btn small primary" href="{{ url_for('web_calendar.review', month=month_key) }}">정리하기</a>
+      <a class="btn small ghost" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금 보관함</a>
+      <a class="btn small ghost" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>
+      <a class="btn small ghost" href="{{ url_for('web_reference_material.index') }}">참고자료 업로드</a>
+      <a class="btn small ghost" href="{{ url_for('web_nhis.index') }}">건보료 안내</a>
+      <a class="btn small" href="{{ url_for('web_package.page', month=month_key) }}">세무사 패키지</a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

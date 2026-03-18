@@ -16,8 +16,10 @@ from domain.models import (
     Transaction, IncomeLabel, ExpenseLabel, EvidenceItem,
     CounterpartyRule, CounterpartyExpenseRule,
     DashboardSnapshot, SafeToSpendSettings, TaxBufferLedger,
+    OfficialDataDocument, ReferenceMaterialItem,
     BankAccountLink, RecurringRule
 )
+from routes.web.vault import _ensure_month_evidence_rows
 
 from services.risk import compute_risk_summary
 web_calendar_bp = Blueprint("web_calendar", __name__, url_prefix="/dashboard")
@@ -695,6 +697,231 @@ def year_view():
         worst_month=worst_month,
         top_in=top_in,
         top_out=top_out,
+    )
+
+
+@web_calendar_bp.get("/reconcile")
+def reconcile():
+    user_pk = _uid()
+
+    month_first = _parse_month(request.args.get("month"))
+    month_key = month_first.strftime("%Y-%m")
+
+    start_d, end_d = _month_range(month_first)
+    start_dt = datetime.combine(start_d, time.min)
+    end_dt = datetime.combine(end_d, time.min)
+
+    _ensure_month_evidence_rows(user_pk=user_pk, start_dt=start_dt, end_dt=end_dt)
+
+    prev_month = (month_first.replace(day=1) - timedelta(days=1)).replace(day=1).strftime("%Y-%m")
+    next_month = (month_first.replace(day=28) + timedelta(days=10)).replace(day=1).strftime("%Y-%m")
+
+    tx_total = (
+        db.session.query(func.count(Transaction.id))
+        .filter(Transaction.user_pk == user_pk)
+        .filter(Transaction.occurred_at >= start_dt, Transaction.occurred_at < end_dt)
+        .scalar()
+    ) or 0
+
+    gross_income = (
+        db.session.query(func.coalesce(func.sum(Transaction.amount_krw), 0))
+        .filter(Transaction.user_pk == user_pk)
+        .filter(Transaction.occurred_at >= start_dt, Transaction.occurred_at < end_dt)
+        .filter(Transaction.direction == "in")
+        .scalar()
+    ) or 0
+
+    total_out = (
+        db.session.query(func.coalesce(func.sum(Transaction.amount_krw), 0))
+        .filter(Transaction.user_pk == user_pk)
+        .filter(Transaction.occurred_at >= start_dt, Transaction.occurred_at < end_dt)
+        .filter(Transaction.direction == "out")
+        .scalar()
+    ) or 0
+
+    income_unknown_count = (
+        db.session.query(func.count(func.distinct(Transaction.id)))
+        .select_from(Transaction)
+        .outerjoin(IncomeLabel, IncomeLabel.transaction_id == Transaction.id)
+        .filter(Transaction.user_pk == user_pk)
+        .filter(Transaction.occurred_at >= start_dt, Transaction.occurred_at < end_dt)
+        .filter(Transaction.direction == "in")
+        .filter(or_(IncomeLabel.id.is_(None), IncomeLabel.status == "unknown"))
+        .scalar()
+    ) or 0
+
+    expense_unknown_count = (
+        db.session.query(func.count(func.distinct(Transaction.id)))
+        .select_from(Transaction)
+        .outerjoin(ExpenseLabel, ExpenseLabel.transaction_id == Transaction.id)
+        .filter(Transaction.user_pk == user_pk)
+        .filter(Transaction.occurred_at >= start_dt, Transaction.occurred_at < end_dt)
+        .filter(Transaction.direction == "out")
+        .filter(or_(ExpenseLabel.id.is_(None), ExpenseLabel.status == "unknown"))
+        .scalar()
+    ) or 0
+
+    missing_required = (
+        db.session.query(func.count(EvidenceItem.id))
+        .join(Transaction, Transaction.id == EvidenceItem.transaction_id)
+        .filter(EvidenceItem.user_pk == user_pk)
+        .filter(Transaction.occurred_at >= start_dt, Transaction.occurred_at < end_dt)
+        .filter(EvidenceItem.requirement == "required")
+        .filter(EvidenceItem.status == "missing")
+        .scalar()
+    ) or 0
+
+    missing_maybe = (
+        db.session.query(func.count(EvidenceItem.id))
+        .join(Transaction, Transaction.id == EvidenceItem.transaction_id)
+        .filter(EvidenceItem.user_pk == user_pk)
+        .filter(Transaction.occurred_at >= start_dt, Transaction.occurred_at < end_dt)
+        .filter(EvidenceItem.requirement == "maybe")
+        .filter(EvidenceItem.status == "missing")
+        .scalar()
+    ) or 0
+
+    attached_total = (
+        db.session.query(func.count(EvidenceItem.id))
+        .join(Transaction, Transaction.id == EvidenceItem.transaction_id)
+        .filter(EvidenceItem.user_pk == user_pk)
+        .filter(Transaction.occurred_at >= start_dt, Transaction.occurred_at < end_dt)
+        .filter(EvidenceItem.status == "attached")
+        .scalar()
+    ) or 0
+
+    official_total = (
+        db.session.query(func.count(OfficialDataDocument.id))
+        .filter(OfficialDataDocument.user_pk == user_pk)
+        .scalar()
+    ) or 0
+
+    official_parsed = (
+        db.session.query(func.count(OfficialDataDocument.id))
+        .filter(OfficialDataDocument.user_pk == user_pk)
+        .filter(OfficialDataDocument.parse_status == "parsed")
+        .scalar()
+    ) or 0
+
+    official_needs_review = (
+        db.session.query(func.count(OfficialDataDocument.id))
+        .filter(OfficialDataDocument.user_pk == user_pk)
+        .filter(OfficialDataDocument.parse_status == "needs_review")
+        .scalar()
+    ) or 0
+
+    reference_total = (
+        db.session.query(func.count(ReferenceMaterialItem.id))
+        .filter(ReferenceMaterialItem.user_pk == user_pk)
+        .scalar()
+    ) or 0
+
+    reference_files = (
+        db.session.query(func.count(ReferenceMaterialItem.id))
+        .filter(ReferenceMaterialItem.user_pk == user_pk)
+        .filter(ReferenceMaterialItem.material_kind == "reference")
+        .scalar()
+    ) or 0
+
+    note_attachments = (
+        db.session.query(func.count(ReferenceMaterialItem.id))
+        .filter(ReferenceMaterialItem.user_pk == user_pk)
+        .filter(ReferenceMaterialItem.material_kind == "note_attachment")
+        .scalar()
+    ) or 0
+
+    missing_total = int(missing_required or 0) + int(missing_maybe or 0)
+    classification_total = int(income_unknown_count or 0) + int(expense_unknown_count or 0)
+    evidence_denom = int(attached_total or 0) + int(missing_total or 0)
+    evidence_ready_pct = 100 if evidence_denom == 0 else int((int(attached_total or 0) * 100) / evidence_denom)
+    evidence_state_label = "증빙 확인 필요 없음" if missing_total == 0 else f"확인 필요 {missing_total}건"
+    official_state_label = "공식자료 없음" if int(official_total or 0) == 0 else f"보관 {int(official_total)}건"
+    reference_state_label = "참고자료 없음" if int(reference_total or 0) == 0 else f"보관 {int(reference_total)}건"
+
+    action_items: list[dict[str, str]] = []
+    if int(missing_required) > 0:
+        action_items.append(
+            {
+                "title": "필수 증빙부터 다시 확인하세요",
+                "desc": f"필수 영수증 {int(missing_required)}건이 비어 있습니다. 이 항목부터 정리하면 월 마감이 가장 빨라집니다.",
+                "href": url_for("web_calendar.review", month=month_key, focus="evidence_required"),
+                "cta": "정리하기",
+            }
+        )
+    if classification_total > 0:
+        action_items.append(
+            {
+                "title": "수입·지출 분류를 정리하세요",
+                "desc": f"분류가 남은 거래가 {classification_total}건 있습니다. 세금 보관과 패키지 해석 전에 먼저 방향을 정리하는 편이 안전합니다.",
+                "href": url_for("web_calendar.review", month=month_key, focus="expense_unknown"),
+                "cta": "분류 보기",
+            }
+        )
+    if int(official_total) == 0:
+        action_items.append(
+            {
+                "title": "공식자료를 보강해 두세요",
+                "desc": "월 기준 자동 대사는 아직 없지만, 납부내역·원천징수·건보 자료를 모아두면 설명 근거가 훨씬 분명해집니다.",
+                "href": url_for("web_official_data.index"),
+                "cta": "공식자료 업로드",
+            }
+        )
+    elif int(official_needs_review) > 0:
+        action_items.append(
+            {
+                "title": "검토 필요한 공식자료를 확인하세요",
+                "desc": f"현재 검토가 더 필요한 공식자료가 {int(official_needs_review)}건 있습니다. 구조 확인 후 패키지에 포함하는 편이 안전합니다.",
+                "href": url_for("web_official_data.index"),
+                "cta": "공식자료 보기",
+            }
+        )
+    if int(reference_total) == 0:
+        action_items.append(
+            {
+                "title": "설명이 필요한 자료는 참고자료로 남겨두세요",
+                "desc": "자유형 메모나 별도 설명 파일은 참고자료 채널에 분리 보관하면 세무사 전달 준비가 쉬워집니다.",
+                "href": url_for("web_reference_material.index"),
+                "cta": "참고자료 업로드",
+            }
+        )
+    if not action_items:
+        action_items.append(
+            {
+                "title": "세무사 전달 준비 상태를 확인하세요",
+                "desc": "증빙과 자료 채널이 어느 정도 정리됐다면 패키지 화면에서 이번 달 전달 준비 상태를 한 번 더 점검하세요.",
+                "href": url_for("web_package.page", month=month_key),
+                "cta": "세무사 패키지",
+            }
+        )
+
+    return render_template(
+        "calendar/reconcile.html",
+        month_key=month_key,
+        month_first=month_first,
+        prev_month=prev_month,
+        next_month=next_month,
+        has_transactions=bool(int(tx_total or 0) > 0),
+        tx_total=int(tx_total or 0),
+        gross_income=int(gross_income or 0),
+        total_out=int(total_out or 0),
+        missing_required=int(missing_required or 0),
+        missing_maybe=int(missing_maybe or 0),
+        missing_total=int(missing_total or 0),
+        attached_total=int(attached_total or 0),
+        classification_total=int(classification_total or 0),
+        income_unknown_count=int(income_unknown_count or 0),
+        expense_unknown_count=int(expense_unknown_count or 0),
+        official_total=int(official_total or 0),
+        official_parsed=int(official_parsed or 0),
+        official_needs_review=int(official_needs_review or 0),
+        reference_total=int(reference_total or 0),
+        reference_files=int(reference_files or 0),
+        note_attachments=int(note_attachments or 0),
+        evidence_ready_pct=int(evidence_ready_pct),
+        evidence_state_label=evidence_state_label,
+        official_state_label=official_state_label,
+        reference_state_label=reference_state_label,
+        action_items=action_items[:4],
     )
 
 
