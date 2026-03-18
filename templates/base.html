@@ -6,7 +6,7 @@
   <title>{% block title %}쓸수있어{% endblock %}</title>
 
   <!-- 캐시 때문에 스타일이 안 바뀌는 경우가 많아서 v 값 꼭 올려 -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260208-4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260318-1">
   {% block head_extra %}{% endblock %}
 </head>
 <body>
@@ -61,6 +61,92 @@
 <main>
   {% block content %}{% endblock %}
 </main>
+
+{% if session.get("user_id") %}
+  <div
+    class="receipt-modal-root"
+    data-receipt-modal-root
+    data-preview-url="{{ url_for('web_receipt_modal.preview') }}"
+    data-create-url="{{ url_for('web_receipt_modal.create') }}"
+  >
+    <button
+      type="button"
+      class="receipt-fab"
+      data-receipt-open
+      aria-haspopup="dialog"
+      aria-controls="receipt-modal"
+      aria-label="영수증으로 거래 추가"
+      title="영수증으로 거래 추가"
+    >
+      <span aria-hidden="true">+</span>
+    </button>
+
+    <div class="receipt-modal-shell" data-receipt-shell hidden>
+      <button type="button" class="receipt-modal-backdrop" data-receipt-close aria-label="닫기"></button>
+      <section class="receipt-modal" id="receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-modal-title">
+        <div class="receipt-modal-head">
+          <div>
+            <div class="h2" id="receipt-modal-title">영수증으로 거래 추가</div>
+            <div class="small-note muted2">새 페이지 이동 없이 영수증 이미지를 확인하고 거래 + 증빙으로 연결합니다.</div>
+          </div>
+          <button type="button" class="btn ghost small" data-receipt-close>닫기</button>
+        </div>
+
+        <div class="receipt-modal-body">
+          <div class="receipt-upload-card">
+            <div class="cardTitle">
+              <span>영수증 이미지 업로드</span>
+              <span class="badge">최대 50개</span>
+            </div>
+            <div class="small-note muted2" style="margin-top:8px;">
+              jpg / jpeg / png / webp 이미지를 올리면 서버에서 초안을 만들고, 확인 후 거래를 생성합니다.
+            </div>
+            <label class="receipt-upload-field" for="receipt-modal-files">
+              <span class="strong">영수증 이미지 선택</span>
+              <span class="small-note muted2">여러 장을 한 번에 올릴 수 있습니다.</span>
+              <input id="receipt-modal-files" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple data-receipt-input>
+            </label>
+            <div class="row" style="margin-top:12px;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <div class="small-note muted2" data-receipt-selection-note>선택된 파일이 없습니다.</div>
+              <div class="row" style="gap:8px;">
+                <button type="button" class="btn ghost small" data-receipt-reset>초기화</button>
+                <button type="button" class="btn primary small" data-receipt-preview disabled>파싱 초안 보기</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="receipt-summary-banner" data-receipt-summary hidden></div>
+
+          <div class="receipt-account-card" data-receipt-account-wrap hidden>
+            <label class="field" style="margin:0;">
+              <span class="label">거래에 연결할 계좌</span>
+              <select data-receipt-account-select>
+                <option value="">계좌 미지정으로 생성</option>
+              </select>
+            </label>
+            <div class="small-note muted2">현재 `main`에는 거래별 계좌 컬럼이 없어, 선택한 계좌는 메모에 함께 남깁니다.</div>
+          </div>
+
+          <div class="receipt-preview-list" data-receipt-preview-list>
+            <div class="receipt-empty-state">
+              <div class="strong">영수증 초안을 여기서 확인합니다.</div>
+              <div class="small-note muted2">사용일시, 금액, 상호가 비어 있으면 직접 확인하고 수정한 뒤 생성하면 됩니다.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="receipt-modal-foot">
+          <div class="small-note muted2">업무용 여부를 확인한 뒤 생성하면 증빙 상태가 함께 연결됩니다.</div>
+          <div class="row" style="gap:8px;">
+            <button type="button" class="btn ghost" data-receipt-close>취소</button>
+            <button type="button" class="btn primary" data-receipt-create disabled>거래 생성 + 증빙 첨부</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script defer src="{{ url_for('static', filename='receipt_modal.js') }}?v=20260318-1"></script>
+{% endif %}
 
 <footer class="footer">
   <div class="footer-inner">

@@ -75,7 +75,10 @@ def _validate_file(file: FileStorage) -> tuple[str, str]:
     """
     if not file or not file.filename:
         raise ValueError("파일이 없습니다.")
-    original = secure_filename(file.filename) or "evidence"
+
+    # 저장 경로는 별도 랜덤 토큰을 쓰므로, DB/다운로드용 원본명은 최대한 사용자 파일명을 보존한다.
+    raw_name = Path(file.filename).name.strip()
+    original = raw_name or secure_filename(file.filename) or "evidence"
     ext = _safe_ext(original)
 
     # mimetype은 클라이언트가 주는 값이라 100% 신뢰는 불가하지만, UX상 표시/분류에 씀

@@ -358,3 +358,52 @@ PYTHONPATH=. .venv/bin/python -m py_compile \
 - `정리하기`, `세금 보관함`, `공식자료 업로드`, `참고자료 업로드`, `세무사 패키지`, `건보료 안내` CTA가 모두 실제 화면으로 연결되는지
 - review / tax-buffer / overview / dashboard / package 에서 `대사 리포트` 진입을 찾을 수 있는지
 - `대사 완료`, `자동 검증 완료`, `모두 확인됨`, `정확히 맞음`, `세금 설정` 같은 비범위 표현이 없는지
+
+# 영수증으로 거래 추가 모달 v1 회귀
+
+main 브랜치에서 공통 플로팅 `+` 버튼과 영수증 모달 v1을 점검할 때는 아래 순서로 실행한다.
+
+## 1. baseline 확인
+
+```bash
+git status --short --branch
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db heads
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db current
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db upgrade
+```
+
+## 2. 회귀 테스트
+
+```bash
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' PYTHONPATH=. .venv/bin/python -m unittest \
+  tests.test_receipt_modal_routes \
+  tests.test_navigation_ux \
+  tests.test_billing_routes \
+  tests.test_nhis_routes \
+  tests.test_profile_support_admin_routes \
+  tests.test_package_routes \
+  tests.test_reconcile_routes \
+  tests.test_calendar_ux_blocks
+```
+
+## 3. 정적 검증
+
+```bash
+PYTHONPATH=. .venv/bin/python -m py_compile \
+  routes/__init__.py \
+  routes/web/receipt_modal.py \
+  services/evidence_vault.py \
+  services/receipt_modal.py \
+  tests/test_receipt_modal_routes.py \
+  tests/test_billing_routes.py
+```
+
+## 4. 수동 확인
+
+- 로그인 후 주요 화면 오른쪽 아래에 공통 `+` 버튼이 보이는지
+- 버튼 클릭 시 새 페이지 이동이 아니라 `영수증으로 거래 추가` 모달이 열리는지
+- jpg / jpeg / png / webp 이미지를 고른 뒤 `파싱 초안 보기`를 누르면 카드별 확인 UI가 나오는지
+- 50개 초과 선택 시 바로 막히는지
+- 계좌가 있으면 선택 드롭다운이 보이고, 없으면 계좌 미지정으로 진행되는지
+- 확인 후 거래가 생성되고 증빙 보관함에서 첨부 파일이 보이는지
+- `정확히 읽음`, `자동 확정` 같은 과장 문구 없이 직접 확인 안내가 유지되는지

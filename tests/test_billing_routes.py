@@ -6,6 +6,7 @@ from pathlib import Path
 from flask import Blueprint, Flask
 
 from routes.web.billing import web_billing_bp
+from routes.web.receipt_modal import web_receipt_modal_bp
 
 
 class BillingRoutesTest(unittest.TestCase):
@@ -107,6 +108,7 @@ class BillingRoutesTest(unittest.TestCase):
         app.register_blueprint(admin_bp, name="web_admin")
         app.register_blueprint(official_bp, name="web_official_data")
         app.register_blueprint(reference_bp, name="web_reference_material")
+        app.register_blueprint(web_receipt_modal_bp)
         app.register_blueprint(web_billing_bp)
 
         self.client = app.test_client()
