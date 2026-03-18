@@ -6,7 +6,7 @@
   <title>{% block title %}쓸수있어{% endblock %}</title>
 
   <!-- 캐시 때문에 스타일이 안 바뀌는 경우가 많아서 v 값 꼭 올려 -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260319-3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260319-4">
   {% block head_extra %}{% endblock %}
 </head>
 <body>
@@ -222,7 +222,7 @@
       </div>
     </div>
   </div>
-  <script defer src="{{ url_for('static', filename='receipt_modal.js') }}?v=20260319-3"></script>
+  <script defer src="{{ url_for('static', filename='receipt_modal.js') }}?v=20260319-4"></script>
 {% endif %}
 
 <footer class="footer">

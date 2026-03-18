@@ -1578,6 +1578,7 @@ body.receipt-modal-open{
   inset: 16px;
   max-width: 1240px;
   margin: 0 auto;
+  height: min(920px, calc(100vh - 32px));
   max-height: calc(100vh - 32px);
   display: grid;
   grid-template-rows: auto 1fr;
@@ -1781,7 +1782,6 @@ body.receipt-modal-open{
   display: grid;
   gap: 10px;
   min-height: 0;
-  max-height: min(560px, calc(100vh - 360px));
   overflow-y: auto;
   overflow-x: hidden;
   align-content: start;
@@ -1869,6 +1869,7 @@ body.receipt-modal-open{
   align-content: start;
   width: 100%;
   min-height: 0;
+  height: 100%;
 }
 .receipt-step-detail{
   overflow: hidden;
@@ -1876,7 +1877,6 @@ body.receipt-modal-open{
 }
 .receipt-detail-scroll{
   min-height: 0;
-  max-height: min(560px, calc(100vh - 360px));
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 6px;
@@ -1978,6 +1978,7 @@ body.receipt-modal-open{
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 16px;
   min-height: 0;
+  height: 100%;
 }
 .receipt-result-grid{
   display: grid;
@@ -1996,7 +1997,6 @@ body.receipt-modal-open{
   display: grid;
   gap: 12px;
   min-height: 0;
-  max-height: min(560px, calc(100vh - 400px));
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 6px;
@@ -2069,20 +2069,19 @@ body.receipt-modal-open{
   .receipt-step-layout{
     grid-template-columns: 1fr;
   }
+  .receipt-step-layout{
+    grid-template-rows: minmax(240px, .9fr) minmax(320px, 1.1fr);
+  }
   .receipt-result-grid,
   .receipt-date-time-grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .receipt-parse-list,
-  .receipt-detail-scroll,
-  .receipt-result-list{
-    max-height: min(360px, calc(100vh - 420px));
   }
 }
 
 @media (max-width: 900px){
   .receipt-modal{
     inset: 12px;
+    height: calc(100vh - 24px);
     max-height: calc(100vh - 24px);
   }
   .receipt-modal-head,
@@ -2099,6 +2098,9 @@ body.receipt-modal-open{
   .receipt-result-grid,
   .receipt-date-time-grid{
     grid-template-columns: 1fr;
+  }
+  .receipt-step-layout{
+    grid-template-rows: minmax(220px, .85fr) minmax(280px, 1.15fr);
   }
   .receipt-modal-body > section[data-receipt-step="2"],
   .receipt-modal-body > section[data-receipt-step="3"]{
@@ -2124,10 +2126,5 @@ body.receipt-modal-open{
     right: 16px;
     bottom: 88px;
     width: calc(100vw - 32px);
-  }
-  .receipt-parse-list,
-  .receipt-detail-scroll,
-  .receipt-result-list{
-    max-height: min(320px, calc(100vh - 440px));
   }
 }
