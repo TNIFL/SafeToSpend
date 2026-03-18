@@ -43,6 +43,33 @@
 
     <div class="hr"></div>
 
+    <div class="grid cols-2" style="margin-bottom:12px;">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>빠른 이동</span>
+          <span class="badge primary">현재 기능</span>
+        </div>
+        <div class="stack" style="margin-top:12px;gap:8px;">
+          <a class="btn full" href="{{ url_for('web_dashboard.index') }}">정리하기 열기</a>
+          <a class="btn full ghost" href="{{ url_for('web_package.page', month=month_key) }}">세무사 패키지 보기</a>
+          <a class="btn full ghost" href="{{ url_for('web_billing.index') }}">구독 안내 보기</a>
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>자료 채널</span>
+          <span class="badge">업로드/관리</span>
+        </div>
+        <div class="stack" style="margin-top:12px;gap:8px;">
+          <a class="btn full ghost" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>
+          <a class="btn full ghost" href="{{ url_for('web_reference_material.index') }}">참고자료 업로드</a>
+          <a class="btn full ghost" href="{{ url_for('web_profile.mypage') }}">내 계정 보기</a>
+          <a class="btn full ghost" href="{{ url_for('web_support.support_home') }}">문의 안내</a>
+        </div>
+      </div>
+    </div>
+
     <div class="grid cols-2">
       <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
         <div class="cardTitle">

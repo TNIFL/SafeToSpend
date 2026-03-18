@@ -165,6 +165,21 @@
 
         <div class="divider"></div>
         <div class="tiny"><b>{{ task_title }}</b></div>
+
+        <div class="divider"></div>
+        <div class="tiny"><b>지금 바로 열 수 있는 기능</b></div>
+        <div class="row" style="margin-top:10px;">
+          <a class="btn" href="{{ url_for('web_overview.overview') }}">요약</a>
+          <a class="btn" href="{{ url_for('web_package.page') }}">패키지</a>
+        </div>
+        <div class="row">
+          <a class="btn" href="{{ url_for('web_official_data.index') }}">공식자료</a>
+          <a class="btn" href="{{ url_for('web_reference_material.index') }}">참고자료</a>
+        </div>
+        <div class="row">
+          <a class="btn" href="{{ url_for('web_profile.mypage') }}">내 계정</a>
+          <a class="btn" href="{{ url_for('web_support.support_home') }}">문의</a>
+        </div>
       </form>
     </aside>
 

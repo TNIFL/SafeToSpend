@@ -16,11 +16,16 @@ class BillingRoutesTest(unittest.TestCase):
 
         main_bp = Blueprint("web_main", __name__)
         overview_bp = Blueprint("web_overview", __name__)
+        dashboard_bp = Blueprint("web_dashboard", __name__)
         bank_bp = Blueprint("web_bank", __name__)
         inbox_bp = Blueprint("web_inbox", __name__)
         auth_bp = Blueprint("web_auth", __name__)
         calendar_bp = Blueprint("web_calendar", __name__)
         vault_bp = Blueprint("web_vault", __name__)
+        package_bp = Blueprint("web_package", __name__)
+        profile_bp = Blueprint("web_profile", __name__)
+        support_bp = Blueprint("web_support", __name__)
+        admin_bp = Blueprint("web_admin", __name__)
         official_bp = Blueprint("web_official_data", __name__)
         reference_bp = Blueprint("web_reference_material", __name__)
 
@@ -31,6 +36,10 @@ class BillingRoutesTest(unittest.TestCase):
         @overview_bp.get("/overview")
         def overview():
             return "overview"
+
+        @dashboard_bp.get("/dashboard/", endpoint="index")
+        def dashboard_index():
+            return "dashboard"
 
         @bank_bp.get("/dashboard/bank", endpoint="index")
         def bank_index():
@@ -60,6 +69,22 @@ class BillingRoutesTest(unittest.TestCase):
         def vault_index():
             return "vault"
 
+        @package_bp.get("/dashboard/package", endpoint="page")
+        def package_page():
+            return "package"
+
+        @profile_bp.get("/mypage", endpoint="mypage")
+        def profile_mypage():
+            return "mypage"
+
+        @support_bp.get("/support", endpoint="support_home")
+        def support_home():
+            return "support"
+
+        @admin_bp.get("/admin", endpoint="index")
+        def admin_index():
+            return "admin"
+
         @official_bp.get("/dashboard/official-data", endpoint="index")
         def official_index():
             return "official"
@@ -70,11 +95,16 @@ class BillingRoutesTest(unittest.TestCase):
 
         app.register_blueprint(main_bp, name="web_main")
         app.register_blueprint(overview_bp, name="web_overview")
+        app.register_blueprint(dashboard_bp, name="web_dashboard")
         app.register_blueprint(bank_bp, name="web_bank")
         app.register_blueprint(inbox_bp, name="web_inbox")
         app.register_blueprint(auth_bp, name="web_auth")
         app.register_blueprint(calendar_bp, name="web_calendar")
         app.register_blueprint(vault_bp, name="web_vault")
+        app.register_blueprint(package_bp, name="web_package")
+        app.register_blueprint(profile_bp, name="web_profile")
+        app.register_blueprint(support_bp, name="web_support")
+        app.register_blueprint(admin_bp, name="web_admin")
         app.register_blueprint(official_bp, name="web_official_data")
         app.register_blueprint(reference_bp, name="web_reference_material")
         app.register_blueprint(web_billing_bp)

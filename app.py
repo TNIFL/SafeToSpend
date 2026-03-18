@@ -55,6 +55,12 @@ def create_app():
     # ✅ 모델 로딩(마이그레이션/ORM용)
     import domain.models  # noqa: F401
 
+    from core.admin_guard import current_user_is_admin
+
+    @app.context_processor
+    def inject_global_nav_flags():
+        return {"nav_is_admin": current_user_is_admin()}
+
     # ✅ 핵심: flask db 명령은 "웹 라우트"가 필요 없는데,
     # 라우트 import가 깨져 있으면 db 명령까지 같이 죽어버림.
     # 그래서 db 관련 명령일 땐 블루프린트를 등록하지 않음.

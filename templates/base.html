@@ -13,38 +13,32 @@
 
 <header class="topbar">
   <div class="topbar-inner">
+    {% set ep = request.endpoint or '' %}
     <a class="brand" href="{{ url_for('web_main.landing') }}">
       <span class="logo"></span>
       <span>쓸수있어</span>
     </a>
 
     <nav class="nav">
-      <a href="{{ url_for('web_main.landing') }}">소개</a>
-      <a href="{{ url_for('web_overview.overview') }}">요약</a>
-      <a href="{{ url_for('web_bank.index') }}">계좌연동</a>
-      {% if session.get("user_id") %}
-      <a class="nav-link {{ 'active' if (request.endpoint or '').startswith('web_calendar.') else '' }}"
-        href="{{ url_for('web_calendar.month_calendar') }}">
-        캘린더
-      </a>
-      {% endif %}
-      <a href="{{ url_for('web_inbox.index') }}">처리함</a>
-      {% if session.get("user_id") %}
-          <a class="nav-link {{ 'active' if (request.endpoint or '').startswith('web_vault.') else '' }}"
-             href="{{ url_for('web_vault.index') }}">
-            증빙 자료 보관함
-          </a>
-          <a class="nav-link {{ 'active' if (request.endpoint or '').startswith('web_official_data.') else '' }}"
-             href="{{ url_for('web_official_data.index') }}">
-            공식자료 업로드
-          </a>
-          <a class="nav-link {{ 'active' if (request.endpoint or '').startswith('web_reference_material.') else '' }}"
-             href="{{ url_for('web_reference_material.index') }}">
-            참고자료
-          </a>
-          {% endif %}
+      <a class="nav-link {{ 'active' if ep == 'web_main.landing' else '' }}" href="{{ url_for('web_main.landing') }}">소개</a>
+      <a class="nav-link {{ 'active' if ep.startswith('web_billing.') else '' }}" href="{{ url_for('web_billing.pricing_page') }}">플랜 안내</a>
 
-      {% if session.get('user_id') %}
+      {% if session.get("user_id") %}
+        <a class="nav-link {{ 'active' if ep.startswith('web_overview.') else '' }}" href="{{ url_for('web_overview.overview') }}">요약</a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_dashboard.') else '' }}" href="{{ url_for('web_dashboard.index') }}">정리하기</a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_inbox.') else '' }}" href="{{ url_for('web_inbox.index') }}">처리함</a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_bank.') else '' }}" href="{{ url_for('web_bank.index') }}">계좌연동</a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_package.') else '' }}" href="{{ url_for('web_package.page') }}">패키지</a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_official_data.') else '' }}" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_reference_material.') else '' }}" href="{{ url_for('web_reference_material.index') }}">참고자료</a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_vault.') else '' }}" href="{{ url_for('web_vault.index') }}">증빙 자료 보관함</a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_calendar.') else '' }}" href="{{ url_for('web_calendar.month_calendar') }}">캘린더</a>
+        <a class="nav-link {{ 'active' if ep == 'web_billing.index' else '' }}" href="{{ url_for('web_billing.index') }}">구독 안내</a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_profile.') else '' }}" href="{{ url_for('web_profile.mypage') }}">내 계정</a>
+        <a class="nav-link {{ 'active' if ep.startswith('web_support.') else '' }}" href="{{ url_for('web_support.support_home') }}">문의</a>
+        {% if nav_is_admin %}
+          <a class="nav-link {{ 'active' if ep.startswith('web_admin.') else '' }}" href="{{ url_for('web_admin.index') }}">관리자</a>
+        {% endif %}
         <a class="btn ghost" href="{{ url_for('web_auth.logout') }}">로그아웃</a>
       {% else %}
         <a class="btn ghost" href="{{ url_for('web_auth.login') }}">로그인</a>

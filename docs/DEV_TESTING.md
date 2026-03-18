@@ -212,3 +212,38 @@ PYTHONPATH=. .venv/bin/python -m py_compile \
 - `/mypage`가 로그인 전에는 로그인으로 이동하고, 로그인 후에는 이메일/가입일/거래·증빙 요약을 보여주는지
 - `/support`에서 문의 저장이 아직 미연결임을 숨기지 않고 안내하는지
 - `/admin`이 기본적으로 403을 반환하고, `ADMIN_EMAILS`에 등록된 계정만 접근 가능한지
+
+# 대시보드/네비게이션/UX 1차 회수 회귀
+
+main 브랜치에서 대시보드/네비게이션/UX 1차 회수를 점검할 때는 아래 순서로 실행한다.
+
+## 1. baseline 확인
+
+```bash
+git status --short --branch
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db heads
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db current
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db upgrade
+```
+
+## 2. UX 회귀
+
+```bash
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' PYTHONPATH=. .venv/bin/python -m unittest \
+  tests.test_navigation_ux
+```
+
+## 3. 정적 검증
+
+```bash
+PYTHONPATH=. .venv/bin/python -m py_compile \
+  app.py \
+  tests/test_navigation_ux.py
+```
+
+## 4. 수동 확인
+
+- 로그인 후 상단 네비게이션에서 요약/정리하기/처리함/패키지/공식자료/참고자료/내 계정/문의를 바로 찾을 수 있는지
+- 로그인 전에는 없는 기능으로 가는 링크가 보이지 않는지
+- overview, dashboard, package 화면에서 현재 있는 기능으로 가는 CTA가 늘었는지
+- `알림`, `대사 리포트`, `세금 설정`처럼 아직 없는 링크는 노출되지 않는지
