@@ -1601,18 +1601,15 @@ body.receipt-modal-open{
   background: rgba(248,250,252,.95);
 }
 .receipt-modal-body{
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-height: 0;
-  align-items: stretch;
-  align-content: start;
 }
 .receipt-modal-body > section{
-  min-height: auto;
+  min-height: 0;
   min-width: 0;
 }
 .receipt-step-badges{
@@ -1753,36 +1750,43 @@ body.receipt-modal-open{
 }
 .receipt-modal-body > section[data-receipt-step="2"],
 .receipt-modal-body > section[data-receipt-step="3"]{
-  flex: 0 0 auto;
-  min-height: auto;
-  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 16px;
 }
 .receipt-step-layout{
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
   gap: 16px;
-  min-height: auto;
-  align-items: start;
+  min-height: 0;
+  height: 100%;
+  align-items: stretch;
 }
 .receipt-step-layout > *{
   min-width: 0;
-  align-self: start;
+  min-height: 0;
 }
 .receipt-step-sidebar,
 .receipt-step-detail{
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
-  min-height: auto;
-  overflow: visible;
+  min-height: 0;
+  overflow: hidden;
   align-content: start;
 }
 .receipt-parse-list{
   display: grid;
   gap: 10px;
-  min-height: auto;
-  overflow: visible;
-  max-height: none;
+  min-height: 0;
+  max-height: min(560px, calc(100vh - 360px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: start;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
 }
 .receipt-empty-state{
   padding: 20px;
@@ -1860,13 +1864,26 @@ body.receipt-modal-open{
 .receipt-status-error::after{ transform: rotate(-45deg); }
 .receipt-detail-card{
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   align-content: start;
   width: 100%;
+  min-height: 0;
 }
 .receipt-step-detail{
-  overflow: visible;
+  overflow: hidden;
   padding-right: 0;
+}
+.receipt-detail-scroll{
+  min-height: 0;
+  max-height: min(560px, calc(100vh - 360px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  scrollbar-gutter: stable;
 }
 .receipt-detail-head,
 .receipt-result-card-head{
@@ -1958,8 +1975,9 @@ body.receipt-modal-open{
 }
 .receipt-result-shell{
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 16px;
-  min-height: auto;
+  min-height: 0;
 }
 .receipt-result-grid{
   display: grid;
@@ -1977,9 +1995,13 @@ body.receipt-modal-open{
 .receipt-result-list{
   display: grid;
   gap: 12px;
-  min-height: auto;
-  overflow: visible;
-  padding-right: 0;
+  min-height: 0;
+  max-height: min(560px, calc(100vh - 400px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  align-content: start;
+  scrollbar-gutter: stable;
 }
 .receipt-result-card{
   padding: 14px;
@@ -2051,6 +2073,11 @@ body.receipt-modal-open{
   .receipt-date-time-grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .receipt-parse-list,
+  .receipt-detail-scroll,
+  .receipt-result-list{
+    max-height: min(360px, calc(100vh - 420px));
+  }
 }
 
 @media (max-width: 900px){
@@ -2073,6 +2100,10 @@ body.receipt-modal-open{
   .receipt-date-time-grid{
     grid-template-columns: 1fr;
   }
+  .receipt-modal-body > section[data-receipt-step="2"],
+  .receipt-modal-body > section[data-receipt-step="3"]{
+    grid-template-rows: auto auto;
+  }
   .receipt-step-actions,
   .receipt-toast,
   .receipt-detail-head,
@@ -2093,5 +2124,10 @@ body.receipt-modal-open{
     right: 16px;
     bottom: 88px;
     width: calc(100vw - 32px);
+  }
+  .receipt-parse-list,
+  .receipt-detail-scroll,
+  .receipt-result-list{
+    max-height: min(320px, calc(100vh - 440px));
   }
 }

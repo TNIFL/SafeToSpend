@@ -418,20 +418,22 @@
             </div>
             <span class="badge bad">실패</span>
           </div>
-          <div class="receipt-inline-error">${escapeHtml(item.error || "파싱에 실패했습니다.")}</div>
-          ${Array.isArray(item.warnings) && item.warnings.length ? `
-            <div class="receipt-failure-card">
-              <div class="strong">확인된 사유</div>
-              <div class="receipt-failure-list">
-                ${item.warnings.map((warning) => `<div class="receipt-failure-item">${escapeHtml(warning)}</div>`).join("")}
+          <div class="receipt-detail-scroll">
+            <div class="receipt-inline-error">${escapeHtml(item.error || "파싱에 실패했습니다.")}</div>
+            ${Array.isArray(item.warnings) && item.warnings.length ? `
+              <div class="receipt-failure-card">
+                <div class="strong">확인된 사유</div>
+                <div class="receipt-failure-list">
+                  ${item.warnings.map((warning) => `<div class="receipt-failure-item">${escapeHtml(warning)}</div>`).join("")}
+                </div>
               </div>
-            </div>
-          ` : `
-            <div class="receipt-failure-card">
-              <div class="strong">확인된 사유</div>
-              <div class="receipt-failure-item">현재 서버에서 구체적인 실패 사유를 찾지 못했습니다. 같은 이미지를 다시 올리거나 다른 형식으로 변환해 시도해 주세요.</div>
-            </div>
-          `}
+            ` : `
+              <div class="receipt-failure-card">
+                <div class="strong">확인된 사유</div>
+                <div class="receipt-failure-item">현재 서버에서 구체적인 실패 사유를 찾지 못했습니다. 같은 이미지를 다시 올리거나 다른 형식으로 변환해 시도해 주세요.</div>
+              </div>
+            `}
+          </div>
         </div>
       `;
       return;
@@ -462,49 +464,50 @@
             <span class="small-note muted2">${escapeHtml(saveStateText)}</span>
           </div>
         </div>
-
-        <div class="receipt-form-grid receipt-form-grid-single">
-          <label class="field">
-            <span class="label">매장 명</span>
-            <input type="text" data-field="counterparty" value="${escapeHtml(item.counterparty || "")}" placeholder="알수없음" ${disabled}>
-          </label>
-          <div class="receipt-date-time-grid">
+        <div class="receipt-detail-scroll">
+          <div class="receipt-form-grid receipt-form-grid-single">
             <label class="field">
-              <span class="label">날짜</span>
-              <input type="date" data-field="occurred_on" value="${escapeHtml(item.occurred_on || "")}" ${disabled}>
+              <span class="label">매장 명</span>
+              <input type="text" data-field="counterparty" value="${escapeHtml(item.counterparty || "")}" placeholder="알수없음" ${disabled}>
+            </label>
+            <div class="receipt-date-time-grid">
+              <label class="field">
+                <span class="label">날짜</span>
+                <input type="date" data-field="occurred_on" value="${escapeHtml(item.occurred_on || "")}" ${disabled}>
+              </label>
+              <label class="field">
+                <span class="label">시간</span>
+                <input type="time" data-field="occurred_time" value="${escapeHtml(item.occurred_time || "")}" ${disabled}>
+              </label>
+            </div>
+            <label class="field">
+              <span class="label">결제 금액</span>
+              <input type="number" min="1" step="1" data-field="amount_krw" value="${escapeHtml(item.amount_krw || "")}" placeholder="알수없음" ${disabled}>
             </label>
             <label class="field">
-              <span class="label">시간</span>
-              <input type="time" data-field="occurred_time" value="${escapeHtml(item.occurred_time || "")}" ${disabled}>
+              <span class="label">결제 항목</span>
+              <input type="text" data-field="payment_item" value="${escapeHtml(item.payment_item || "")}" placeholder="알수없음" ${disabled}>
+            </label>
+            <label class="field">
+              <span class="label">결제 카드 및 계좌번호</span>
+              <input type="text" data-field="payment_method" value="${escapeHtml(item.payment_method || "")}" placeholder="알수없음" ${disabled}>
+            </label>
+            <label class="field">
+              <span class="label">메모</span>
+              <input type="text" data-field="memo" value="${escapeHtml(item.memo || "")}" placeholder="알수없음" ${disabled}>
+            </label>
+            <label class="field">
+              <span class="label">업무용 여부</span>
+              <select data-field="usage" ${disabled}>
+                <option value="business" ${item.usage === "business" ? "selected" : ""}>업무용</option>
+                <option value="personal" ${item.usage === "personal" ? "selected" : ""}>개인용</option>
+                <option value="unknown" ${item.usage === "unknown" ? "selected" : ""}>나중에 검토</option>
+              </select>
             </label>
           </div>
-          <label class="field">
-            <span class="label">결제 금액</span>
-            <input type="number" min="1" step="1" data-field="amount_krw" value="${escapeHtml(item.amount_krw || "")}" placeholder="알수없음" ${disabled}>
-          </label>
-          <label class="field">
-            <span class="label">결제 항목</span>
-            <input type="text" data-field="payment_item" value="${escapeHtml(item.payment_item || "")}" placeholder="알수없음" ${disabled}>
-          </label>
-          <label class="field">
-            <span class="label">결제 카드 및 계좌번호</span>
-            <input type="text" data-field="payment_method" value="${escapeHtml(item.payment_method || "")}" placeholder="알수없음" ${disabled}>
-          </label>
-          <label class="field">
-            <span class="label">메모</span>
-            <input type="text" data-field="memo" value="${escapeHtml(item.memo || "")}" placeholder="알수없음" ${disabled}>
-          </label>
-          <label class="field">
-            <span class="label">업무용 여부</span>
-            <select data-field="usage" ${disabled}>
-              <option value="business" ${item.usage === "business" ? "selected" : ""}>업무용</option>
-              <option value="personal" ${item.usage === "personal" ? "selected" : ""}>개인용</option>
-              <option value="unknown" ${item.usage === "unknown" ? "selected" : ""}>나중에 검토</option>
-            </select>
-          </label>
-        </div>
 
-        ${Array.isArray(item.warnings) && item.warnings.length ? `<div class="receipt-warning-list">${item.warnings.map((warning) => `<div class="receipt-warning-item">${escapeHtml(warning)}</div>`).join("")}</div>` : ""}
+          ${Array.isArray(item.warnings) && item.warnings.length ? `<div class="receipt-warning-list">${item.warnings.map((warning) => `<div class="receipt-warning-item">${escapeHtml(warning)}</div>`).join("")}</div>` : ""}
+        </div>
       </div>
     `;
   }
