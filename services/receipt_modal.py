@@ -8,8 +8,14 @@ from typing import Any
 
 from werkzeug.datastructures import FileStorage
 MAX_RECEIPT_MODAL_FILES = 50
-ALLOWED_RECEIPT_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
-ALLOWED_RECEIPT_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_RECEIPT_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
+ALLOWED_RECEIPT_IMAGE_MIMES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+}
 
 _DATE_PATTERNS = [
     re.compile(r"(?P<y>20\d{2})[._-]?(?P<m>\d{2})[._-]?(?P<d>\d{2})"),
@@ -66,8 +72,12 @@ def validate_receipt_image(file: FileStorage) -> tuple[str, str, int]:
     mime = (file.mimetype or "").strip() or _guess_mime(filename)
 
     if ext not in ALLOWED_RECEIPT_IMAGE_EXTS:
-        raise ValueError("영수증 이미지는 jpg, jpeg, png, webp만 업로드할 수 있습니다.")
-    if mime not in ALLOWED_RECEIPT_IMAGE_MIMES and not mime.startswith("image/"):
+        raise ValueError("영수증 이미지는 jpg, jpeg, png, webp, heic, heif만 업로드할 수 있습니다.")
+    if (
+        mime not in ALLOWED_RECEIPT_IMAGE_MIMES
+        and not mime.startswith("image/")
+        and mime != "application/octet-stream"
+    ):
         raise ValueError("이미지 파일만 업로드할 수 있습니다.")
 
     size_bytes = _measure_file_size(file)

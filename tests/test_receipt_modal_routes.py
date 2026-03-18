@@ -126,6 +126,26 @@ class ReceiptModalRoutesTest(unittest.TestCase):
         self.assertEqual(payload["accounts"][0]["label"], "토스 주계좌")
         self.assertEqual(payload["max_files"], 50)
 
+    def test_preview_accepts_heic_images(self) -> None:
+        self._login()
+
+        response = self.client.post(
+            "/dashboard/receipt-modal/preview",
+            data={
+                "files": [
+                    (io.BytesIO(b"fake-heic-image"), "20260318_11000원_편의점.heic"),
+                ]
+            },
+            content_type="multipart/form-data",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(len(payload["items"]), 1)
+        self.assertEqual(payload["items"][0]["filename"], "20260318_11000원_편의점.heic")
+        self.assertEqual(payload["items"][0]["amount_krw"], 11000)
+
     def test_create_transaction_and_attach_evidence_with_selected_account(self) -> None:
         self._login()
 
