@@ -285,3 +285,37 @@ PYTHONPATH=. .venv/bin/python -m py_compile \
 - 화면에 `공식자료 업로드`, `참고자료 업로드`, `정리하기`, `세금 보관함`, `세무사 패키지` CTA가 보이는지
 - `정확히 계산`, `자동 확정`, `공식 확인 완료` 같은 과장 문구가 없는지
 - overview와 dashboard에서 `건보료 안내` 진입 링크를 찾을 수 있는지
+
+# 정리하기/세금 보관함 UX 보강 회귀
+
+main 브랜치에서 정리하기/세금 보관함 UX 보강 블록을 점검할 때는 아래 순서로 실행한다.
+
+## 1. baseline 확인
+
+```bash
+git status --short --branch
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db heads
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db current
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db upgrade
+```
+
+## 2. review/tax_buffer UX 회귀
+
+```bash
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' PYTHONPATH=. .venv/bin/python -m unittest \
+  tests.test_calendar_ux_blocks
+```
+
+## 3. 정적 검증
+
+```bash
+PYTHONPATH=. .venv/bin/python -m py_compile \
+  tests/test_calendar_ux_blocks.py
+```
+
+## 4. 수동 확인
+
+- `/dashboard/review`에서 `이번 달 정리 순서`, `자료 보강 경로` 블록이 보이는지
+- `/dashboard/tax-buffer`에서 `이 숫자를 이렇게 보세요`, `수치를 보강하는 방법` 블록이 보이는지
+- 두 화면에서 `공식자료 업로드`, `참고자료 업로드`, `건보료 안내`, `세무사 패키지` CTA가 노출되는지
+- `세금 설정`, `대사 리포트`, `정밀 계산` 같은 비범위 기능이 암시되지 않는지

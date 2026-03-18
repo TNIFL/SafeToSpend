@@ -19,6 +19,57 @@
     </div>
   </div>
 
+  <div class="grid cols-2" style="margin-bottom:12px;">
+    <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+      <div class="cardTitle">
+        <span>이번 달 정리 순서</span>
+        <span class="badge primary">현재 기준</span>
+      </div>
+      <div class="stack" style="margin-top:12px;gap:10px;">
+        <div class="row" style="justify-content:space-between;">
+          <span class="muted">필수 영수증</span>
+          <span class="badge {% if counts.get('evidence_required', 0) > 0 %}warn{% endif %}">{{ counts.get('evidence_required', 0) }}건</span>
+        </div>
+        <div class="row" style="justify-content:space-between;">
+          <span class="muted">지출 분류</span>
+          <span class="badge {% if counts.get('expense_unknown', 0) > 0 %}warn{% endif %}">{{ counts.get('expense_unknown', 0) }}건</span>
+        </div>
+        <div class="row" style="justify-content:space-between;">
+          <span class="muted">수입 분류</span>
+          <span class="badge {% if counts.get('income_unknown', 0) > 0 %}warn{% endif %}">{{ counts.get('income_unknown', 0) }}건</span>
+        </div>
+        <div class="row" style="justify-content:space-between;">
+          <span class="muted">검토 영수증</span>
+          <span class="badge {% if counts.get('evidence_maybe', 0) > 0 %}warn{% endif %}">{{ counts.get('evidence_maybe', 0) }}건</span>
+        </div>
+        <div class="small-note muted2">
+          필수 영수증과 분류부터 먼저 정리한 뒤, 설명이 더 필요한 자료는 공식자료나 참고자료로 나눠 두면 패키지 준비가 쉬워집니다.
+        </div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;">
+          <a class="btn small primary" href="{{ url_for('web_calendar.review', month=month_key, focus='evidence_required', q=q, limit=limit) }}">필수 영수증부터</a>
+          <a class="btn small ghost" href="{{ url_for('web_calendar.review', month=month_key, focus='expense_unknown', q=q, limit=limit) }}">지출 분류 보기</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+      <div class="cardTitle">
+        <span>자료 보강 경로</span>
+        <span class="badge">현재 가능</span>
+      </div>
+      <div class="small-note muted2" style="margin-top:12px;">
+        정리하기는 거래와 증빙을 정돈하는 화면입니다. 건보료 관련 자료, 설명 메모, 세무사 전달 준비는 아래 경로로 이어서 진행하는 것이 안전합니다.
+      </div>
+      <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
+        <a class="btn small ghost" href="{{ url_for('web_vault.index', month=month_key) }}">증빙 보관함</a>
+        <a class="btn small ghost" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>
+        <a class="btn small ghost" href="{{ url_for('web_reference_material.index') }}">참고자료 업로드</a>
+        <a class="btn small ghost" href="{{ url_for('web_nhis.index') }}">건보료 안내</a>
+        <a class="btn small" href="{{ url_for('web_package.page', month=month_key) }}">세무사 패키지</a>
+      </div>
+    </div>
+  </div>
+
   <!-- =========================
        Tabs + Actionbar
   ========================= -->

@@ -15,6 +15,41 @@
     </div>
   </div>
 
+  <div class="grid cols-2" style="margin-top:12px;margin-bottom:12px;">
+    <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+      <div class="cardTitle">
+        <span>이 숫자를 이렇게 보세요</span>
+        <span class="badge warn">참고용</span>
+      </div>
+      <div class="stack" style="margin-top:12px;gap:10px;">
+        <div class="small-note muted2">권장 보관은 이번 달 기준의 준비용 목표입니다. 확정 세액이 아니라, 먼저 떼어둘 금액을 가늠하는 용도에 가깝습니다.</div>
+        <div class="small-note muted2">현재 보관은 직접 기록한 보관/해제 내역의 합계입니다. 부족분이 보여도 곧바로 확정 납부액이라는 뜻은 아닙니다.</div>
+        <div class="small-note muted2">거래 분류, 영수증 정리, 공식자료 보강이 늘어나면 다음 달 해석이 더 쉬워집니다.</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;">
+          <a class="btn small primary" href="{{ url_for('web_calendar.review', month=month_key) }}">정리하기로 이동</a>
+          <a class="btn small ghost" href="{{ url_for('web_nhis.index') }}">건보료 안내 보기</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+      <div class="cardTitle">
+        <span>수치를 보강하는 방법</span>
+        <span class="badge">현재 가능</span>
+      </div>
+      <div class="small-note muted2" style="margin-top:12px;">
+        공식자료와 참고자료를 따로 모아두면 현재 숫자를 세무사에게 설명하기 쉬워집니다. 건보료 관련 자료는 전용 안내 화면에서 준비 순서를 확인할 수 있습니다.
+      </div>
+      <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
+        <a class="btn small ghost" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>
+        <a class="btn small ghost" href="{{ url_for('web_reference_material.index') }}">참고자료 업로드</a>
+        <a class="btn small ghost" href="{{ url_for('web_nhis.index') }}">건보료 안내</a>
+        <a class="btn small ghost" href="{{ url_for('web_vault.index', month=month_key) }}">증빙 보관함</a>
+        <a class="btn small" href="{{ url_for('web_package.page', month=month_key) }}">세무사 패키지</a>
+      </div>
+    </div>
+  </div>
+
   <div class="kpiRow">
     <div class="kpi">
       <div class="label">이번 달 수입</div>
