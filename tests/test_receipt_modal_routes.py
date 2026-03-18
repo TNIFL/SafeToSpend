@@ -9,6 +9,8 @@ from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
 
+import requests
+
 from app import create_app
 from core.extensions import db
 from domain.models import (
@@ -235,6 +237,53 @@ class ReceiptModalRoutesTest(unittest.TestCase):
         self.assertEqual(item["occurred_on"], "2026-03-18")
         self.assertEqual(item["occurred_time"], "22:15")
         self.assertEqual(item["payment_method"], "카드 ****4321")
+
+    def test_status_returns_user_facing_failure_reason_for_timeout(self) -> None:
+        self._login()
+        with patch(
+            "services.receipt_modal._parse_receipt_file_with_openai",
+            side_effect=requests.Timeout("timed out"),
+        ):
+            start_response = self.client.post(
+                "/dashboard/receipt-modal/start",
+                data={
+                    "files": [
+                        (io.BytesIO(b"fake-image"), "20260318_timeout_스타벅스.jpg"),
+                    ]
+                },
+                content_type="multipart/form-data",
+            )
+            job_id = start_response.get_json()["job"]["job_id"]
+            payload = self._wait_for_job(job_id)
+
+        item = payload["job"]["items"][0]
+        self.assertTrue(payload["job"]["is_complete"])
+        self.assertEqual(item["status"], "error")
+        self.assertEqual(item["error"], "영수증 확인 시간이 초과되었습니다.")
+        self.assertIn("응답이 늦어졌습니다", " ".join(item["warnings"]))
+
+    def test_status_returns_user_facing_failure_reason_for_auth_error(self) -> None:
+        self._login()
+        with patch(
+            "services.receipt_modal._parse_receipt_file_with_openai",
+            side_effect=ValueError("OpenAI API 인증에 실패했습니다."),
+        ):
+            start_response = self.client.post(
+                "/dashboard/receipt-modal/start",
+                data={
+                    "files": [
+                        (io.BytesIO(b"fake-image"), "20260318_auth_스타벅스.jpg"),
+                    ]
+                },
+                content_type="multipart/form-data",
+            )
+            job_id = start_response.get_json()["job"]["job_id"]
+            payload = self._wait_for_job(job_id)
+
+        item = payload["job"]["items"][0]
+        self.assertEqual(item["status"], "error")
+        self.assertEqual(item["error"], "OpenAI 인증 설정을 확인해 주세요.")
+        self.assertIn("OPENAI_API_KEY", " ".join(item["warnings"]))
 
     def test_history_returns_recent_jobs(self) -> None:
         self._login()

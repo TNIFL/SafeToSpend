@@ -19,6 +19,7 @@ from uuid import uuid4
 
 import requests
 from flask import current_app
+from PIL import UnidentifiedImageError
 from sqlalchemy import and_, or_
 from werkzeug.datastructures import FileStorage
 
@@ -435,15 +436,22 @@ def _call_openai_receipt_parser(item: ReceiptModalJobItem) -> dict[str, Any]:
         "text": {"format": {"type": "json_object"}},
         "max_output_tokens": 500,
     }
-    response = requests.post(
-        _openai_endpoint(),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-        timeout=RECEIPT_OPENAI_TIMEOUT_SECONDS,
-    )
+    try:
+        response = requests.post(
+            _openai_endpoint(),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=RECEIPT_OPENAI_TIMEOUT_SECONDS,
+        )
+    except requests.Timeout as exc:
+        raise ValueError("OpenAI 요청 시간이 초과되었습니다.") from exc
+    except requests.ConnectionError as exc:
+        raise ValueError("OpenAI 서버에 연결하지 못했습니다.") from exc
+    except requests.RequestException as exc:
+        raise ValueError("OpenAI 요청 전송 중 문제가 발생했습니다.") from exc
     if response.status_code >= 400:
         try:
             error_payload = response.json()
@@ -452,6 +460,20 @@ def _call_openai_receipt_parser(item: ReceiptModalJobItem) -> dict[str, Any]:
         error_message = None
         if isinstance(error_payload, dict):
             error_message = ((error_payload.get("error") or {}).get("message")) if isinstance(error_payload.get("error"), dict) else None
+        if response.status_code == 400:
+            raise ValueError(error_message or "OpenAI가 이미지를 해석하지 못했거나 요청 형식이 올바르지 않습니다.")
+        if response.status_code == 401:
+            raise ValueError(error_message or "OpenAI API 인증에 실패했습니다.")
+        if response.status_code == 403:
+            raise ValueError(error_message or "현재 모델 접근 권한이 없습니다.")
+        if response.status_code == 404:
+            raise ValueError(error_message or "설정된 OpenAI 모델을 찾지 못했습니다.")
+        if response.status_code == 413:
+            raise ValueError(error_message or "업로드한 이미지가 너무 커서 OpenAI가 처리하지 못했습니다.")
+        if response.status_code == 429:
+            raise ValueError(error_message or "OpenAI 요청 한도를 초과했습니다.")
+        if response.status_code >= 500:
+            raise ValueError(error_message or "OpenAI 응답 오류(서버 측 문제)")
         raise ValueError(error_message or f"OpenAI 응답 오류({response.status_code})")
 
     result_payload = response.json()
@@ -477,6 +499,120 @@ def _call_openai_receipt_parser(item: ReceiptModalJobItem) -> dict[str, Any]:
 
 def _parse_receipt_file_with_openai(item: ReceiptModalJobItem) -> dict[str, Any]:
     return _call_openai_receipt_parser(item)
+
+
+def _classify_receipt_parse_failure(exc: Exception, item: ReceiptModalJobItemRecord) -> tuple[str, list[str]]:
+    message = str(exc or "").strip()
+    lower = message.lower()
+    filename = item.original_filename
+
+    if "openai_api_key" in lower or "api 인증" in lower or "invalid_api_key" in lower or "authentication" in lower:
+        return (
+            "OpenAI 인증 설정을 확인해 주세요.",
+            [
+                "현재 서버에서 OPENAI_API_KEY를 사용해 영수증 파싱을 호출하지 못했습니다.",
+                "환경변수 값이 비어 있거나 잘못되었을 가능성이 큽니다.",
+                "관리자에게 API 키와 모델 설정을 다시 확인해 달라고 요청해 주세요.",
+            ],
+        )
+    if "모델을 찾지 못했습니다" in message or "model" in lower and "not found" in lower:
+        return (
+            "영수증 파싱 모델 설정이 올바르지 않습니다.",
+            [
+                "현재 서버가 설정한 OPENAI_MODEL 값을 사용할 수 없습니다.",
+                "모델 이름 오타나 접근 권한 문제일 수 있습니다.",
+                "관리자에게 모델 설정을 다시 확인해 달라고 요청해 주세요.",
+            ],
+        )
+    if "권한" in message or "permission" in lower or "forbidden" in lower:
+        return (
+            "현재 계정으로는 파싱 모델을 사용할 수 없습니다.",
+            [
+                "OpenAI 프로젝트 또는 조직 권한 때문에 요청이 거부되었습니다.",
+                "관리자에게 모델 권한과 프로젝트 설정을 확인해 달라고 요청해 주세요.",
+            ],
+        )
+    if "요청 한도" in message or "rate limit" in lower or "quota" in lower or "429" in lower:
+        return (
+            "지금은 파싱 요청이 많아 처리가 지연되고 있습니다.",
+            [
+                "OpenAI 요청 한도 또는 분당 처리량 제한에 걸렸습니다.",
+                "잠시 후 다시 시도하면 정상 처리될 수 있습니다.",
+                "대량 업로드는 나눠서 올리면 더 안정적입니다.",
+            ],
+        )
+    if "시간이 초과" in message or "timeout" in lower or "timed out" in lower:
+        return (
+            "영수증 확인 시간이 초과되었습니다.",
+            [
+                "이미지 수가 많거나 파일이 커서 파싱 응답이 늦어졌습니다.",
+                "같은 파일을 다시 시도하거나 업로드 묶음을 줄여 보세요.",
+            ],
+        )
+    if "연결하지 못했습니다" in message or "connection" in lower:
+        return (
+            "파싱 서버와 통신하지 못했습니다.",
+            [
+                "일시적인 네트워크 문제이거나 OpenAI 연결이 불안정한 상태입니다.",
+                "잠시 후 다시 시도해 주세요.",
+            ],
+        )
+    if "응답에서 텍스트" in message or "json 형식" in message:
+        return (
+            "파싱 응답 형식을 읽지 못했습니다.",
+            [
+                "영수증 인식 결과는 왔지만 서버가 기대한 형식으로 정리되지 않았습니다.",
+                "다시 시도하거나 다른 각도의 이미지로 업로드해 주세요.",
+            ],
+        )
+    if "임시 이미지 파일" in message or "임시 파일" in message or "파일이 없어" in message:
+        return (
+            "업로드한 영수증 원본 파일을 찾지 못했습니다.",
+            [
+                "서버 임시 저장소에서 파일을 읽지 못해 파싱을 계속할 수 없었습니다.",
+                "같은 영수증을 다시 업로드해 주세요.",
+            ],
+        )
+    if "이미지 파일만" in message or "jpg, jpeg, png, webp, heic, heif" in message:
+        return (
+            "지원하지 않는 파일 형식입니다.",
+            [
+                f"{filename} 파일은 현재 지원하는 영수증 이미지 형식으로 처리되지 않았습니다.",
+                "jpg, jpeg, png, webp, heic, heif 형식으로 다시 업로드해 주세요.",
+            ],
+        )
+    if isinstance(exc, UnidentifiedImageError) or "cannot identify image file" in lower or "identify image" in lower:
+        return (
+            "이미지 파일을 열 수 없습니다.",
+            [
+                f"{filename} 파일이 손상되었거나 이미지 형식이 올바르지 않을 수 있습니다.",
+                "다른 뷰어에서 열리는지 먼저 확인한 뒤 다시 업로드해 주세요.",
+            ],
+        )
+    if "heic" in lower or "heif" in lower or "pillow_heif" in lower:
+        return (
+            "HEIC 이미지를 변환하지 못했습니다.",
+            [
+                f"{filename} 파일을 JPEG로 변환하는 중 문제가 발생했습니다.",
+                "같은 이미지를 JPG 또는 PNG로 변환해서 다시 올리면 더 안정적입니다.",
+            ],
+        )
+    if "too large" in lower or "너무 커서" in message:
+        return (
+            "이미지 크기가 너무 커서 처리하지 못했습니다.",
+            [
+                f"{filename} 파일 크기 또는 해상도가 너무 커서 파싱이 중단되었습니다.",
+                "이미지를 줄이거나 여러 묶음으로 나눠 업로드해 주세요.",
+            ],
+        )
+    return (
+        "영수증을 해석하는 중 문제가 발생했습니다.",
+        [
+            f"{filename} 파일에서 읽을 수 있는 정보를 충분히 찾지 못했거나 응답 처리 중 오류가 발생했습니다.",
+            "사진이 흐리거나 일부가 잘린 경우 다시 촬영한 뒤 업로드해 주세요.",
+            "같은 문제가 반복되면 다른 형식(JPG/PNG)으로 다시 올려 보세요.",
+        ],
+    )
 
 
 def _item_record_to_parser_item(item: ReceiptModalJobItemRecord) -> ReceiptModalJobItem:
@@ -817,9 +953,10 @@ def _process_claimed_job(job_id: str, worker_id: str) -> None:
             item.warnings_json = list(fields.get("warnings") or [])
             item.updated_at = utcnow()
         except Exception as exc:
+            error_title, error_details = _classify_receipt_parse_failure(exc, item)
             item.status = "error"
-            item.error = str(exc) or "파싱 중 문제가 발생했습니다."
-            item.warnings_json = []
+            item.error = error_title
+            item.warnings_json = error_details
             item.updated_at = utcnow()
         finally:
             job.worker_heartbeat_at = utcnow()

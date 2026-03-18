@@ -381,7 +381,7 @@
         const statusClass = `receipt-status-${item.status}`;
         const activeClass = item.item_id === state.activeItemId ? "is-active" : "";
         const metaText = item.status === "error"
-          ? "파싱 실패"
+          ? (item.error || "파싱 실패")
           : item.status === "created"
             ? "거래 생성 완료"
             : item.status === "ready"
@@ -419,6 +419,19 @@
             <span class="badge bad">실패</span>
           </div>
           <div class="receipt-inline-error">${escapeHtml(item.error || "파싱에 실패했습니다.")}</div>
+          ${Array.isArray(item.warnings) && item.warnings.length ? `
+            <div class="receipt-failure-card">
+              <div class="strong">확인된 사유</div>
+              <div class="receipt-failure-list">
+                ${item.warnings.map((warning) => `<div class="receipt-failure-item">${escapeHtml(warning)}</div>`).join("")}
+              </div>
+            </div>
+          ` : `
+            <div class="receipt-failure-card">
+              <div class="strong">확인된 사유</div>
+              <div class="receipt-failure-item">현재 서버에서 구체적인 실패 사유를 찾지 못했습니다. 같은 이미지를 다시 올리거나 다른 형식으로 변환해 시도해 주세요.</div>
+            </div>
+          `}
         </div>
       `;
       return;
@@ -585,6 +598,7 @@
     `;
 
     const resultItems = state.items.filter((item) => item.status !== "error");
+    const failedItems = state.items.filter((item) => item.status === "error");
     if (!resultItems.length) {
       resultList.innerHTML = '<div class="receipt-empty-state"><div class="strong">생성 가능한 항목이 없습니다.</div><div class="small-note muted2">파싱 실패 항목을 제외하고 다시 업로드해 주세요.</div></div>';
     } else {
@@ -607,6 +621,37 @@
           </article>
         `)
         .join("");
+    }
+
+    if (failedItems.length) {
+      const failedHtml = failedItems
+        .map((item) => `
+          <article class="receipt-result-card receipt-result-card-error">
+            <div class="receipt-result-card-head">
+              <div>
+                <div class="strong">${escapeHtml(item.filename)}</div>
+                <div class="small-note muted2">${escapeHtml(item.error || "파싱 실패")}</div>
+              </div>
+              <span class="badge bad">실패</span>
+            </div>
+            <div class="receipt-result-meta">
+              ${(Array.isArray(item.warnings) && item.warnings.length ? item.warnings : ["사유를 다시 확인하려면 파싱 확인 단계에서 해당 파일을 눌러 주세요."])
+                .map((warning) => `<span>${escapeHtml(warning)}</span>`)
+                .join("")}
+            </div>
+          </article>
+        `)
+        .join("");
+
+      resultList.innerHTML += `
+        <section class="receipt-result-failures">
+          <div class="cardTitle">
+            <span>실패한 항목</span>
+            <span class="small-note muted2">사유와 다음 행동</span>
+          </div>
+          <div class="receipt-failure-grid">${failedHtml}</div>
+        </section>
+      `;
     }
 
     renderAccounts();
@@ -649,7 +694,13 @@
     if (!job.is_complete) {
       setSummary("영수증을 백그라운드에서 파싱하고 있습니다. 다른 화면으로 이동해도 완료되면 알림을 보여줍니다.", "info");
     } else if (!previousComplete) {
-      setSummary("파싱이 끝났습니다. 결과 확인 단계에서 한 번 더 검토한 뒤 생성할 수 있습니다.", "good");
+      const errorCount = Array.isArray(job.items) ? job.items.filter((item) => item.status === "error").length : 0;
+      setSummary(
+        errorCount
+          ? `파싱이 끝났습니다. ${errorCount}건은 실패 사유를 확인해 주세요.`
+          : "파싱이 끝났습니다. 결과 확인 단계에서 한 번 더 검토한 뒤 생성할 수 있습니다.",
+        errorCount ? "warn" : "good"
+      );
       const notifiedJobId = storageGet(TOAST_KEY);
       const shouldToast =
         !state.resumingJob &&
@@ -657,7 +708,11 @@
         notifiedJobId !== job.job_id;
       if (shouldToast) {
         storageSet(TOAST_KEY, job.job_id);
-        showToast("영수증 파싱이 끝났습니다. 결과를 확인해 주세요.");
+        showToast(
+          errorCount
+            ? `영수증 파싱이 끝났습니다. 실패 ${errorCount}건의 사유를 확인해 주세요.`
+            : "영수증 파싱이 끝났습니다. 결과를 확인해 주세요."
+        );
       }
     }
 
