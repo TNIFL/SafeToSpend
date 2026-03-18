@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import base64
+import io
+import json
 import mimetypes
+import os
 import re
 import shutil
 import tempfile
@@ -8,11 +12,12 @@ import threading
 import time
 from copy import deepcopy
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+import requests
 from flask import current_app
 from werkzeug.datastructures import FileStorage
 
@@ -25,36 +30,16 @@ ALLOWED_RECEIPT_IMAGE_MIMES = {
     "image/heic",
     "image/heif",
 }
+SUPPORTED_OPENAI_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+RECEIPT_OPENAI_TIMEOUT_SECONDS = 90
+RECEIPT_OPENAI_MAX_IMAGE_DIMENSION = 1800
 _RECEIPT_JOB_TTL_SECONDS = 6 * 60 * 60
 _DATE_PATTERNS = [
-    re.compile(r"(?P<y>20\d{2})[._-]?(?P<m>\d{2})[._-]?(?P<d>\d{2})"),
-    re.compile(r"(?P<y>\d{2})[._-]?(?P<m>\d{2})[._-]?(?P<d>\d{2})"),
+    re.compile(r"(?P<y>20\d{2})[./-]?(?P<m>\d{2})[./-]?(?P<d>\d{2})"),
+    re.compile(r"(?P<y>\d{2})[./-]?(?P<m>\d{2})[./-]?(?P<d>\d{2})"),
 ]
 _TIME_PATTERN = re.compile(r"(?<!\d)(?P<h>\d{1,2})[:시]?(?P<m>\d{2})(?!\d)")
-_AMOUNT_PATTERNS = [
-    re.compile(r"(?P<amount>\d[\d,]{2,})\s*(?:원|krw)", re.IGNORECASE),
-    re.compile(r"(?:amt|amount)[-_ ]*(?P<amount>\d[\d,]{2,})", re.IGNORECASE),
-]
-_CARD_PATTERN = re.compile(r"(?:card|카드)[-_ ]*(?P<digits>\d{4})", re.IGNORECASE)
-_ACCOUNT_PATTERN = re.compile(r"(?:account|acct|계좌)[-_ ]*(?P<digits>\d{4})", re.IGNORECASE)
-_ITEM_PATTERN = re.compile(r"(?:item|품목|항목)[-_ ]*(?P<value>[A-Za-z0-9가-힣 _-]{2,})", re.IGNORECASE)
-_NOISE_TOKENS = {
-    "receipt",
-    "receipts",
-    "영수증",
-    "card",
-    "image",
-    "img",
-    "photo",
-    "scan",
-    "upload",
-    "uploaded",
-    "heic",
-    "jpg",
-    "jpeg",
-    "png",
-    "webp",
-}
+_UNKNOWN_TOKENS = {"", "unknown", "알수없음", "알 수 없음", "없음", "null", "none", "n/a", "미상"}
 _RECEIPT_JOBS: dict[str, "ReceiptModalJob"] = {}
 _RECEIPT_JOBS_LOCK = threading.RLock()
 
@@ -181,142 +166,6 @@ def validate_receipt_image(file: FileStorage) -> tuple[str, str, int]:
     return filename, mime, size_bytes
 
 
-def _guess_date_from_text(text: str) -> str | None:
-    for pattern in _DATE_PATTERNS:
-        match = pattern.search(text)
-        if not match:
-            continue
-        y = int(match.group("y"))
-        if y < 100:
-            y += 2000
-        m = int(match.group("m"))
-        d = int(match.group("d"))
-        try:
-            return date(y, m, d).isoformat()
-        except ValueError:
-            continue
-    return None
-
-
-def _guess_time_from_text(text: str) -> str | None:
-    match = _TIME_PATTERN.search(text)
-    if not match:
-        return None
-    h = int(match.group("h"))
-    m = int(match.group("m"))
-    if h > 23 or m > 59:
-        return None
-    return f"{h:02d}:{m:02d}"
-
-
-def _guess_amount_from_text(text: str) -> int | None:
-    for pattern in _AMOUNT_PATTERNS:
-        match = pattern.search(text)
-        if not match:
-            continue
-        raw = match.group("amount").replace(",", "")
-        try:
-            amount = int(raw)
-        except ValueError:
-            continue
-        if amount > 0:
-            return amount
-    return None
-
-
-def _guess_counterparty_from_text(stem: str) -> str | None:
-    cleaned = stem
-    for pattern in _DATE_PATTERNS + _AMOUNT_PATTERNS:
-        cleaned = pattern.sub(" ", cleaned)
-    cleaned = _TIME_PATTERN.sub(" ", cleaned)
-    cleaned = _CARD_PATTERN.sub(" ", cleaned)
-    cleaned = _ACCOUNT_PATTERN.sub(" ", cleaned)
-    cleaned = _ITEM_PATTERN.sub(" ", cleaned)
-    cleaned = re.sub(r"[._-]+", " ", cleaned)
-    tokens = [token.strip() for token in cleaned.split() if token.strip()]
-    kept: list[str] = []
-    for token in tokens:
-        lower = token.lower()
-        if lower in _NOISE_TOKENS:
-            continue
-        if token.isdigit():
-            continue
-        kept.append(token)
-    if not kept:
-        return None
-    value = " ".join(kept).strip()
-    return value[:80] if value else None
-
-
-def _guess_payment_item(stem: str) -> str | None:
-    match = _ITEM_PATTERN.search(stem)
-    if not match:
-        return None
-    value = match.group("value").strip(" _-")
-    return value[:80] if value else None
-
-
-def _guess_payment_method(stem: str) -> str | None:
-    card_match = _CARD_PATTERN.search(stem)
-    if card_match:
-        return f"카드 ****{card_match.group('digits')}"
-    account_match = _ACCOUNT_PATTERN.search(stem)
-    if account_match:
-        return f"계좌 ****{account_match.group('digits')}"
-    return None
-
-
-def _build_receipt_fields(filename: str) -> dict[str, Any]:
-    stem = Path(filename).stem
-    occurred_on = _guess_date_from_text(stem)
-    occurred_time = _guess_time_from_text(stem)
-    amount_krw = _guess_amount_from_text(stem)
-    counterparty = _guess_counterparty_from_text(stem)
-    payment_item = _guess_payment_item(stem)
-    payment_method = _guess_payment_method(stem)
-    memo = None
-
-    warnings: list[str] = []
-    if amount_krw is None:
-        warnings.append("결제 금액은 직접 확인이 필요합니다.")
-    if not counterparty:
-        warnings.append("매장 명은 직접 확인이 필요합니다.")
-    if not occurred_on:
-        warnings.append("날짜는 직접 확인이 필요합니다.")
-    if not occurred_time:
-        warnings.append("시간은 직접 확인이 필요합니다.")
-    if not payment_item:
-        warnings.append("결제 항목은 알 수 없는 상태일 수 있습니다.")
-    if not payment_method:
-        warnings.append("카드/계좌 정보는 확인 가능한 범위만 표시합니다.")
-
-    return {
-        "occurred_on": occurred_on,
-        "occurred_time": occurred_time,
-        "amount_krw": amount_krw,
-        "counterparty": counterparty,
-        "payment_item": payment_item,
-        "payment_method": payment_method,
-        "memo": memo,
-        "usage": "unknown",
-        "warnings": warnings,
-    }
-
-
-def build_receipt_preview(file: FileStorage, *, client_index: int) -> dict[str, Any]:
-    filename, mime_type, size_bytes = validate_receipt_image(file)
-    fields = _build_receipt_fields(filename)
-    file.stream.seek(0)
-    return {
-        "client_index": client_index,
-        "filename": filename,
-        "mime_type": mime_type,
-        "size_bytes": size_bytes,
-        "status": "ready",
-        **fields,
-    }
-
-
 def parse_receipt_confirm_item(raw: dict[str, Any]) -> dict[str, Any]:
     occurred_on = str(raw.get("occurred_on") or "").strip()
     occurred_time = str(raw.get("occurred_time") or "").strip()
@@ -347,10 +196,10 @@ def parse_receipt_confirm_item(raw: dict[str, Any]) -> dict[str, Any]:
         "occurred_at": occurred_at,
         "amount_krw": amount_krw,
         "usage": usage,
-        "counterparty": str(raw.get("counterparty") or "").strip() or None,
-        "payment_item": str(raw.get("payment_item") or "").strip() or None,
-        "payment_method": str(raw.get("payment_method") or "").strip() or None,
-        "memo": str(raw.get("memo") or "").strip() or None,
+        "counterparty": _normalize_optional_text(raw.get("counterparty"), max_length=80),
+        "payment_item": _normalize_optional_text(raw.get("payment_item"), max_length=120),
+        "payment_method": _normalize_payment_method(raw.get("payment_method")),
+        "memo": _normalize_optional_text(raw.get("memo"), max_length=200),
     }
 
 
@@ -418,6 +267,278 @@ def _set_job_status(job_id: str, status: str) -> None:
         job.updated_at_ts = time.time()
 
 
+def _openai_model() -> str:
+    return (os.getenv("OPENAI_MODEL") or "gpt-4.1-mini").strip()
+
+
+def _openai_api_key() -> str:
+    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY 환경변수가 없어 영수증 파싱을 시작할 수 없습니다.")
+    return api_key
+
+
+def _openai_endpoint() -> str:
+    return (os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/") + "/responses"
+
+
+def _normalize_optional_text(value: Any, *, max_length: int = 120) -> str | None:
+    text = str(value or "").strip()
+    if text.lower() in _UNKNOWN_TOKENS or text in _UNKNOWN_TOKENS:
+        return None
+    return text[:max_length] if text else None
+
+
+def _normalize_date(value: Any) -> str | None:
+    text = str(value or "").strip()
+    if text.lower() in _UNKNOWN_TOKENS or text in _UNKNOWN_TOKENS:
+        return None
+    for pattern in _DATE_PATTERNS:
+        match = pattern.search(text)
+        if not match:
+            continue
+        year = int(match.group("y"))
+        if year < 100:
+            year += 2000
+        month = int(match.group("m"))
+        day = int(match.group("d"))
+        try:
+            return datetime(year, month, day).date().isoformat()
+        except ValueError:
+            continue
+    return None
+
+
+def _normalize_time(value: Any) -> str | None:
+    text = str(value or "").strip()
+    if text.lower() in _UNKNOWN_TOKENS or text in _UNKNOWN_TOKENS:
+        return None
+    match = _TIME_PATTERN.search(text)
+    if not match:
+        return None
+    hour = int(match.group("h"))
+    minute = int(match.group("m"))
+    if hour > 23 or minute > 59:
+        return None
+    return f"{hour:02d}:{minute:02d}"
+
+
+def _normalize_amount(value: Any) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        amount = int(value)
+        return amount if amount > 0 else None
+    text = str(value).strip()
+    if text.lower() in _UNKNOWN_TOKENS or text in _UNKNOWN_TOKENS:
+        return None
+    digits = re.sub(r"[^\d]", "", text)
+    if not digits:
+        return None
+    amount = int(digits)
+    return amount if amount > 0 else None
+
+
+def _normalize_payment_method(value: Any) -> str | None:
+    text = str(value or "").strip()
+    if text.lower() in _UNKNOWN_TOKENS or text in _UNKNOWN_TOKENS:
+        return None
+    digits = re.sub(r"\D", "", text)
+    suffix = digits[-4:] if len(digits) >= 4 else digits
+    lower = text.lower()
+    if any(token in lower for token in ("card", "카드")):
+        return f"카드 ****{suffix}" if suffix else "카드"
+    if any(token in lower for token in ("account", "acct", "계좌")):
+        return f"계좌 ****{suffix}" if suffix else "계좌"
+    if suffix:
+        return f"****{suffix}"
+    return text[:80] if text else None
+
+
+def _default_warnings_from_fields(fields: dict[str, Any]) -> list[str]:
+    warnings: list[str] = []
+    if fields.get("amount_krw") is None:
+        warnings.append("결제 금액은 직접 확인이 필요합니다.")
+    if not fields.get("counterparty"):
+        warnings.append("매장 명은 직접 확인이 필요합니다.")
+    if not fields.get("occurred_on"):
+        warnings.append("날짜는 직접 확인이 필요합니다.")
+    if not fields.get("occurred_time"):
+        warnings.append("시간은 직접 확인이 필요합니다.")
+    if not fields.get("payment_item"):
+        warnings.append("결제 항목은 알 수 없는 상태일 수 있습니다.")
+    if not fields.get("payment_method"):
+        warnings.append("카드/계좌 정보는 확인 가능한 범위만 표시합니다.")
+    return warnings
+
+
+def _extract_output_text(payload: dict[str, Any]) -> str:
+    direct = payload.get("output_text")
+    if isinstance(direct, str) and direct.strip():
+        return direct.strip()
+
+    parts: list[str] = []
+    for output in payload.get("output", []) or []:
+        if not isinstance(output, dict):
+            continue
+        for content in output.get("content", []) or []:
+            if not isinstance(content, dict):
+                continue
+            text = content.get("text")
+            if isinstance(text, str) and text.strip():
+                parts.append(text.strip())
+                continue
+            if isinstance(text, dict):
+                value = text.get("value")
+                if isinstance(value, str) and value.strip():
+                    parts.append(value.strip())
+                    continue
+            value = content.get("value")
+            if isinstance(value, str) and value.strip():
+                parts.append(value.strip())
+    if parts:
+        return "\n".join(parts)
+    raise ValueError("OpenAI 응답에서 텍스트를 찾지 못했습니다.")
+
+
+def _json_from_text(text: str) -> dict[str, Any]:
+    try:
+        value = json.loads(text)
+        if isinstance(value, dict):
+            return value
+    except json.JSONDecodeError:
+        pass
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        value = json.loads(text[start : end + 1])
+        if isinstance(value, dict):
+            return value
+    raise ValueError("OpenAI 응답이 JSON 형식이 아닙니다.")
+
+
+def _prepare_image_data_url(item: ReceiptModalJobItem) -> str:
+    path = Path(item.stored_path or "")
+    if not path.exists():
+        raise ValueError("임시 이미지 파일을 찾지 못했습니다.")
+
+    ext = path.suffix.lower()
+    mime = item.mime_type or _guess_mime(item.filename)
+    raw = path.read_bytes()
+
+    if ext in {".heic", ".heif"} or mime in {"image/heic", "image/heif"}:
+        from pillow_heif import register_heif_opener
+        from PIL import Image, ImageOps
+
+        register_heif_opener()
+        with Image.open(path) as image:
+            image = ImageOps.exif_transpose(image)
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+            image.thumbnail((RECEIPT_OPENAI_MAX_IMAGE_DIMENSION, RECEIPT_OPENAI_MAX_IMAGE_DIMENSION))
+            buffer = io.BytesIO()
+            image.save(buffer, format="JPEG", quality=90, optimize=True)
+            raw = buffer.getvalue()
+            mime = "image/jpeg"
+    elif mime not in SUPPORTED_OPENAI_IMAGE_MIMES:
+        from PIL import Image, ImageOps
+
+        with Image.open(path) as image:
+            image = ImageOps.exif_transpose(image)
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+            image.thumbnail((RECEIPT_OPENAI_MAX_IMAGE_DIMENSION, RECEIPT_OPENAI_MAX_IMAGE_DIMENSION))
+            buffer = io.BytesIO()
+            image.save(buffer, format="JPEG", quality=90, optimize=True)
+            raw = buffer.getvalue()
+            mime = "image/jpeg"
+
+    encoded = base64.b64encode(raw).decode("ascii")
+    return f"data:{mime};base64,{encoded}"
+
+
+def _call_openai_receipt_parser(item: ReceiptModalJobItem) -> dict[str, Any]:
+    api_key = _openai_api_key()
+    model = _openai_model()
+    image_data_url = _prepare_image_data_url(item)
+    prompt = (
+        "당신은 한국 영수증 이미지를 읽어 구조화된 값을 추출하는 도우미다. "
+        "보이는 값만 추출하고, 확실하지 않으면 null로 둬라. JSON만 반환해라.\n"
+        "필드:\n"
+        "- counterparty: 매장 명 또는 상호\n"
+        "- occurred_on: YYYY-MM-DD 형식 날짜\n"
+        "- occurred_time: HH:MM 형식 시간\n"
+        "- amount_krw: 최종 결제 금액 정수\n"
+        "- payment_item: 결제 항목 또는 품목\n"
+        "- payment_method: 카드 또는 계좌 정보. 전체 번호를 쓰지 말고 보이는 범위만 부분 마스킹해서 예: 카드 ****1234, 계좌 ****5678\n"
+        "- memo: 짧은 메모. 불필요하면 null\n"
+        "- warnings: 불확실하거나 직접 확인이 필요한 점을 한국어 문자열 배열로 반환\n"
+        f"참고 파일명: {item.filename}"
+    )
+    payload = {
+        "model": model,
+        "input": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": prompt},
+                    {"type": "input_image", "image_url": image_data_url},
+                ],
+            }
+        ],
+        "text": {"format": {"type": "json_object"}},
+        "max_output_tokens": 500,
+    }
+    response = requests.post(
+        _openai_endpoint(),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=RECEIPT_OPENAI_TIMEOUT_SECONDS,
+    )
+    if response.status_code >= 400:
+        try:
+            error_payload = response.json()
+        except ValueError:
+            error_payload = None
+        error_message = None
+        if isinstance(error_payload, dict):
+            error_message = ((error_payload.get("error") or {}).get("message")) if isinstance(error_payload.get("error"), dict) else None
+        raise ValueError(error_message or f"OpenAI 응답 오류({response.status_code})")
+
+    result_payload = response.json()
+    text = _extract_output_text(result_payload)
+    parsed = _json_from_text(text)
+    fields = {
+        "occurred_on": _normalize_date(parsed.get("occurred_on")),
+        "occurred_time": _normalize_time(parsed.get("occurred_time")),
+        "amount_krw": _normalize_amount(parsed.get("amount_krw")),
+        "counterparty": _normalize_optional_text(parsed.get("counterparty"), max_length=80),
+        "payment_item": _normalize_optional_text(parsed.get("payment_item"), max_length=120),
+        "payment_method": _normalize_payment_method(parsed.get("payment_method")),
+        "memo": _normalize_optional_text(parsed.get("memo"), max_length=200),
+        "usage": "unknown",
+    }
+    warnings = parsed.get("warnings") if isinstance(parsed.get("warnings"), list) else []
+    normalized_warnings = []
+    for warning in warnings:
+        text_value = _normalize_optional_text(warning, max_length=200)
+        if text_value:
+            normalized_warnings.append(text_value)
+    for warning in _default_warnings_from_fields(fields):
+        if warning not in normalized_warnings:
+            normalized_warnings.append(warning)
+    fields["warnings"] = normalized_warnings
+    return fields
+
+
+def _parse_receipt_file_with_openai(item: ReceiptModalJobItem) -> dict[str, Any]:
+    return _call_openai_receipt_parser(item)
+
+
 def _run_receipt_job(job_id: str, parse_delay_seconds: float) -> None:
     _set_job_status(job_id, "processing")
     with _RECEIPT_JOBS_LOCK:
@@ -431,7 +552,7 @@ def _run_receipt_job(job_id: str, parse_delay_seconds: float) -> None:
         if parse_delay_seconds:
             time.sleep(parse_delay_seconds)
         try:
-            fields = _build_receipt_fields(item.filename)
+            fields = _parse_receipt_file_with_openai(item)
             _set_job_item_state(
                 job_id,
                 item.item_id,
@@ -444,15 +565,15 @@ def _run_receipt_job(job_id: str, parse_delay_seconds: float) -> None:
                 payment_item=fields["payment_item"],
                 payment_method=fields["payment_method"],
                 memo=fields["memo"],
-                usage=fields["usage"],
-                warnings=fields["warnings"],
+                usage=fields.get("usage", "unknown"),
+                warnings=fields.get("warnings", []),
             )
-        except Exception:
+        except Exception as exc:
             _set_job_item_state(
                 job_id,
                 item.item_id,
                 status="error",
-                error="파싱 중 문제가 발생했습니다.",
+                error=str(exc) or "파싱 중 문제가 발생했습니다.",
                 warnings=[],
             )
 

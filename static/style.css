@@ -1546,29 +1546,38 @@ body.receipt-modal-open{
   background: rgba(248,250,252,.95);
 }
 .receipt-modal-body{
-  overflow: auto;
+  overflow: hidden;
   padding: 20px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+  min-height: 0;
 }
 .receipt-step-badges{
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  flex-wrap: wrap;
 }
 .receipt-step-badge{
-  padding: 9px 12px;
-  border-radius: 999px;
+  min-height: 48px;
+  padding: 9px 14px;
+  border-radius: 18px;
   border: 1px solid var(--line);
   background: #fff;
   color: var(--muted2);
   font-weight: 800;
   font-size: .92rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.65);
 }
 .receipt-step-badge.is-active{
   border-color: rgba(37,99,235,.24);
   background: rgba(37,99,235,.08);
   color: #1d4ed8;
+  box-shadow: 0 10px 24px rgba(37,99,235,.12);
 }
 .receipt-upload-card,
 .receipt-account-card,
@@ -1596,6 +1605,9 @@ body.receipt-modal-open{
   margin-top: 12px;
   display: grid;
   gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 4px;
 }
 .receipt-uploaded-file{
   padding: 10px 12px;
@@ -1632,20 +1644,31 @@ body.receipt-modal-open{
   background: rgba(37,99,235,.08);
   color: #1d4ed8;
 }
+.receipt-modal-body > section[data-receipt-step="2"],
+.receipt-modal-body > section[data-receipt-step="3"]{
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
+}
 .receipt-step-layout{
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
   gap: 16px;
+  min-height: 0;
 }
 .receipt-step-sidebar,
 .receipt-step-detail{
   display: grid;
   gap: 12px;
+  min-height: 0;
+  overflow: hidden;
 }
 .receipt-parse-list{
-  max-height: 440px;
   display: grid;
   gap: 10px;
+  min-height: 0;
   overflow: auto;
 }
 .receipt-empty-state{
@@ -1718,6 +1741,10 @@ body.receipt-modal-open{
   display: grid;
   gap: 12px;
 }
+.receipt-step-detail{
+  overflow: auto;
+  padding-right: 4px;
+}
 .receipt-detail-head,
 .receipt-result-card-head{
   display: flex;
@@ -1768,6 +1795,7 @@ body.receipt-modal-open{
 .receipt-result-shell{
   display: grid;
   gap: 16px;
+  min-height: 0;
 }
 .receipt-result-grid{
   display: grid;
@@ -1785,6 +1813,9 @@ body.receipt-modal-open{
 .receipt-result-list{
   display: grid;
   gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
 }
 .receipt-result-card{
   padding: 14px;
@@ -1820,6 +1851,9 @@ body.receipt-modal-open{
   gap: 12px;
   z-index: 160;
 }
+.receipt-toast[hidden]{
+  display: none !important;
+}
 
 @keyframes receiptSpin{
   from{ transform: rotate(0deg); }
@@ -1834,6 +1868,9 @@ body.receipt-modal-open{
   .receipt-modal-head,
   .receipt-modal-body{
     padding: 16px;
+  }
+  .receipt-step-badges{
+    grid-template-columns: 1fr;
   }
   .receipt-step-layout,
   .receipt-result-grid,
@@ -1859,4 +1896,3 @@ body.receipt-modal-open{
     width: calc(100vw - 32px);
   }
 }
-

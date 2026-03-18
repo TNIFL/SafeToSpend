@@ -49,6 +49,8 @@
     busy: false,
     currentStep: 1,
     pollTimer: null,
+    toastEligibleJobId: null,
+    resumingJob: false,
   };
 
   function storageGet(key) {
@@ -123,6 +125,7 @@
   function openModal() {
     shell.hidden = false;
     document.body.classList.add("receipt-modal-open");
+    hideToast();
   }
 
   function closeModal() {
@@ -176,6 +179,9 @@
   }
 
   function showToast(message) {
+    if (!shell.hidden) {
+      return;
+    }
     toast.hidden = false;
     toastMessage.textContent = message;
   }
@@ -210,6 +216,8 @@
     state.selectedAccountId = "";
     state.localEdits = {};
     state.result = null;
+    state.toastEligibleJobId = null;
+    state.resumingJob = false;
     fileInput.value = "";
     accountSelect.innerHTML = '<option value="">계좌 미지정으로 생성</option>';
     accountWrap.hidden = true;
@@ -464,7 +472,11 @@
     } else if (!previousComplete) {
       setSummary("파싱이 끝났습니다. 결과 확인 단계에서 한 번 더 검토한 뒤 생성할 수 있습니다.", "good");
       const notifiedJobId = storageGet(TOAST_KEY);
-      if (notifiedJobId !== job.job_id) {
+      const shouldToast =
+        !state.resumingJob &&
+        state.toastEligibleJobId === job.job_id &&
+        notifiedJobId !== job.job_id;
+      if (shouldToast) {
         storageSet(TOAST_KEY, job.job_id);
         showToast("영수증 파싱이 끝났습니다. 결과를 확인해 주세요.");
       }
@@ -514,9 +526,14 @@
       }
 
       state.jobId = data.job.job_id;
+      state.toastEligibleJobId = data.job.job_id;
       state.accounts = Array.isArray(data.accounts) ? data.accounts : [];
+      state.selectedAccountId = "";
+      state.localEdits = {};
+      state.activeItemId = null;
       state.result = null;
       storageSet(STORAGE_KEY, state.jobId);
+      storageRemove(TOAST_KEY);
       hideToast();
       applyJobSnapshot(data.job);
       renderAccounts();
@@ -624,7 +641,9 @@
       }
       showStep(3);
       hideToast();
+      state.toastEligibleJobId = null;
       storageRemove(STORAGE_KEY);
+      storageRemove(TOAST_KEY);
     } catch (error) {
       setSummary(error.message || "거래 생성에 실패했습니다.", "bad");
     } finally {
@@ -749,10 +768,15 @@
     if (!storedJobId) {
       return;
     }
+    state.resumingJob = true;
     state.jobId = storedJobId;
     await pollJob(false);
+    state.resumingJob = false;
     if (state.job && !state.job.is_complete) {
+      state.toastEligibleJobId = state.jobId;
       schedulePolling();
+    } else {
+      state.toastEligibleJobId = null;
     }
   }
 

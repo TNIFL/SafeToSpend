@@ -6,6 +6,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from uuid import uuid4
 
 from app import create_app
@@ -84,6 +85,45 @@ class ReceiptModalRoutesTest(unittest.TestCase):
             time.sleep(0.02)
         self.fail(f"receipt modal job {job_id} did not complete in time; last_payload={last_payload}")
 
+    @staticmethod
+    def _fake_parsed_receipt(item) -> dict:
+        filename = str(getattr(item, "filename", ""))
+        if "스타벅스" in filename:
+            return {
+                "occurred_on": "2026-03-18",
+                "occurred_time": "22:15" if "2215" in filename else "12:30",
+                "amount_krw": 23500,
+                "counterparty": "스타벅스",
+                "payment_item": "아메리카노",
+                "payment_method": "카드 ****4321",
+                "memo": "영수증 기반 추정",
+                "usage": "unknown",
+                "warnings": [],
+            }
+        if "편의점" in filename:
+            return {
+                "occurred_on": "2026-03-18",
+                "occurred_time": "09:10",
+                "amount_krw": 11000,
+                "counterparty": "편의점",
+                "payment_item": None,
+                "payment_method": None,
+                "memo": None,
+                "usage": "unknown",
+                "warnings": ["일부 값은 직접 확인이 필요합니다."],
+            }
+        return {
+            "occurred_on": None,
+            "occurred_time": None,
+            "amount_krw": None,
+            "counterparty": None,
+            "payment_item": None,
+            "payment_method": None,
+            "memo": None,
+            "usage": "unknown",
+            "warnings": ["영수증 값을 찾지 못했습니다."],
+        }
+
     def test_floating_receipt_button_is_hidden_for_public_and_visible_after_login(self) -> None:
         public_body = self.client.get("/").get_data(as_text=True)
         self.assertNotIn("data-receipt-open", public_body)
@@ -141,16 +181,17 @@ class ReceiptModalRoutesTest(unittest.TestCase):
     def test_start_returns_job_and_account_options(self) -> None:
         self._login()
 
-        response = self.client.post(
-            "/dashboard/receipt-modal/start",
-            data={
-                "files": [
-                    (io.BytesIO(b"fake-image"), "20260318_23500원_스타벅스.jpg"),
-                    (io.BytesIO(b"fake-image"), "receipt_plain.png"),
-                ]
-            },
-            content_type="multipart/form-data",
-        )
+        with patch("services.receipt_modal._parse_receipt_file_with_openai", side_effect=self._fake_parsed_receipt):
+            response = self.client.post(
+                "/dashboard/receipt-modal/start",
+                data={
+                    "files": [
+                        (io.BytesIO(b"fake-image"), "20260318_23500원_스타벅스.jpg"),
+                        (io.BytesIO(b"fake-image"), "receipt_plain.png"),
+                    ]
+                },
+                content_type="multipart/form-data",
+            )
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
@@ -163,18 +204,18 @@ class ReceiptModalRoutesTest(unittest.TestCase):
 
     def test_status_returns_parsed_fields_after_background_work(self) -> None:
         self._login()
-        start_response = self.client.post(
-            "/dashboard/receipt-modal/start",
-            data={
-                "files": [
-                    (io.BytesIO(b"fake-image"), "20260318_2215_23500원_스타벅스_item커피_card4321.jpg"),
-                ]
-            },
-            content_type="multipart/form-data",
-        )
-        job_id = start_response.get_json()["job"]["job_id"]
-
-        payload = self._wait_for_job(job_id)
+        with patch("services.receipt_modal._parse_receipt_file_with_openai", side_effect=self._fake_parsed_receipt):
+            start_response = self.client.post(
+                "/dashboard/receipt-modal/start",
+                data={
+                    "files": [
+                        (io.BytesIO(b"fake-image"), "20260318_2215_23500원_스타벅스_item커피_card4321.jpg"),
+                    ]
+                },
+                content_type="multipart/form-data",
+            )
+            job_id = start_response.get_json()["job"]["job_id"]
+            payload = self._wait_for_job(job_id)
         item = payload["job"]["items"][0]
 
         self.assertTrue(payload["job"]["is_complete"])
@@ -188,15 +229,16 @@ class ReceiptModalRoutesTest(unittest.TestCase):
     def test_start_accepts_heic_images(self) -> None:
         self._login()
 
-        response = self.client.post(
-            "/dashboard/receipt-modal/start",
-            data={
-                "files": [
-                    (io.BytesIO(b"fake-heic-image"), "20260318_11000원_편의점.heic"),
-                ]
-            },
-            content_type="multipart/form-data",
-        )
+        with patch("services.receipt_modal._parse_receipt_file_with_openai", side_effect=self._fake_parsed_receipt):
+            response = self.client.post(
+                "/dashboard/receipt-modal/start",
+                data={
+                    "files": [
+                        (io.BytesIO(b"fake-heic-image"), "20260318_11000원_편의점.heic"),
+                    ]
+                },
+                content_type="multipart/form-data",
+            )
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
@@ -206,15 +248,16 @@ class ReceiptModalRoutesTest(unittest.TestCase):
 
     def test_create_transaction_and_attach_evidence_with_selected_account(self) -> None:
         self._login()
-        start_response = self.client.post(
-            "/dashboard/receipt-modal/start",
-            data={
-                "files": [(io.BytesIO(b"fake-image"), "20260318_1230_23500원_스타벅스.jpg")],
-            },
-            content_type="multipart/form-data",
-        )
-        job_id = start_response.get_json()["job"]["job_id"]
-        payload = self._wait_for_job(job_id)
+        with patch("services.receipt_modal._parse_receipt_file_with_openai", side_effect=self._fake_parsed_receipt):
+            start_response = self.client.post(
+                "/dashboard/receipt-modal/start",
+                data={
+                    "files": [(io.BytesIO(b"fake-image"), "20260318_1230_23500원_스타벅스.jpg")],
+                },
+                content_type="multipart/form-data",
+            )
+            job_id = start_response.get_json()["job"]["job_id"]
+            payload = self._wait_for_job(job_id)
         item = payload["job"]["items"][0]
 
         response = self.client.post(
@@ -267,15 +310,16 @@ class ReceiptModalRoutesTest(unittest.TestCase):
 
     def test_create_succeeds_without_account_selection(self) -> None:
         self._login()
-        start_response = self.client.post(
-            "/dashboard/receipt-modal/start",
-            data={
-                "files": [(io.BytesIO(b"fake-image"), "receipt_plain.png")],
-            },
-            content_type="multipart/form-data",
-        )
-        job_id = start_response.get_json()["job"]["job_id"]
-        payload = self._wait_for_job(job_id)
+        with patch("services.receipt_modal._parse_receipt_file_with_openai", side_effect=self._fake_parsed_receipt):
+            start_response = self.client.post(
+                "/dashboard/receipt-modal/start",
+                data={
+                    "files": [(io.BytesIO(b"fake-image"), "receipt_plain.png")],
+                },
+                content_type="multipart/form-data",
+            )
+            job_id = start_response.get_json()["job"]["job_id"]
+            payload = self._wait_for_job(job_id)
         item = payload["job"]["items"][0]
 
         response = self.client.post(
