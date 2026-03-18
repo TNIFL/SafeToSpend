@@ -639,6 +639,9 @@
                 .map((warning) => `<span>${escapeHtml(warning)}</span>`)
                 .join("")}
             </div>
+            <div class="row" style="justify-content:flex-end;">
+              <button type="button" class="btn ghost small" data-receipt-review-failure="${escapeHtml(item.item_id)}">사유 보기</button>
+            </div>
           </article>
         `)
         .join("");
@@ -1056,6 +1059,18 @@
           return;
         }
         void openExistingJob(button.dataset.receiptHistoryJob || "");
+      });
+    }
+    if (resultList) {
+      resultList.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-receipt-review-failure]");
+        if (!button) {
+          return;
+        }
+        state.activeItemId = button.dataset.receiptReviewFailure || null;
+        showStep(2);
+        renderParseList();
+        renderDetail();
       });
     }
 
