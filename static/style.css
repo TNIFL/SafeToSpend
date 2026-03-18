@@ -1613,6 +1613,11 @@ body.receipt-modal-open{
   min-height: 0;
   min-width: 0;
 }
+.receipt-modal-body > section[data-receipt-step="1"]{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
 .receipt-step-badges{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1654,11 +1659,13 @@ body.receipt-modal-open{
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
   min-height: 0;
+  height: 100%;
 }
 .receipt-start-layout > *{
   min-width: 0;
+  min-height: 0;
 }
 .receipt-upload-field{
   display: grid;
@@ -1674,15 +1681,28 @@ body.receipt-modal-open{
 }
 .receipt-history-card{
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
+  overflow: hidden;
+}
+.receipt-upload-card{
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
 }
 .receipt-history-list{
   display: grid;
   gap: 10px;
-  min-height: auto;
-  max-height: none;
-  overflow: visible;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: start;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
 }
 .receipt-history-item{
   width: 100%;
@@ -1710,9 +1730,13 @@ body.receipt-modal-open{
   margin-top: 12px;
   display: grid;
   gap: 8px;
-  max-height: none;
-  overflow: visible;
-  padding-right: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  align-content: start;
+  scrollbar-gutter: stable;
 }
 .receipt-uploaded-file{
   padding: 10px 12px;
@@ -1784,10 +1808,15 @@ body.receipt-modal-open{
 }
 .receipt-panel-head{
   min-width: 0;
+  display: grid;
+  gap: 12px;
+  align-content: start;
 }
 .receipt-panel-body{
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .receipt-parse-list{
   display: grid;
@@ -2093,6 +2122,9 @@ body.receipt-modal-open{
   .receipt-step-layout{
     grid-template-columns: 1fr;
   }
+  .receipt-start-layout{
+    grid-template-rows: minmax(300px, 1fr) minmax(240px, .85fr);
+  }
   .receipt-step-layout{
     grid-template-rows: minmax(240px, .9fr) minmax(320px, 1.1fr);
   }
@@ -2117,6 +2149,9 @@ body.receipt-modal-open{
   }
   .receipt-start-layout{
     grid-template-columns: 1fr;
+  }
+  .receipt-start-layout{
+    grid-template-rows: minmax(260px, 1fr) minmax(220px, .85fr);
   }
   .receipt-step-layout,
   .receipt-result-grid,
