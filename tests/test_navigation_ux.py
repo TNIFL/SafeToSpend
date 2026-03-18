@@ -88,6 +88,7 @@ class NavigationUxTest(unittest.TestCase):
         self.assertEqual(overview_response.status_code, 200)
         self.assertIn("빠른 이동", overview_body)
         self.assertIn("세무사 패키지 보기", overview_body)
+        self.assertIn("건보료 안내 보기", overview_body)
         self.assertIn("공식자료 업로드", overview_body)
         self.assertIn("참고자료 업로드", overview_body)
         self.assertIn("문의 안내", overview_body)
@@ -96,6 +97,7 @@ class NavigationUxTest(unittest.TestCase):
         self.assertIn("지금 바로 열 수 있는 기능", dashboard_body)
         self.assertIn("공식자료", dashboard_body)
         self.assertIn("참고자료", dashboard_body)
+        self.assertIn("건보료 안내", dashboard_body)
         self.assertIn("내 계정", dashboard_body)
 
     def test_package_page_surfaces_account_and_support_links(self) -> None:

@@ -52,6 +52,7 @@
         <div class="stack" style="margin-top:12px;gap:8px;">
           <a class="btn full" href="{{ url_for('web_dashboard.index') }}">정리하기 열기</a>
           <a class="btn full ghost" href="{{ url_for('web_package.page', month=month_key) }}">세무사 패키지 보기</a>
+          <a class="btn full ghost" href="{{ url_for('web_nhis.index') }}">건보료 안내 보기</a>
           <a class="btn full ghost" href="{{ url_for('web_billing.index') }}">구독 안내 보기</a>
         </div>
       </div>
@@ -64,6 +65,7 @@
         <div class="stack" style="margin-top:12px;gap:8px;">
           <a class="btn full ghost" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>
           <a class="btn full ghost" href="{{ url_for('web_reference_material.index') }}">참고자료 업로드</a>
+          <a class="btn full ghost" href="{{ url_for('web_nhis.index') }}">건보료 안내</a>
           <a class="btn full ghost" href="{{ url_for('web_profile.mypage') }}">내 계정 보기</a>
           <a class="btn full ghost" href="{{ url_for('web_support.support_home') }}">문의 안내</a>
         </div>

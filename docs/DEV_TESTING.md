@@ -247,3 +247,41 @@ PYTHONPATH=. .venv/bin/python -m py_compile \
 - 로그인 전에는 없는 기능으로 가는 링크가 보이지 않는지
 - overview, dashboard, package 화면에서 현재 있는 기능으로 가는 CTA가 늘었는지
 - `알림`, `대사 리포트`, `세금 설정`처럼 아직 없는 링크는 노출되지 않는지
+
+# NHIS 안내형 화면 회귀
+
+main 브랜치에서 NHIS 안내형 화면 변경을 점검할 때는 아래 순서로 실행한다.
+
+## 1. baseline 확인
+
+```bash
+git status --short --branch
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db heads
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db current
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' FLASK_APP=app.py .venv/bin/flask db upgrade
+```
+
+## 2. NHIS 안내 화면 회귀
+
+```bash
+SQLALCHEMY_DATABASE_URI='postgresql+psycopg://tnifl@localhost:5432/safetospend_main_15b018e' PYTHONPATH=. .venv/bin/python -m unittest \
+  tests.test_nhis_routes \
+  tests.test_navigation_ux
+```
+
+## 3. 정적 검증
+
+```bash
+PYTHONPATH=. .venv/bin/python -m py_compile \
+  routes/__init__.py \
+  routes/web/nhis.py \
+  tests/test_nhis_routes.py \
+  tests/test_navigation_ux.py
+```
+
+## 4. 수동 확인
+
+- `/dashboard/nhis`가 로그인 전에는 로그인으로 이동하고, 로그인 후에는 안내 화면이 보이는지
+- 화면에 `공식자료 업로드`, `참고자료 업로드`, `정리하기`, `세금 보관함`, `세무사 패키지` CTA가 보이는지
+- `정확히 계산`, `자동 확정`, `공식 확인 완료` 같은 과장 문구가 없는지
+- overview와 dashboard에서 `건보료 안내` 진입 링크를 찾을 수 있는지

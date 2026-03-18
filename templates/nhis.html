@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}건보료 안내 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .nhis-guide-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
+  .nhis-guide-list{margin:12px 0 0;padding-left:18px;color:var(--muted-2);line-height:1.6;}
+  .nhis-guide-list li+li{margin-top:8px;}
+  .nhis-cta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+  .nhis-note-box{margin-top:12px;padding:12px 14px;border:1px solid rgba(245,158,11,.24);border-radius:14px;background:rgba(245,158,11,.10);color:#92400e;}
+  .nhis-kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;}
+  .nhis-kpi{padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2);}
+  .nhis-kpi .label{font-size:.84rem;color:var(--muted);font-weight:900;}
+  .nhis-kpi .value{margin-top:6px;font-size:1.4rem;font-weight:1100;letter-spacing:-.4px;}
+  .nhis-kpi .hint{margin-top:6px;font-size:.82rem;color:var(--muted-2);}
+  @media (max-width:980px){
+    .nhis-guide-grid,.nhis-cta-grid,.nhis-kpi-row{grid-template-columns:1fr;}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <section class="card pad">
+    <div class="row" style="justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+      <div>
+        <div class="h2">건보료 안내</div>
+        <div class="small-note muted2" style="margin-top:4px;">{{ month_key }} 기준 · 현재는 안내 중심 화면입니다.</div>
+      </div>
+      <div class="row" style="gap:8px;flex-wrap:wrap;">
+        <span class="badge warn">참고용</span>
+        <span class="badge">준비 중</span>
+      </div>
+    </div>
+
+    <div class="p" style="margin-top:12px;">
+      건보료는 세무 자료와 같이 챙겨야 하지만, 현재 쓸수있어는 건보료를 정밀 계산하거나 자동으로 결정하지 않습니다.
+      대신 어떤 자료를 준비하면 좋고, 현재 서비스에서 어디로 가면 되는지부터 안내합니다.
+    </div>
+
+    <div class="nhis-note-box">
+      지금 이 화면에서 바로 되는 것은 안내와 자료 연결입니다. 공식자료 업로드, 참고자료 업로드, 정리하기, 세무사 패키지로 이어서 작업할 수 있습니다.
+    </div>
+
+    <div class="nhis-kpi-row">
+      <div class="nhis-kpi">
+        <div class="label">현재 업로드된 NHIS 공식자료</div>
+        <div class="value">{{ official_nhis_count }}건</div>
+        <div class="hint">납부확인서, 자격 관련 자료처럼 공식자료 채널로 들어온 문서 수</div>
+      </div>
+      <div class="nhis-kpi">
+        <div class="label">참고자료 보관 수</div>
+        <div class="value">{{ reference_material_count }}건</div>
+        <div class="hint">설명 메모, 스크린샷, 자체 정리 파일 같은 참고용 자료 수</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="nhis-guide-grid">
+    <article class="card pad">
+      <div class="cardTitle">
+        <span>현재 확인 가능한 것</span>
+        <span class="badge primary">main 기준</span>
+      </div>
+      <ul class="nhis-guide-list">
+        <li>공식자료 업로드에서 건보 납부확인서와 자격 관련 문서를 따로 보관할 수 있어요.</li>
+        <li>참고자료 업로드에서 설명 메모, 이미지, 엑셀 같은 자유형 자료를 참고용으로 모아둘 수 있어요.</li>
+        <li>정리하기와 세금 보관함에서 이번 달 정리 흐름과 세금 관련 준비 상태를 같이 볼 수 있어요.</li>
+        <li>세무사 패키지에는 현재 공식자료가 포함될 수 있지만, 건보료 전용 계산 리포트는 아직 별도로 만들지 않아요.</li>
+      </ul>
+    </article>
+
+    <article class="card pad">
+      <div class="cardTitle">
+        <span>아직 수동 확인이 필요한 것</span>
+        <span class="badge warn">직접 확인 필요</span>
+      </div>
+      <ul class="nhis-guide-list">
+        <li>이번 달 실제 건보료 금액과 지역/직장/피부양자 구분은 아직 서비스에서 자동으로 결정하지 않아요.</li>
+        <li>감면, 자산, 가족 구성, 최근 변동 이력은 현재 main에서 별도 저장하지 않아요.</li>
+        <li>공식자료를 올려도 지금 바로 건보료가 자동 반영되거나 강한 확인 표시로 바뀌지 않아요.</li>
+        <li>정확한 계산이나 최종 판정은 서비스 밖에서 한 번 더 확인하는 편이 안전해요.</li>
+      </ul>
+    </article>
+
+    <article class="card pad">
+      <div class="cardTitle">
+        <span>자료 준비 방법</span>
+        <span class="badge">안내</span>
+      </div>
+      <ul class="nhis-guide-list">
+        <li>공단에서 받은 납부확인서, 자격 관련 문서는 공식자료 업로드로 보내 주세요.</li>
+        <li>문서 설명 메모, 스크린샷, 전화 안내 내용 정리 파일은 참고자료로 보내 주세요.</li>
+        <li>이번 달 거래와 증빙을 먼저 정리해 두면 세무사에게 전달할 때 맥락을 같이 설명하기 쉬워집니다.</li>
+        <li>애매한 자료는 억지로 공식자료로 넣지 말고 참고자료로 분리하는 것이 안전합니다.</li>
+      </ul>
+    </article>
+
+    <article class="card pad">
+      <div class="cardTitle">
+        <span>다음 행동</span>
+        <span class="badge good">현재 가능</span>
+      </div>
+      <div class="nhis-cta-grid">
+        <a class="btn full" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>
+        <a class="btn full ghost" href="{{ url_for('web_reference_material.index') }}">참고자료 업로드</a>
+        <a class="btn full ghost" href="{{ url_for('web_dashboard.index') }}">정리하기</a>
+        <a class="btn full ghost" href="{{ url_for('web_calendar.tax_buffer', month=month_key) }}">세금 보관함</a>
+        <a class="btn full ghost" href="{{ url_for('web_package.page', month=month_key) }}">세무사 패키지</a>
+        <a class="btn full ghost" href="{{ url_for('web_support.support_home') }}">문의 안내</a>
+      </div>
+    </article>
+  </section>
+</div>
+{% endblock %}
