@@ -6,7 +6,7 @@
   <title>{% block title %}쓸수있어{% endblock %}</title>
 
   <!-- 캐시 때문에 스타일이 안 바뀌는 경우가 많아서 v 값 꼭 올려 -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260319-4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260319-5">
   {% block head_extra %}{% endblock %}
 </head>
 <body>
@@ -156,14 +156,18 @@
           <section data-receipt-step="2" hidden>
             <div class="receipt-step-layout">
               <div class="receipt-step-sidebar">
-                <div class="cardTitle">
-                  <span>이미지 목록</span>
-                  <span class="small-note muted2">파싱 상태</span>
+                <div class="receipt-panel-head">
+                  <div class="cardTitle">
+                    <span>이미지 목록</span>
+                    <span class="small-note muted2">파싱 상태</span>
+                  </div>
                 </div>
-                <div class="receipt-parse-list scrollbox" data-receipt-parse-list>
-                  <div class="receipt-empty-state">
-                    <div class="strong">파싱이 시작되면 이미지 목록이 여기에 표시됩니다.</div>
-                    <div class="small-note muted2">목록을 누르면 값을 확인할 수 있습니다.</div>
+                <div class="receipt-panel-body">
+                  <div class="receipt-parse-list" data-receipt-parse-list>
+                    <div class="receipt-empty-state">
+                      <div class="strong">파싱이 시작되면 이미지 목록이 여기에 표시됩니다.</div>
+                      <div class="small-note muted2">목록을 누르면 값을 확인할 수 있습니다.</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -199,7 +203,17 @@
                 <div class="small-note muted2">현재 `main`에는 거래별 계좌 컬럼이 없어, 선택한 계좌는 메모에 함께 남깁니다.</div>
               </div>
 
-              <div class="receipt-result-list" data-receipt-result-list></div>
+              <div class="receipt-result-panel">
+                <div class="receipt-panel-head">
+                  <div class="cardTitle">
+                    <span>입력 결과</span>
+                    <span class="small-note muted2">생성 예정 / 실패 확인</span>
+                  </div>
+                </div>
+                <div class="receipt-panel-body">
+                  <div class="receipt-result-list" data-receipt-result-list></div>
+                </div>
+              </div>
             </div>
 
             <div class="receipt-step-actions">
@@ -222,7 +236,7 @@
       </div>
     </div>
   </div>
-  <script defer src="{{ url_for('static', filename='receipt_modal.js') }}?v=20260319-4"></script>
+  <script defer src="{{ url_for('static', filename='receipt_modal.js') }}?v=20260319-5"></script>
 {% endif %}
 
 <footer class="footer">

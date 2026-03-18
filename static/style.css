@@ -1756,6 +1756,7 @@ body.receipt-modal-open{
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 16px;
+  overflow: hidden;
 }
 .receipt-step-layout{
   display: grid;
@@ -1769,8 +1770,7 @@ body.receipt-modal-open{
   min-width: 0;
   min-height: 0;
 }
-.receipt-step-sidebar,
-.receipt-step-detail{
+.receipt-step-sidebar{
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
@@ -1778,10 +1778,22 @@ body.receipt-modal-open{
   overflow: hidden;
   align-content: start;
 }
+.receipt-step-detail{
+  min-height: 0;
+  overflow: hidden;
+}
+.receipt-panel-head{
+  min-width: 0;
+}
+.receipt-panel-body{
+  min-height: 0;
+  overflow: hidden;
+}
 .receipt-parse-list{
   display: grid;
   gap: 10px;
   min-height: 0;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   align-content: start;
@@ -1872,11 +1884,11 @@ body.receipt-modal-open{
   height: 100%;
 }
 .receipt-step-detail{
-  overflow: hidden;
   padding-right: 0;
 }
 .receipt-detail-scroll{
   min-height: 0;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 6px;
@@ -1980,6 +1992,17 @@ body.receipt-modal-open{
   min-height: 0;
   height: 100%;
 }
+.receipt-result-panel{
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
 .receipt-result-grid{
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1997,6 +2020,7 @@ body.receipt-modal-open{
   display: grid;
   gap: 12px;
   min-height: 0;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 6px;
