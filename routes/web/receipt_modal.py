@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from flask import Blueprint, jsonify, request, session
+from flask import current_app
 
 from core.auth import login_required
 from core.extensions import db
@@ -17,11 +18,13 @@ from services.receipt_modal import (
     find_receipt_job_item,
     get_receipt_job,
     get_receipt_job_snapshot,
+    kick_receipt_worker,
     list_recent_receipt_jobs,
     mark_receipt_job_item_created,
     mark_receipt_job_result,
     open_receipt_job_file,
     parse_receipt_confirm_item,
+    update_receipt_job_item_draft,
 )
 
 web_receipt_modal_bp = Blueprint("web_receipt_modal", __name__, url_prefix="/dashboard/receipt-modal")
@@ -129,12 +132,14 @@ def start() -> tuple[object, int] | object:
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
+    kick_receipt_worker(current_app._get_current_object())
     return jsonify(_job_payload(user_pk, snapshot))
 
 
 @web_receipt_modal_bp.get("/history")
 @login_required
 def history() -> object:
+    kick_receipt_worker(current_app._get_current_object())
     return jsonify(_history_payload(_uid()))
 
 
@@ -142,12 +147,32 @@ def history() -> object:
 @login_required
 def job_status(job_id: str) -> tuple[object, int] | object:
     user_pk = _uid()
+    kick_receipt_worker(current_app._get_current_object())
     try:
         snapshot = get_receipt_job_snapshot(user_pk, job_id)
     except KeyError:
         return jsonify({"ok": False, "error": "진행 중인 영수증 작업을 찾지 못했습니다."}), 404
 
     return jsonify(_job_payload(user_pk, snapshot))
+
+
+@web_receipt_modal_bp.post("/jobs/<job_id>/items/<item_id>")
+@login_required
+def save_item(job_id: str, item_id: str) -> tuple[object, int] | object:
+    user_pk = _uid()
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"ok": False, "error": "수정 데이터 형식이 올바르지 않습니다."}), 400
+
+    try:
+        item_snapshot = update_receipt_job_item_draft(user_pk, job_id, item_id, payload)
+        snapshot = get_receipt_job_snapshot(user_pk, job_id)
+    except KeyError:
+        return jsonify({"ok": False, "error": "수정할 영수증 항목을 찾지 못했습니다."}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    return jsonify({"ok": True, "item": item_snapshot, "job": snapshot})
 
 
 @web_receipt_modal_bp.post("/jobs/<job_id>/create")
@@ -159,7 +184,7 @@ def create(job_id: str) -> tuple[object, int] | object:
     except KeyError:
         return jsonify({"ok": False, "error": "진행 중인 영수증 작업을 찾지 못했습니다."}), 404
 
-    snapshot = job.snapshot()
+    snapshot = get_receipt_job_snapshot(user_pk, job_id)
     if not snapshot["is_complete"]:
         return jsonify({"ok": False, "error": "파싱이 아직 진행 중입니다. 잠시 후 다시 시도해 주세요."}), 400
 
@@ -217,7 +242,7 @@ def create(job_id: str) -> tuple[object, int] | object:
             )
 
             external_hash = hashlib.sha256(
-                f"receipt-modal:{user_pk}:{uuid4().hex}:{job_item.filename}".encode("utf-8")
+                f"receipt-modal:{user_pk}:{uuid4().hex}:{job_item.original_filename}".encode("utf-8")
             ).hexdigest()
 
             tx = Transaction(
@@ -287,7 +312,7 @@ def create(job_id: str) -> tuple[object, int] | object:
                 {
                     "item_id": item_id,
                     "transaction_id": int(tx.id),
-                    "filename": job_item.filename,
+                    "filename": job_item.original_filename,
                     "counterparty": tx.counterparty,
                     "amount_krw": int(tx.amount_krw),
                 }

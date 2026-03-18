@@ -10,16 +10,21 @@ import shutil
 import tempfile
 import threading
 import time
-from copy import deepcopy
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 import requests
 from flask import current_app
+from sqlalchemy import and_, or_
 from werkzeug.datastructures import FileStorage
+
+from core.extensions import db
+from core.time import utcnow
+from domain.models import ReceiptModalJobItemRecord, ReceiptModalJobRecord
 
 MAX_RECEIPT_MODAL_FILES = 50
 ALLOWED_RECEIPT_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
@@ -40,8 +45,8 @@ _DATE_PATTERNS = [
 ]
 _TIME_PATTERN = re.compile(r"(?<!\d)(?P<h>\d{1,2})[:시]?(?P<m>\d{2})(?!\d)")
 _UNKNOWN_TOKENS = {"", "unknown", "알수없음", "알 수 없음", "없음", "null", "none", "n/a", "미상"}
-_RECEIPT_JOBS: dict[str, "ReceiptModalJob"] = {}
-_RECEIPT_JOBS_LOCK = threading.RLock()
+_EMBEDDED_WORKER_LOCK = threading.Lock()
+_EMBEDDED_WORKER_THREAD: threading.Thread | None = None
 
 
 @dataclass
@@ -64,80 +69,6 @@ class ReceiptModalJobItem:
     usage: str = "unknown"
     warnings: list[str] = field(default_factory=list)
     created_transaction_id: int | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "item_id": self.item_id,
-            "client_index": self.client_index,
-            "filename": self.filename,
-            "mime_type": self.mime_type,
-            "size_bytes": self.size_bytes,
-            "status": self.status,
-            "error": self.error,
-            "occurred_on": self.occurred_on,
-            "occurred_time": self.occurred_time,
-            "amount_krw": self.amount_krw,
-            "counterparty": self.counterparty,
-            "payment_item": self.payment_item,
-            "payment_method": self.payment_method,
-            "memo": self.memo,
-            "usage": self.usage,
-            "warnings": list(self.warnings),
-            "created_transaction_id": self.created_transaction_id,
-        }
-
-
-@dataclass
-class ReceiptModalJob:
-    job_id: str
-    user_pk: int
-    created_at_ts: float
-    updated_at_ts: float
-    storage_dir: str
-    status: str = "queued"
-    items: list[ReceiptModalJobItem] = field(default_factory=list)
-    created_count: int = 0
-    failed_count: int = 0
-    last_result: dict[str, Any] | None = None
-
-    def snapshot(self) -> dict[str, Any]:
-        processing_count = sum(1 for item in self.items if item.status in {"queued", "processing"})
-        ready_count = sum(1 for item in self.items if item.status == "ready")
-        error_count = sum(1 for item in self.items if item.status == "error")
-        created_count = sum(1 for item in self.items if item.status == "created")
-        is_complete = processing_count == 0
-        return {
-            "job_id": self.job_id,
-            "status": self.status,
-            "items": [item.to_dict() for item in self.items],
-            "ready_count": ready_count,
-            "error_count": error_count,
-            "processing_count": processing_count,
-            "created_count": created_count,
-            "is_complete": is_complete,
-            "created_at": int(self.created_at_ts),
-            "updated_at": int(self.updated_at_ts),
-            "last_result": self.last_result,
-        }
-
-    def history_summary(self) -> dict[str, Any]:
-        snapshot = self.snapshot()
-        first_item = self.items[0] if self.items else None
-        return {
-            "job_id": self.job_id,
-            "status": self.status,
-            "is_complete": snapshot["is_complete"],
-            "item_count": len(self.items),
-            "ready_count": snapshot["ready_count"],
-            "error_count": snapshot["error_count"],
-            "processing_count": snapshot["processing_count"],
-            "created_count": snapshot["created_count"],
-            "created_at": int(self.created_at_ts),
-            "updated_at": int(self.updated_at_ts),
-            "first_filename": first_item.filename if first_item else None,
-            "has_result": bool(self.last_result),
-            "last_result": deepcopy(self.last_result) if self.last_result else None,
-        }
 
 
 def _guess_mime(filename: str | None, fallback: str = "application/octet-stream") -> str:
@@ -183,122 +114,6 @@ def validate_receipt_image(file: FileStorage) -> tuple[str, str, int]:
     size_bytes = _measure_file_size(file)
     file.stream.seek(0)
     return filename, mime, size_bytes
-
-
-def parse_receipt_confirm_item(raw: dict[str, Any]) -> dict[str, Any]:
-    occurred_on = str(raw.get("occurred_on") or "").strip()
-    occurred_time = str(raw.get("occurred_time") or "").strip()
-    if not occurred_on:
-        raise ValueError("날짜를 확인해 주세요.")
-    if not occurred_time:
-        raise ValueError("시간을 확인해 주세요.")
-
-    try:
-        occurred_at = datetime.strptime(f"{occurred_on} {occurred_time}", "%Y-%m-%d %H:%M")
-    except ValueError as exc:
-        raise ValueError("날짜 또는 시간 형식을 확인해 주세요.") from exc
-
-    amount_raw = str(raw.get("amount_krw") or "").strip().replace(",", "")
-    try:
-        amount_krw = int(amount_raw)
-    except ValueError as exc:
-        raise ValueError("금액을 숫자로 입력해 주세요.") from exc
-    if amount_krw <= 0:
-        raise ValueError("금액은 0원보다 커야 합니다.")
-
-    usage = str(raw.get("usage") or "unknown").strip()
-    if usage not in ("business", "personal", "unknown"):
-        raise ValueError("업무용 여부를 다시 확인해 주세요.")
-
-    return {
-        "item_id": str(raw.get("item_id") or "").strip(),
-        "occurred_at": occurred_at,
-        "amount_krw": amount_krw,
-        "usage": usage,
-        "counterparty": _normalize_optional_text(raw.get("counterparty"), max_length=80),
-        "payment_item": _normalize_optional_text(raw.get("payment_item"), max_length=120),
-        "payment_method": _normalize_payment_method(raw.get("payment_method")),
-        "memo": _normalize_optional_text(raw.get("memo"), max_length=200),
-    }
-
-
-def _job_storage_root() -> Path:
-    configured = current_app.config.get("RECEIPT_MODAL_JOB_DIR")
-    if configured:
-        root = Path(configured)
-    else:
-        evidence_dir = current_app.config.get("EVIDENCE_UPLOAD_DIR")
-        if evidence_dir:
-            root = Path(evidence_dir) / "_receipt_modal_jobs"
-        else:
-            root = Path(tempfile.gettempdir()) / "safetospend_receipt_modal_jobs"
-    root.mkdir(parents=True, exist_ok=True)
-    return root
-
-
-def _parse_delay_seconds() -> float:
-    try:
-        raw = current_app.config.get("RECEIPT_MODAL_PARSE_DELAY_MS", 0)
-    except RuntimeError:
-        raw = 0
-    try:
-        value = max(0, int(raw or 0))
-    except (TypeError, ValueError):
-        value = 0
-    return value / 1000.0
-
-
-def _cleanup_stale_jobs() -> None:
-    now = time.time()
-    stale_ids: list[str] = []
-    with _RECEIPT_JOBS_LOCK:
-        for job_id, job in list(_RECEIPT_JOBS.items()):
-            if now - job.updated_at_ts <= _RECEIPT_JOB_TTL_SECONDS:
-                continue
-            stale_ids.append(job_id)
-            _RECEIPT_JOBS.pop(job_id, None)
-    for job_id in stale_ids:
-        storage_dir = _job_storage_root() / job_id
-        if storage_dir.exists():
-            shutil.rmtree(storage_dir, ignore_errors=True)
-
-
-def _set_job_item_state(job_id: str, item_id: str, **changes: Any) -> None:
-    with _RECEIPT_JOBS_LOCK:
-        job = _RECEIPT_JOBS.get(job_id)
-        if not job:
-            return
-        for item in job.items:
-            if item.item_id != item_id:
-                continue
-            for key, value in changes.items():
-                setattr(item, key, value)
-            job.updated_at_ts = time.time()
-            break
-
-
-def _set_job_status(job_id: str, status: str) -> None:
-    with _RECEIPT_JOBS_LOCK:
-        job = _RECEIPT_JOBS.get(job_id)
-        if not job:
-            return
-        job.status = status
-        job.updated_at_ts = time.time()
-
-
-def _openai_model() -> str:
-    return (os.getenv("OPENAI_MODEL") or "gpt-4.1-mini").strip()
-
-
-def _openai_api_key() -> str:
-    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY 환경변수가 없어 영수증 파싱을 시작할 수 없습니다.")
-    return api_key
-
-
-def _openai_endpoint() -> str:
-    return (os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/") + "/responses"
 
 
 def _normalize_optional_text(value: Any, *, max_length: int = 120) -> str | None:
@@ -374,6 +189,17 @@ def _normalize_payment_method(value: Any) -> str | None:
     return text[:80] if text else None
 
 
+def _normalize_warning_list(values: Any) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    normalized: list[str] = []
+    for value in values:
+        text = _normalize_optional_text(value, max_length=200)
+        if text and text not in normalized:
+            normalized.append(text)
+    return normalized
+
+
 def _default_warnings_from_fields(fields: dict[str, Any]) -> list[str]:
     warnings: list[str] = []
     if fields.get("amount_krw") is None:
@@ -389,6 +215,91 @@ def _default_warnings_from_fields(fields: dict[str, Any]) -> list[str]:
     if not fields.get("payment_method"):
         warnings.append("카드/계좌 정보는 확인 가능한 범위만 표시합니다.")
     return warnings
+
+
+def parse_receipt_confirm_item(raw: dict[str, Any]) -> dict[str, Any]:
+    occurred_on = str(raw.get("occurred_on") or "").strip()
+    occurred_time = str(raw.get("occurred_time") or "").strip()
+    if not occurred_on:
+        raise ValueError("날짜를 확인해 주세요.")
+    if not occurred_time:
+        raise ValueError("시간을 확인해 주세요.")
+
+    try:
+        occurred_at = datetime.strptime(f"{occurred_on} {occurred_time}", "%Y-%m-%d %H:%M")
+    except ValueError as exc:
+        raise ValueError("날짜 또는 시간 형식을 확인해 주세요.") from exc
+
+    amount_raw = str(raw.get("amount_krw") or "").strip().replace(",", "")
+    try:
+        amount_krw = int(amount_raw)
+    except ValueError as exc:
+        raise ValueError("금액을 숫자로 입력해 주세요.") from exc
+    if amount_krw <= 0:
+        raise ValueError("금액은 0원보다 커야 합니다.")
+
+    usage = str(raw.get("usage") or "unknown").strip()
+    if usage not in ("business", "personal", "unknown"):
+        raise ValueError("업무용 여부를 다시 확인해 주세요.")
+
+    return {
+        "item_id": str(raw.get("item_id") or "").strip(),
+        "occurred_at": occurred_at,
+        "amount_krw": amount_krw,
+        "usage": usage,
+        "counterparty": _normalize_optional_text(raw.get("counterparty"), max_length=80),
+        "payment_item": _normalize_optional_text(raw.get("payment_item"), max_length=120),
+        "payment_method": _normalize_payment_method(raw.get("payment_method")),
+        "memo": _normalize_optional_text(raw.get("memo"), max_length=200),
+    }
+
+
+def parse_receipt_draft_update(raw: dict[str, Any]) -> dict[str, Any]:
+    usage = str(raw.get("usage") or "unknown").strip()
+    if usage not in ("business", "personal", "unknown"):
+        usage = "unknown"
+
+    occurred_on_raw = str(raw.get("occurred_on") or "").strip()
+    occurred_time_raw = str(raw.get("occurred_time") or "").strip()
+    amount_raw = str(raw.get("amount_krw") or "").strip()
+
+    normalized = {
+        "occurred_on": _normalize_date(occurred_on_raw) if occurred_on_raw else None,
+        "occurred_time": _normalize_time(occurred_time_raw) if occurred_time_raw else None,
+        "amount_krw": _normalize_amount(amount_raw) if amount_raw else None,
+        "counterparty": _normalize_optional_text(raw.get("counterparty"), max_length=80),
+        "payment_item": _normalize_optional_text(raw.get("payment_item"), max_length=120),
+        "payment_method": _normalize_payment_method(raw.get("payment_method")),
+        "memo": _normalize_optional_text(raw.get("memo"), max_length=200),
+        "usage": usage,
+    }
+    return normalized
+
+
+def _job_storage_root() -> Path:
+    configured = current_app.config.get("RECEIPT_MODAL_JOB_DIR")
+    if configured:
+        root = Path(configured)
+    else:
+        evidence_dir = current_app.config.get("EVIDENCE_UPLOAD_DIR")
+        if evidence_dir:
+            root = Path(evidence_dir) / "_receipt_modal_jobs"
+        else:
+            root = Path(tempfile.gettempdir()) / "safetospend_receipt_modal_jobs"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _parse_delay_seconds() -> float:
+    try:
+        raw = current_app.config.get("RECEIPT_MODAL_PARSE_DELAY_MS", 0)
+    except RuntimeError:
+        raw = 0
+    try:
+        value = max(0, int(raw or 0))
+    except (TypeError, ValueError):
+        value = 0
+    return value / 1000.0
 
 
 def _extract_output_text(payload: dict[str, Any]) -> str:
@@ -435,6 +346,21 @@ def _json_from_text(text: str) -> dict[str, Any]:
         if isinstance(value, dict):
             return value
     raise ValueError("OpenAI 응답이 JSON 형식이 아닙니다.")
+
+
+def _openai_model() -> str:
+    return (os.getenv("OPENAI_MODEL") or "gpt-4.1-mini").strip()
+
+
+def _openai_api_key() -> str:
+    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY 환경변수가 없어 영수증 파싱을 시작할 수 없습니다.")
+    return api_key
+
+
+def _openai_endpoint() -> str:
+    return (os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/") + "/responses"
 
 
 def _prepare_image_data_url(item: ReceiptModalJobItem) -> str:
@@ -541,12 +467,7 @@ def _call_openai_receipt_parser(item: ReceiptModalJobItem) -> dict[str, Any]:
         "memo": _normalize_optional_text(parsed.get("memo"), max_length=200),
         "usage": "unknown",
     }
-    warnings = parsed.get("warnings") if isinstance(parsed.get("warnings"), list) else []
-    normalized_warnings = []
-    for warning in warnings:
-        text_value = _normalize_optional_text(warning, max_length=200)
-        if text_value:
-            normalized_warnings.append(text_value)
+    normalized_warnings = _normalize_warning_list(parsed.get("warnings"))
     for warning in _default_warnings_from_fields(fields):
         if warning not in normalized_warnings:
             normalized_warnings.append(warning)
@@ -558,67 +479,111 @@ def _parse_receipt_file_with_openai(item: ReceiptModalJobItem) -> dict[str, Any]
     return _call_openai_receipt_parser(item)
 
 
-def _run_receipt_job(job_id: str, parse_delay_seconds: float) -> None:
-    _set_job_status(job_id, "processing")
-    with _RECEIPT_JOBS_LOCK:
-        job = _RECEIPT_JOBS.get(job_id)
-        items = list(job.items) if job else []
+def _item_record_to_parser_item(item: ReceiptModalJobItemRecord) -> ReceiptModalJobItem:
+    return ReceiptModalJobItem(
+        item_id=item.id,
+        client_index=item.client_index,
+        filename=item.original_filename,
+        mime_type=item.mime_type,
+        size_bytes=item.size_bytes,
+        stored_path=item.stored_path,
+        status=item.status,
+        error=item.error,
+        occurred_on=item.occurred_on,
+        occurred_time=item.occurred_time,
+        amount_krw=item.amount_krw,
+        counterparty=item.counterparty,
+        payment_item=item.payment_item,
+        payment_method=item.payment_method,
+        memo=item.memo,
+        usage=item.usage,
+        warnings=list(item.warnings_json or []),
+        created_transaction_id=item.created_transaction_id,
+    )
 
-    for item in items:
-        if item.status != "queued":
-            continue
-        _set_job_item_state(job_id, item.item_id, status="processing", error=None)
-        if parse_delay_seconds:
-            time.sleep(parse_delay_seconds)
-        try:
-            fields = _parse_receipt_file_with_openai(item)
-            _set_job_item_state(
-                job_id,
-                item.item_id,
-                status="ready",
-                error=None,
-                occurred_on=fields["occurred_on"],
-                occurred_time=fields["occurred_time"],
-                amount_krw=fields["amount_krw"],
-                counterparty=fields["counterparty"],
-                payment_item=fields["payment_item"],
-                payment_method=fields["payment_method"],
-                memo=fields["memo"],
-                usage=fields.get("usage", "unknown"),
-                warnings=fields.get("warnings", []),
-            )
-        except Exception as exc:
-            _set_job_item_state(
-                job_id,
-                item.item_id,
-                status="error",
-                error=str(exc) or "파싱 중 문제가 발생했습니다.",
-                warnings=[],
-            )
 
-    with _RECEIPT_JOBS_LOCK:
-        job = _RECEIPT_JOBS.get(job_id)
-        if not job:
-            return
-        job.status = "ready" if any(item.status == "ready" for item in job.items) else "failed"
-        job.updated_at_ts = time.time()
+def _item_snapshot(item: ReceiptModalJobItemRecord) -> dict[str, Any]:
+    return {
+        "item_id": item.id,
+        "client_index": item.client_index,
+        "filename": item.original_filename,
+        "mime_type": item.mime_type,
+        "size_bytes": item.size_bytes,
+        "status": item.status,
+        "error": item.error,
+        "occurred_on": item.occurred_on,
+        "occurred_time": item.occurred_time,
+        "amount_krw": item.amount_krw,
+        "counterparty": item.counterparty,
+        "payment_item": item.payment_item,
+        "payment_method": item.payment_method,
+        "memo": item.memo,
+        "usage": item.usage,
+        "warnings": list(item.warnings_json or []),
+        "created_transaction_id": item.created_transaction_id,
+    }
+
+
+def _job_snapshot(job: ReceiptModalJobRecord) -> dict[str, Any]:
+    items = (
+        ReceiptModalJobItemRecord.query.filter_by(job_id=job.id)
+        .order_by(ReceiptModalJobItemRecord.client_index.asc())
+        .all()
+    )
+    processing_count = sum(1 for item in items if item.status in {"queued", "processing"})
+    ready_count = sum(1 for item in items if item.status == "ready")
+    error_count = sum(1 for item in items if item.status == "error")
+    created_count = sum(1 for item in items if item.status == "created")
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "items": [_item_snapshot(item) for item in items],
+        "ready_count": ready_count,
+        "error_count": error_count,
+        "processing_count": processing_count,
+        "created_count": created_count,
+        "is_complete": processing_count == 0,
+        "created_at": int(job.created_at.timestamp()) if job.created_at else 0,
+        "updated_at": int(job.updated_at.timestamp()) if job.updated_at else 0,
+        "last_result": deepcopy(job.last_result_json) if job.last_result_json else None,
+    }
+
+
+def _job_history_summary(job: ReceiptModalJobRecord) -> dict[str, Any]:
+    snapshot = _job_snapshot(job)
+    first_item = snapshot["items"][0] if snapshot["items"] else None
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "is_complete": snapshot["is_complete"],
+        "item_count": len(snapshot["items"]),
+        "ready_count": snapshot["ready_count"],
+        "error_count": snapshot["error_count"],
+        "processing_count": snapshot["processing_count"],
+        "created_count": snapshot["created_count"],
+        "created_at": snapshot["created_at"],
+        "updated_at": snapshot["updated_at"],
+        "first_filename": first_item["filename"] if first_item else None,
+        "has_result": bool(snapshot["last_result"]),
+        "last_result": snapshot["last_result"],
+    }
 
 
 def create_receipt_job(user_pk: int, files: list[FileStorage]) -> dict[str, Any]:
     validate_receipt_modal_files(files)
-    _cleanup_stale_jobs()
 
     job_id = uuid4().hex
     storage_dir = _job_storage_root() / job_id
     storage_dir.mkdir(parents=True, exist_ok=True)
-    now = time.time()
-    job = ReceiptModalJob(
-        job_id=job_id,
+
+    job = ReceiptModalJobRecord(
+        id=job_id,
         user_pk=user_pk,
-        created_at_ts=now,
-        updated_at_ts=now,
+        status="queued",
         storage_dir=str(storage_dir),
     )
+    db.session.add(job)
+    db.session.flush()
 
     valid_count = 0
     for index, file in enumerate(files):
@@ -630,114 +595,294 @@ def create_receipt_job(user_pk: int, files: list[FileStorage]) -> dict[str, Any]
             file.stream.seek(0)
             file.save(stored_path)
             file.stream.seek(0)
-            job.items.append(
-                ReceiptModalJobItem(
-                    item_id=item_id,
+            db.session.add(
+                ReceiptModalJobItemRecord(
+                    id=item_id,
+                    job_id=job.id,
+                    user_pk=user_pk,
                     client_index=index,
-                    filename=filename,
+                    original_filename=filename,
                     mime_type=mime_type,
                     size_bytes=size_bytes,
                     stored_path=str(stored_path),
+                    status="queued",
+                    usage="unknown",
+                    warnings_json=[],
                 )
             )
             valid_count += 1
         except ValueError as exc:
-            job.items.append(
-                ReceiptModalJobItem(
-                    item_id=uuid4().hex,
+            db.session.add(
+                ReceiptModalJobItemRecord(
+                    id=uuid4().hex,
+                    job_id=job.id,
+                    user_pk=user_pk,
                     client_index=index,
-                    filename=Path(file.filename or f"receipt-{index + 1}").name,
+                    original_filename=Path(file.filename or f"receipt-{index + 1}").name,
                     mime_type=(file.mimetype or "").strip() or _guess_mime(file.filename),
                     size_bytes=0,
                     stored_path=None,
                     status="error",
                     error=str(exc),
+                    usage="unknown",
+                    warnings_json=[],
                 )
             )
 
-    with _RECEIPT_JOBS_LOCK:
-        _RECEIPT_JOBS[job_id] = job
+    if valid_count == 0:
+        job.status = "failed"
+        job.failed_count = len(files)
 
-    if valid_count:
-        parse_delay_seconds = _parse_delay_seconds()
-        thread = threading.Thread(
-            target=_run_receipt_job,
-            args=(job_id, parse_delay_seconds),
-            daemon=True,
-            name=f"receipt-modal-{job_id[:8]}",
-        )
-        thread.start()
-    else:
-        _set_job_status(job_id, "failed")
-
-    return job.snapshot()
-
-
-def get_receipt_job_snapshot(user_pk: int, job_id: str) -> dict[str, Any]:
-    _cleanup_stale_jobs()
-    with _RECEIPT_JOBS_LOCK:
-        job = _RECEIPT_JOBS.get(job_id)
-        if not job or job.user_pk != user_pk:
-            raise KeyError(job_id)
-        job.updated_at_ts = time.time()
-        return job.snapshot()
-
-
-def get_receipt_job(user_pk: int, job_id: str) -> ReceiptModalJob:
-    _cleanup_stale_jobs()
-    with _RECEIPT_JOBS_LOCK:
-        job = _RECEIPT_JOBS.get(job_id)
-        if not job or job.user_pk != user_pk:
-            raise KeyError(job_id)
-        job.updated_at_ts = time.time()
-        return job
+    db.session.commit()
+    return _job_snapshot(job)
 
 
 def list_recent_receipt_jobs(user_pk: int, *, limit: int = 8) -> list[dict[str, Any]]:
-    _cleanup_stale_jobs()
-    with _RECEIPT_JOBS_LOCK:
-        jobs = [
-            job.history_summary()
-            for job in _RECEIPT_JOBS.values()
-            if job.user_pk == user_pk
-        ]
-    jobs.sort(key=lambda row: (row.get("updated_at") or 0, row.get("created_at") or 0), reverse=True)
-    return jobs[: max(1, int(limit or 8))]
+    rows = (
+        ReceiptModalJobRecord.query.filter_by(user_pk=user_pk)
+        .order_by(ReceiptModalJobRecord.updated_at.desc(), ReceiptModalJobRecord.created_at.desc())
+        .limit(max(1, int(limit or 8)))
+        .all()
+    )
+    return [_job_history_summary(row) for row in rows]
 
 
-def find_receipt_job_item(job: ReceiptModalJob, item_id: str) -> ReceiptModalJobItem | None:
-    for item in job.items:
-        if item.item_id == item_id:
-            return item
-    return None
+def get_receipt_job(user_pk: int, job_id: str) -> ReceiptModalJobRecord:
+    job = ReceiptModalJobRecord.query.filter_by(id=job_id, user_pk=user_pk).first()
+    if not job:
+        raise KeyError(job_id)
+    return job
 
 
-def mark_receipt_job_result(job: ReceiptModalJob, result: dict[str, Any]) -> None:
+def get_receipt_job_snapshot(user_pk: int, job_id: str) -> dict[str, Any]:
+    return _job_snapshot(get_receipt_job(user_pk, job_id))
+
+
+def find_receipt_job_item(job: ReceiptModalJobRecord, item_id: str) -> ReceiptModalJobItemRecord | None:
+    return ReceiptModalJobItemRecord.query.filter_by(job_id=job.id, id=item_id).first()
+
+
+def update_receipt_job_item_draft(user_pk: int, job_id: str, item_id: str, raw: dict[str, Any]) -> dict[str, Any]:
+    job = get_receipt_job(user_pk, job_id)
+    item = find_receipt_job_item(job, item_id)
+    if item is None:
+        raise KeyError(item_id)
+    if item.status not in {"ready", "created"}:
+        raise ValueError("파싱이 끝난 영수증만 수정할 수 있습니다.")
+
+    normalized = parse_receipt_draft_update(raw)
+    item.occurred_on = normalized["occurred_on"]
+    item.occurred_time = normalized["occurred_time"]
+    item.amount_krw = normalized["amount_krw"]
+    item.counterparty = normalized["counterparty"]
+    item.payment_item = normalized["payment_item"]
+    item.payment_method = normalized["payment_method"]
+    item.memo = normalized["memo"]
+    item.usage = normalized["usage"]
+    item.updated_at = utcnow()
+    job.updated_at = utcnow()
+    db.session.commit()
+    return _item_snapshot(item)
+
+
+def mark_receipt_job_result(job: ReceiptModalJobRecord, result: dict[str, Any]) -> None:
     stored_result = deepcopy({key: value for key, value in result.items() if key != "job"})
-    with _RECEIPT_JOBS_LOCK:
-        job.last_result = stored_result
-        job.created_count = int(stored_result.get("created_count") or 0)
-        job.failed_count = int(stored_result.get("failed_count") or 0)
-        job.status = "created" if job.failed_count == 0 else "created_partial"
-        job.updated_at_ts = time.time()
+    job.last_result_json = stored_result
+    job.created_count = int(stored_result.get("created_count") or 0)
+    job.failed_count = int(stored_result.get("failed_count") or 0)
+    job.status = "created" if job.failed_count == 0 else "created_partial"
+    job.updated_at = utcnow()
+    db.session.commit()
 
 
-def mark_receipt_job_item_created(job: ReceiptModalJob, item_id: str, transaction_id: int) -> None:
-    with _RECEIPT_JOBS_LOCK:
-        for item in job.items:
-            if item.item_id != item_id:
-                continue
-            item.status = "created"
-            item.created_transaction_id = transaction_id
-            job.updated_at_ts = time.time()
-            return
+def mark_receipt_job_item_created(job: ReceiptModalJobRecord, item_id: str, transaction_id: int) -> None:
+    item = find_receipt_job_item(job, item_id)
+    if item is None:
+        return
+    item.status = "created"
+    item.created_transaction_id = transaction_id
+    item.updated_at = utcnow()
+    job.updated_at = utcnow()
+    db.session.commit()
 
 
-def open_receipt_job_file(item: ReceiptModalJobItem) -> FileStorage:
-    if not item.stored_path:
+def open_receipt_job_file(item: ReceiptModalJobItemRecord | ReceiptModalJobItem) -> FileStorage:
+    stored_path = getattr(item, "stored_path", None)
+    filename = getattr(item, "original_filename", None) or getattr(item, "filename", None)
+    mime_type = getattr(item, "mime_type", None)
+    if not stored_path:
         raise ValueError("파일이 없어 다시 업로드가 필요합니다.")
-    path = Path(item.stored_path)
+    path = Path(str(stored_path))
     if not path.exists():
         raise ValueError("임시 파일을 찾을 수 없어 다시 업로드해 주세요.")
     stream = path.open("rb")
-    return FileStorage(stream=stream, filename=item.filename, name="file", content_type=item.mime_type)
+    return FileStorage(stream=stream, filename=filename, name="file", content_type=mime_type)
+
+
+def _refresh_job_counters(job: ReceiptModalJobRecord) -> None:
+    items = ReceiptModalJobItemRecord.query.filter_by(job_id=job.id).all()
+    pending_count = sum(1 for item in items if item.status in {"queued", "processing"})
+    ready_or_created_count = sum(1 for item in items if item.status in {"ready", "created"})
+    error_count = sum(1 for item in items if item.status == "error")
+    created_count = sum(1 for item in items if item.status == "created")
+
+    job.created_count = created_count
+    job.failed_count = error_count
+    if pending_count > 0:
+        job.status = "processing"
+    elif ready_or_created_count > 0:
+        if job.last_result_json:
+            job.status = "created" if job.failed_count == 0 else "created_partial"
+        else:
+            job.status = "ready"
+    else:
+        job.status = "failed"
+    job.updated_at = utcnow()
+
+
+def _worker_stale_before() -> datetime:
+    seconds = int(current_app.config.get("RECEIPT_MODAL_WORKER_STALE_SECONDS", 300) or 300)
+    return datetime.now() - timedelta(seconds=max(60, seconds))
+
+
+def _claim_next_job(worker_id: str) -> str | None:
+    stale_before = _worker_stale_before()
+    query = (
+        ReceiptModalJobRecord.query.filter(
+            or_(
+                ReceiptModalJobRecord.status == "queued",
+                and_(
+                    ReceiptModalJobRecord.status == "processing",
+                    or_(
+                        ReceiptModalJobRecord.worker_heartbeat_at.is_(None),
+                        ReceiptModalJobRecord.worker_heartbeat_at < stale_before,
+                    ),
+                ),
+            )
+        )
+        .order_by(ReceiptModalJobRecord.created_at.asc())
+        .with_for_update(skip_locked=True)
+    )
+    job = query.first()
+    if not job:
+        db.session.rollback()
+        return None
+
+    job.status = "processing"
+    job.worker_id = worker_id
+    job.worker_claimed_at = utcnow()
+    job.worker_heartbeat_at = utcnow()
+    job.parse_attempts = int(job.parse_attempts or 0) + 1
+    job.updated_at = utcnow()
+    db.session.commit()
+    return job.id
+
+
+def _process_claimed_job(job_id: str, worker_id: str) -> None:
+    job = ReceiptModalJobRecord.query.filter_by(id=job_id).first()
+    if not job:
+        return
+
+    items = (
+        ReceiptModalJobItemRecord.query.filter_by(job_id=job.id)
+        .order_by(ReceiptModalJobItemRecord.client_index.asc())
+        .all()
+    )
+    parse_delay_seconds = _parse_delay_seconds()
+
+    for item in items:
+        if item.status not in {"queued", "processing"}:
+            continue
+        item.status = "processing"
+        item.error = None
+        job.worker_heartbeat_at = utcnow()
+        job.updated_at = utcnow()
+        db.session.commit()
+
+        if parse_delay_seconds:
+            time.sleep(parse_delay_seconds)
+
+        try:
+            fields = _parse_receipt_file_with_openai(_item_record_to_parser_item(item))
+            item.status = "ready"
+            item.error = None
+            item.occurred_on = fields.get("occurred_on")
+            item.occurred_time = fields.get("occurred_time")
+            item.amount_krw = fields.get("amount_krw")
+            item.counterparty = fields.get("counterparty")
+            item.payment_item = fields.get("payment_item")
+            item.payment_method = fields.get("payment_method")
+            item.memo = fields.get("memo")
+            item.usage = fields.get("usage") or "unknown"
+            item.warnings_json = list(fields.get("warnings") or [])
+            item.updated_at = utcnow()
+        except Exception as exc:
+            item.status = "error"
+            item.error = str(exc) or "파싱 중 문제가 발생했습니다."
+            item.warnings_json = []
+            item.updated_at = utcnow()
+        finally:
+            job.worker_heartbeat_at = utcnow()
+            _refresh_job_counters(job)
+            db.session.commit()
+
+
+def process_receipt_queue_once(worker_id: str) -> bool:
+    job_id = _claim_next_job(worker_id)
+    if not job_id:
+        return False
+    try:
+        _process_claimed_job(job_id, worker_id)
+    finally:
+        db.session.remove()
+    return True
+
+
+def _embedded_worker_main(app) -> None:
+    worker_id = f"embedded-{os.getpid()}-{uuid4().hex[:8]}"
+    idle_cycles = 0
+    try:
+        while idle_cycles < 3:
+            with app.app_context():
+                did_work = process_receipt_queue_once(worker_id)
+            if did_work:
+                idle_cycles = 0
+                continue
+            idle_cycles += 1
+            time.sleep(float(app.config.get("RECEIPT_MODAL_WORKER_IDLE_SECONDS", 1.0) or 1.0))
+    finally:
+        global _EMBEDDED_WORKER_THREAD
+        with _EMBEDDED_WORKER_LOCK:
+            _EMBEDDED_WORKER_THREAD = None
+
+
+def kick_receipt_worker(app) -> None:
+    if not app.config.get("RECEIPT_MODAL_ENABLE_EMBEDDED_WORKER", True):
+        return
+    global _EMBEDDED_WORKER_THREAD
+    with _EMBEDDED_WORKER_LOCK:
+        if _EMBEDDED_WORKER_THREAD and _EMBEDDED_WORKER_THREAD.is_alive():
+            return
+        _EMBEDDED_WORKER_THREAD = threading.Thread(
+            target=_embedded_worker_main,
+            args=(app,),
+            daemon=True,
+            name="receipt-modal-embedded-worker",
+        )
+        _EMBEDDED_WORKER_THREAD.start()
+
+
+def run_receipt_worker(app, *, once: bool = False, limit: int = 100, idle_seconds: float = 1.0) -> int:
+    processed = 0
+    worker_id = f"cli-{os.getpid()}-{uuid4().hex[:8]}"
+    while True:
+        with app.app_context():
+            did_work = process_receipt_queue_once(worker_id)
+        if did_work:
+            processed += 1
+            if once or processed >= max(1, int(limit or 1)):
+                return processed
+            continue
+        if once:
+            return processed
+        time.sleep(max(0.2, float(idle_seconds or 1.0)))

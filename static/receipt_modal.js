@@ -11,6 +11,7 @@
   const statusUrlTemplate = root.dataset.statusUrlTemplate;
   const createUrlTemplate = root.dataset.createUrlTemplate;
   const historyUrl = root.dataset.historyUrl;
+  const saveUrlTemplate = root.dataset.saveUrlTemplate;
   const openBtn = root.querySelector("[data-receipt-open]");
   const fabStatus = root.querySelector("[data-receipt-fab-status]");
   const fabStatusIndicator = root.querySelector("[data-receipt-fab-status-indicator]");
@@ -50,6 +51,8 @@
     activeItemId: null,
     selectedAccountId: "",
     localEdits: {},
+    saveTimers: {},
+    saveStatusByItem: {},
     result: null,
     history: [],
     busy: false,
@@ -94,6 +97,12 @@
 
   function replaceJobId(template, jobId) {
     return String(template || "").replace("__JOB_ID__", jobId);
+  }
+
+  function replaceJobAndItem(template, jobId, itemId) {
+    return String(template || "")
+      .replace("__JOB_ID__", jobId)
+      .replace("__ITEM_ID__", itemId);
   }
 
   function normalizeText(value) {
@@ -302,6 +311,8 @@
     state.activeItemId = null;
     state.selectedAccountId = "";
     state.localEdits = {};
+    state.saveTimers = {};
+    state.saveStatusByItem = {};
     state.result = null;
     state.history = state.history || [];
     state.toastEligibleJobId = null;
@@ -415,8 +426,16 @@
 
     const disabled = item.status !== "ready" ? "disabled" : "";
     const note = item.status === "ready"
-      ? "알수없는 값은 비워 두었고, 필요하면 직접 수정할 수 있습니다."
+      ? "알수없는 값은 비워 두었고, 필요하면 직접 수정할 수 있습니다. 수정값은 자동 저장됩니다."
       : "현재 파싱 중입니다. 완료되면 값이 채워지고 수정할 수 있습니다.";
+    const saveState = state.saveStatusByItem[item.item_id] || "idle";
+    const saveStateText = saveState === "saving"
+      ? "수정값 저장 중"
+      : saveState === "saved"
+        ? "수정값 자동 저장됨"
+        : saveState === "error"
+          ? "자동 저장 실패"
+          : "파싱 결과 확인";
 
     detailPane.innerHTML = `
       <div class="receipt-detail-card">
@@ -425,7 +444,10 @@
             <div class="strong">${escapeHtml(item.filename)}</div>
             <div class="small-note muted2">${escapeHtml(note)}</div>
           </div>
-          <span class="badge ${item.status === "ready" ? "ok" : "warn"}">${item.status === "ready" ? "완료" : "대기"}</span>
+          <div style="display:grid;gap:6px;justify-items:end;">
+            <span class="badge ${item.status === "ready" ? "ok" : "warn"}">${item.status === "ready" ? "완료" : "대기"}</span>
+            <span class="small-note muted2">${escapeHtml(saveStateText)}</span>
+          </div>
         </div>
 
         <div class="receipt-form-grid receipt-form-grid-single">
@@ -472,6 +494,71 @@
         ${Array.isArray(item.warnings) && item.warnings.length ? `<div class="receipt-warning-list">${item.warnings.map((warning) => `<div class="receipt-warning-item">${escapeHtml(warning)}</div>`).join("")}</div>` : ""}
       </div>
     `;
+  }
+
+  async function saveDraft(itemId) {
+    const item = state.items.find((row) => row.item_id === itemId);
+    if (!item || !state.jobId || item.status !== "ready" || !saveUrlTemplate) {
+      return;
+    }
+
+    state.saveStatusByItem[itemId] = "saving";
+    renderDetail();
+
+    try {
+      const response = await fetch(replaceJobAndItem(saveUrlTemplate, state.jobId, itemId), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          occurred_on: item.occurred_on || "",
+          occurred_time: item.occurred_time || "",
+          amount_krw: item.amount_krw || "",
+          counterparty: item.counterparty || "",
+          payment_item: item.payment_item || "",
+          payment_method: item.payment_method || "",
+          memo: item.memo || "",
+          usage: item.usage || "unknown",
+        }),
+      });
+      const data = await readApiPayload(response);
+      if (!response.ok || !data || !data.item) {
+        throw new Error((data && data.error) || "수정값을 저장하지 못했습니다.");
+      }
+
+      state.items = mergeLocalEdits(
+        Array.isArray(data.job && data.job.items) ? data.job.items : state.items
+      );
+      state.saveStatusByItem[itemId] = "saved";
+      renderParseList();
+      renderDetail();
+      renderResult();
+      window.setTimeout(() => {
+        if (state.saveStatusByItem[itemId] === "saved") {
+          state.saveStatusByItem[itemId] = "idle";
+          renderDetail();
+        }
+      }, 1200);
+    } catch (error) {
+      state.saveStatusByItem[itemId] = "error";
+      setSummary(error.message || "수정값을 저장하지 못했습니다.", "bad");
+      renderDetail();
+    }
+  }
+
+  function scheduleDraftSave(itemId) {
+    if (!itemId) {
+      return;
+    }
+    if (state.saveTimers[itemId]) {
+      window.clearTimeout(state.saveTimers[itemId]);
+    }
+    state.saveTimers[itemId] = window.setTimeout(() => {
+      delete state.saveTimers[itemId];
+      void saveDraft(itemId);
+    }, 450);
   }
 
   function renderResult() {
@@ -768,6 +855,7 @@
       state.localEdits[item.item_id][field] = target.value;
       item[field] = target.value;
       renderResult();
+      scheduleDraftSave(item.item_id);
     });
 
     detailPane.addEventListener("change", (event) => {
@@ -789,6 +877,7 @@
       state.localEdits[item.item_id][field] = target.value;
       item[field] = target.value;
       renderResult();
+      scheduleDraftSave(item.item_id);
     });
   }
 

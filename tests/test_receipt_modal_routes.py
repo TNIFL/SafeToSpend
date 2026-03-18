@@ -15,6 +15,8 @@ from domain.models import (
     BankAccountLink,
     EvidenceItem,
     ExpenseLabel,
+    ReceiptModalJobItemRecord,
+    ReceiptModalJobRecord,
     SafeToSpendSettings,
     Transaction,
     User,
@@ -54,6 +56,12 @@ class ReceiptModalRoutesTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         with self.app.app_context():
+            ReceiptModalJobItemRecord.query.filter(ReceiptModalJobItemRecord.user_pk == self.user_pk).delete(
+                synchronize_session=False
+            )
+            ReceiptModalJobRecord.query.filter(ReceiptModalJobRecord.user_pk == self.user_pk).delete(
+                synchronize_session=False
+            )
             EvidenceItem.query.filter(EvidenceItem.user_pk == self.user_pk).delete(synchronize_session=False)
             ExpenseLabel.query.filter(ExpenseLabel.user_pk == self.user_pk).delete(synchronize_session=False)
             Transaction.query.filter(Transaction.user_pk == self.user_pk).delete(synchronize_session=False)
@@ -251,6 +259,60 @@ class ReceiptModalRoutesTest(unittest.TestCase):
         self.assertGreaterEqual(len(payload["jobs"]), 1)
         self.assertEqual(payload["jobs"][0]["job_id"], job_id)
         self.assertEqual(payload["jobs"][0]["first_filename"], "20260318_2215_23500원_스타벅스.jpg")
+
+    def test_save_item_persists_draft_updates(self) -> None:
+        self._login()
+        with patch("services.receipt_modal._parse_receipt_file_with_openai", side_effect=self._fake_parsed_receipt):
+            start_response = self.client.post(
+                "/dashboard/receipt-modal/start",
+                data={
+                    "files": [
+                        (io.BytesIO(b"fake-image"), "20260318_2215_23500원_스타벅스.jpg"),
+                    ]
+                },
+                content_type="multipart/form-data",
+            )
+            job_id = start_response.get_json()["job"]["job_id"]
+            payload = self._wait_for_job(job_id)
+
+        item = payload["job"]["items"][0]
+        response = self.client.post(
+            f"/dashboard/receipt-modal/jobs/{job_id}/items/{item['item_id']}",
+            json={
+                "occurred_on": "2026-03-19",
+                "occurred_time": "08:45",
+                "amount_krw": "15400",
+                "counterparty": "수정된 상호",
+                "payment_item": "샌드위치",
+                "payment_method": "카드 9988",
+                "memo": "자동 저장 확인",
+                "usage": "business",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["item"]["occurred_on"], "2026-03-19")
+        self.assertEqual(data["item"]["occurred_time"], "08:45")
+        self.assertEqual(data["item"]["amount_krw"], 15400)
+        self.assertEqual(data["item"]["counterparty"], "수정된 상호")
+        self.assertEqual(data["item"]["payment_item"], "샌드위치")
+        self.assertEqual(data["item"]["payment_method"], "카드 ****9988")
+        self.assertEqual(data["item"]["memo"], "자동 저장 확인")
+        self.assertEqual(data["item"]["usage"], "business")
+        self.assertEqual(data["job"]["items"][0]["counterparty"], "수정된 상호")
+
+        with self.app.app_context():
+            row = ReceiptModalJobItemRecord.query.filter_by(id=item["item_id"], user_pk=self.user_pk).one()
+            self.assertEqual(row.occurred_on, "2026-03-19")
+            self.assertEqual(row.occurred_time, "08:45")
+            self.assertEqual(row.amount_krw, 15400)
+            self.assertEqual(row.counterparty, "수정된 상호")
+            self.assertEqual(row.payment_item, "샌드위치")
+            self.assertEqual(row.payment_method, "카드 ****9988")
+            self.assertEqual(row.memo, "자동 저장 확인")
+            self.assertEqual(row.usage, "business")
 
     def test_start_accepts_heic_images(self) -> None:
         self._login()

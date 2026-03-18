@@ -9,6 +9,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from core.extensions import db
 from services.evidence_store import purge_expired_evidence
+from services.receipt_modal import run_receipt_worker
 
 load_dotenv()
 
@@ -44,6 +45,9 @@ def create_app():
     receipt_modal_max = int(os.getenv("RECEIPT_MODAL_MAX_BYTES") or (100 * 1024 * 1024))
     app.config["MAX_CONTENT_LENGTH"] = max(default_upload_max, receipt_modal_max)
     app.config["RECEIPT_MODAL_MAX_BYTES"] = receipt_modal_max
+    app.config["RECEIPT_MODAL_ENABLE_EMBEDDED_WORKER"] = os.getenv("RECEIPT_MODAL_ENABLE_EMBEDDED_WORKER", "1") == "1"
+    app.config["RECEIPT_MODAL_WORKER_IDLE_SECONDS"] = float(os.getenv("RECEIPT_MODAL_WORKER_IDLE_SECONDS") or "1.0")
+    app.config["RECEIPT_MODAL_WORKER_STALE_SECONDS"] = int(os.getenv("RECEIPT_MODAL_WORKER_STALE_SECONDS") or "300")
     app.config["OFFICIAL_DATA_MAX_BYTES"] = int(os.getenv("OFFICIAL_DATA_MAX_BYTES") or default_upload_max)
     app.config["REFERENCE_MATERIAL_MAX_BYTES"] = int(os.getenv("REFERENCE_MATERIAL_MAX_BYTES") or default_upload_max)
     
@@ -51,6 +55,14 @@ def create_app():
     def purge_evidence_cmd():
         n = purge_expired_evidence()
         click.echo(f"purged: {n}")
+
+    @app.cli.command("receipt-worker")
+    @click.option("--once", is_flag=True, help="대기열 1회만 처리하고 종료")
+    @click.option("--limit", default=100, show_default=True, help="한 번 실행에서 처리할 최대 작업 수")
+    @click.option("--idle-seconds", default=1.0, show_default=True, help="대기열이 비었을 때 재시도 간격")
+    def receipt_worker_cmd(once: bool, limit: int, idle_seconds: float):
+        processed = run_receipt_worker(app, once=once, limit=limit, idle_seconds=idle_seconds)
+        click.echo(f"receipt worker processed: {processed}")
 
 
     db.init_app(app)

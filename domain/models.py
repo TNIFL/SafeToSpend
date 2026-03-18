@@ -307,6 +307,84 @@ class ReferenceMaterialItem(db.Model):
     )
 
 
+class ReceiptModalJobRecord(db.Model):
+    __tablename__ = "receipt_modal_jobs"
+
+    id = db.Column(db.String(32), primary_key=True)
+    user_pk = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    status = db.Column(db.String(24), nullable=False, default="queued")
+    storage_dir = db.Column(db.String(1024), nullable=False)
+    parse_attempts = db.Column(db.Integer, nullable=False, default=0)
+    created_count = db.Column(db.Integer, nullable=False, default=0)
+    failed_count = db.Column(db.Integer, nullable=False, default=0)
+
+    worker_id = db.Column(db.String(64), nullable=True)
+    worker_claimed_at = db.Column(db.DateTime, nullable=True)
+    worker_heartbeat_at = db.Column(db.DateTime, nullable=True)
+
+    last_result_json = db.Column(JSONB, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('queued','processing','ready','failed','created','created_partial')",
+            name="ck_receipt_modal_jobs_status",
+        ),
+        Index("idx_receipt_modal_jobs_user_created", "user_pk", "created_at"),
+        Index("idx_receipt_modal_jobs_status_created", "status", "created_at"),
+        Index("idx_receipt_modal_jobs_worker_heartbeat", "status", "worker_heartbeat_at"),
+    )
+
+
+class ReceiptModalJobItemRecord(db.Model):
+    __tablename__ = "receipt_modal_job_items"
+
+    id = db.Column(db.String(32), primary_key=True)
+    job_id = db.Column(db.String(32), db.ForeignKey("receipt_modal_jobs.id"), nullable=False)
+    user_pk = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    client_index = db.Column(db.Integer, nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(120), nullable=False)
+    size_bytes = db.Column(db.Integer, nullable=False, default=0)
+    stored_path = db.Column(db.String(1024), nullable=True)
+
+    status = db.Column(db.String(24), nullable=False, default="queued")
+    error = db.Column(db.Text, nullable=True)
+
+    occurred_on = db.Column(db.String(10), nullable=True)
+    occurred_time = db.Column(db.String(5), nullable=True)
+    amount_krw = db.Column(db.Integer, nullable=True)
+    counterparty = db.Column(db.String(80), nullable=True)
+    payment_item = db.Column(db.String(120), nullable=True)
+    payment_method = db.Column(db.String(80), nullable=True)
+    memo = db.Column(db.Text, nullable=True)
+    usage = db.Column(db.String(16), nullable=False, default="unknown")
+    warnings_json = db.Column(JSONB, nullable=True)
+    created_transaction_id = db.Column(db.Integer, db.ForeignKey("transactions.id"), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('queued','processing','ready','error','created')",
+            name="ck_receipt_modal_job_items_status",
+        ),
+        CheckConstraint(
+            "usage IN ('business','personal','unknown')",
+            name="ck_receipt_modal_job_items_usage",
+        ),
+        Index("idx_receipt_modal_job_items_job_client", "job_id", "client_index"),
+        Index("idx_receipt_modal_job_items_user_created", "user_pk", "created_at"),
+        Index("idx_receipt_modal_job_items_status", "status"),
+        UniqueConstraint("job_id", "client_index", name="uq_receipt_modal_job_items_job_client"),
+    )
+
+
 class WeeklyTask(db.Model):
     __tablename__ = "weekly_tasks"
 

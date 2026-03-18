@@ -70,6 +70,7 @@
     data-status-url-template="{{ url_for('web_receipt_modal.job_status', job_id='__JOB_ID__') }}"
     data-create-url-template="{{ url_for('web_receipt_modal.create', job_id='__JOB_ID__') }}"
     data-history-url="{{ url_for('web_receipt_modal.history') }}"
+    data-save-url-template="{{ url_for('web_receipt_modal.save_item', job_id='__JOB_ID__', item_id='__ITEM_ID__') }}"
   >
     <div class="receipt-fab-shell">
       <button type="button" class="receipt-fab-status" data-receipt-fab-status hidden>
