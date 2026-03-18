@@ -10,7 +10,11 @@
   const startUrl = root.dataset.startUrl;
   const statusUrlTemplate = root.dataset.statusUrlTemplate;
   const createUrlTemplate = root.dataset.createUrlTemplate;
+  const historyUrl = root.dataset.historyUrl;
   const openBtn = root.querySelector("[data-receipt-open]");
+  const fabStatus = root.querySelector("[data-receipt-fab-status]");
+  const fabStatusIndicator = root.querySelector("[data-receipt-fab-status-indicator]");
+  const fabStatusLabel = root.querySelector("[data-receipt-fab-status-label]");
   const shell = root.querySelector("[data-receipt-shell]");
   const closeButtons = root.querySelectorAll("[data-receipt-close]");
   const fileInput = root.querySelector("[data-receipt-input]");
@@ -18,6 +22,7 @@
   const selectedFileList = root.querySelector("[data-receipt-selected-files]");
   const startBtn = root.querySelector("[data-receipt-start]");
   const resetBtn = root.querySelector("[data-receipt-reset]");
+  const historyList = root.querySelector("[data-receipt-history-list]");
   const summary = root.querySelector("[data-receipt-summary]");
   const stepNodes = root.querySelectorAll("[data-receipt-step]");
   const stepBadges = root.querySelectorAll("[data-receipt-step-badge]");
@@ -46,6 +51,7 @@
     selectedAccountId: "",
     localEdits: {},
     result: null,
+    history: [],
     busy: false,
     currentStep: 1,
     pollTimer: null,
@@ -122,6 +128,23 @@
     return `${date} ${time}`;
   }
 
+  function formatDateTime(tsSeconds) {
+    const value = Number(tsSeconds || 0);
+    if (!value) {
+      return "시간 정보 없음";
+    }
+    const date = new Date(value * 1000);
+    if (Number.isNaN(date.getTime())) {
+      return "시간 정보 없음";
+    }
+    return new Intl.DateTimeFormat("ko-KR", {
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
+  }
+
   function openModal() {
     shell.hidden = false;
     document.body.classList.add("receipt-modal-open");
@@ -159,6 +182,37 @@
     state.busy = value;
     startBtn.disabled = value || !state.files.length;
     createBtn.disabled = value || !getCreatableItems().length;
+  }
+
+  function renderFabStatus() {
+    if (!fabStatus || !fabStatusLabel || !fabStatusIndicator) {
+      return;
+    }
+
+    const job = state.job;
+    if (!job || state.currentStep === 0) {
+      fabStatus.hidden = true;
+      fabStatus.className = "receipt-fab-status";
+      return;
+    }
+
+    if (!job.is_complete) {
+      fabStatus.hidden = false;
+      fabStatus.className = "receipt-fab-status is-processing";
+      fabStatusLabel.textContent = "영수증 확인 중";
+      return;
+    }
+
+    if (job.is_complete && !state.result) {
+      fabStatus.hidden = false;
+      fabStatus.className = "receipt-fab-status is-complete";
+      fabStatusLabel.textContent = "확인하기";
+      return;
+    }
+
+    fabStatus.hidden = false;
+    fabStatus.className = "receipt-fab-status is-complete";
+    fabStatusLabel.textContent = "최근 결과 보기";
   }
 
   function clearPolling() {
@@ -206,6 +260,39 @@
     startBtn.disabled = state.busy;
   }
 
+  function renderHistory() {
+    if (!historyList) {
+      return;
+    }
+    if (!state.history.length) {
+      historyList.innerHTML = '<div class="receipt-empty-state"><div class="strong">이전 업로드 기록이 없습니다.</div><div class="small-note muted2">영수증 작업을 시작하면 최근 기록이 이곳에 쌓입니다.</div></div>';
+      return;
+    }
+
+    historyList.innerHTML = state.history
+      .map((job) => {
+        const statusText = !job.is_complete
+          ? "파싱 진행 중"
+          : job.created_count
+            ? "거래 생성 결과 있음"
+            : "결과 확인 가능";
+        const firstName = job.first_filename || `영수증 ${job.item_count}건`;
+        return `
+          <button type="button" class="receipt-history-item" data-receipt-history-job="${escapeHtml(job.job_id)}">
+            <div class="strong">${escapeHtml(firstName)}</div>
+            <div class="receipt-history-meta">
+              <span>${escapeHtml(formatDateTime(job.updated_at || job.created_at))}</span>
+              <span>${escapeHtml(statusText)}</span>
+            </div>
+            <div class="small-note muted2">
+              총 ${job.item_count}건 · 완료 ${job.ready_count + job.created_count}건 · 실패 ${job.error_count}건
+            </div>
+          </button>
+        `;
+      })
+      .join("");
+  }
+
   function resetModalState() {
     state.files = [];
     state.jobId = null;
@@ -216,6 +303,7 @@
     state.selectedAccountId = "";
     state.localEdits = {};
     state.result = null;
+    state.history = state.history || [];
     state.toastEligibleJobId = null;
     state.resumingJob = false;
     fileInput.value = "";
@@ -229,6 +317,8 @@
     hideToast();
     setSummary("", "");
     renderSelectedFiles();
+    renderHistory();
+    renderFabStatus();
     showStep(1);
     clearPolling();
     storageRemove(STORAGE_KEY);
@@ -445,6 +535,7 @@
     }
 
     createBtn.disabled = state.busy || !getCreatableItems().length;
+    renderFabStatus();
   }
 
   function applyJobSnapshot(job) {
@@ -464,6 +555,7 @@
     renderParseList();
     renderDetail();
     renderResult();
+    renderFabStatus();
 
     goResultBtn.disabled = !job.is_complete;
 
@@ -537,6 +629,7 @@
       hideToast();
       applyJobSnapshot(data.job);
       renderAccounts();
+      await loadHistory();
       showStep(2);
       schedulePolling();
     } catch (error) {
@@ -571,8 +664,10 @@
       state.accounts = Array.isArray(data.accounts) ? data.accounts : state.accounts;
       applyJobSnapshot(data.job);
       renderAccounts();
+      renderHistory();
       if (data.job.is_complete) {
         clearPolling();
+        await loadHistory();
       }
     } catch (error) {
       clearPolling();
@@ -644,6 +739,7 @@
       state.toastEligibleJobId = null;
       storageRemove(STORAGE_KEY);
       storageRemove(TOAST_KEY);
+      await loadHistory();
     } catch (error) {
       setSummary(error.message || "거래 생성에 실패했습니다.", "bad");
     } finally {
@@ -708,13 +804,60 @@
     });
   }
 
+  async function openExistingJob(jobId) {
+    if (!jobId) {
+      return;
+    }
+    state.jobId = jobId;
+    state.toastEligibleJobId = null;
+    state.resumingJob = true;
+    await pollJob(true);
+    state.resumingJob = false;
+    openModal();
+    if (state.job && state.job.is_complete && state.job.created_count) {
+      showStep(3);
+    } else {
+      showStep(2);
+    }
+  }
+
+  async function loadHistory() {
+    if (!historyUrl) {
+      return;
+    }
+    try {
+      const response = await fetch(historyUrl, { credentials: "same-origin" });
+      const data = await readApiPayload(response);
+      if (!response.ok || !data) {
+        throw new Error((data && data.error) || "이전 업로드 기록을 불러오지 못했습니다.");
+      }
+      state.history = Array.isArray(data.jobs) ? data.jobs : [];
+      renderHistory();
+    } catch (_error) {
+      state.history = [];
+      renderHistory();
+    }
+  }
+
   function bindEvents() {
     openBtn.addEventListener("click", () => {
       openModal();
-      if (state.jobId && state.job && state.job.is_complete) {
+      if (state.jobId && state.job && state.job.is_complete && state.result) {
         showStep(3);
+      } else if (state.jobId) {
+        showStep(2);
       }
     });
+    if (fabStatus) {
+      fabStatus.addEventListener("click", () => {
+        openModal();
+        if (state.job && state.job.is_complete && state.result) {
+          showStep(3);
+          return;
+        }
+        showStep(2);
+      });
+    }
 
     closeButtons.forEach((button) => {
       button.addEventListener("click", closeModal);
@@ -754,10 +897,23 @@
     });
     toastOpen.addEventListener("click", () => {
       openModal();
-      showStep(3);
+      if (state.job && state.job.is_complete && state.result) {
+        showStep(3);
+      } else {
+        showStep(2);
+      }
       hideToast();
     });
     toastClose.addEventListener("click", hideToast);
+    if (historyList) {
+      historyList.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-receipt-history-job]");
+        if (!button) {
+          return;
+        }
+        void openExistingJob(button.dataset.receiptHistoryJob || "");
+      });
+    }
 
     bindDetailEvents();
     bindListEvents();
@@ -782,5 +938,6 @@
 
   bindEvents();
   resetModalState();
+  void loadHistory();
   void resumeActiveJobIfPresent();
 })();

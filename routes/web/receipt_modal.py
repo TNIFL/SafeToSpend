@@ -17,6 +17,7 @@ from services.receipt_modal import (
     find_receipt_job_item,
     get_receipt_job,
     get_receipt_job_snapshot,
+    list_recent_receipt_jobs,
     mark_receipt_job_item_created,
     mark_receipt_job_result,
     open_receipt_job_file,
@@ -82,6 +83,13 @@ def _job_payload(user_pk: int, snapshot: dict) -> dict:
     }
 
 
+def _history_payload(user_pk: int) -> dict:
+    return {
+        "ok": True,
+        "jobs": list_recent_receipt_jobs(user_pk),
+    }
+
+
 def _evidence_defaults_from_usage(usage: str) -> tuple[str, str]:
     if usage == "business":
         return "required", "missing"
@@ -122,6 +130,12 @@ def start() -> tuple[object, int] | object:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
     return jsonify(_job_payload(user_pk, snapshot))
+
+
+@web_receipt_modal_bp.get("/history")
+@login_required
+def history() -> object:
+    return jsonify(_history_payload(_uid()))
 
 
 @web_receipt_modal_bp.get("/jobs/<job_id>")

@@ -131,7 +131,9 @@ class ReceiptModalRoutesTest(unittest.TestCase):
         self._login()
         private_body = self.client.get("/overview").get_data(as_text=True)
         self.assertIn("data-receipt-open", private_body)
+        self.assertIn("data-receipt-fab-status", private_body)
         self.assertIn("data-receipt-start", private_body)
+        self.assertIn("data-receipt-history-list", private_body)
         self.assertIn("1. 업로드", private_body)
         self.assertIn("2. 파싱 확인", private_body)
         self.assertIn("3. 결과 확인", private_body)
@@ -225,6 +227,30 @@ class ReceiptModalRoutesTest(unittest.TestCase):
         self.assertEqual(item["occurred_on"], "2026-03-18")
         self.assertEqual(item["occurred_time"], "22:15")
         self.assertEqual(item["payment_method"], "카드 ****4321")
+
+    def test_history_returns_recent_jobs(self) -> None:
+        self._login()
+        with patch("services.receipt_modal._parse_receipt_file_with_openai", side_effect=self._fake_parsed_receipt):
+            start_response = self.client.post(
+                "/dashboard/receipt-modal/start",
+                data={
+                    "files": [
+                        (io.BytesIO(b"fake-image"), "20260318_2215_23500원_스타벅스.jpg"),
+                    ]
+                },
+                content_type="multipart/form-data",
+            )
+            job_id = start_response.get_json()["job"]["job_id"]
+            self._wait_for_job(job_id)
+
+        response = self.client.get("/dashboard/receipt-modal/history")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertGreaterEqual(len(payload["jobs"]), 1)
+        self.assertEqual(payload["jobs"][0]["job_id"], job_id)
+        self.assertEqual(payload["jobs"][0]["first_filename"], "20260318_2215_23500원_스타벅스.jpg")
 
     def test_start_accepts_heic_images(self) -> None:
         self._login()

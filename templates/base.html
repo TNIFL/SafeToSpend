@@ -69,18 +69,25 @@
     data-start-url="{{ url_for('web_receipt_modal.start') }}"
     data-status-url-template="{{ url_for('web_receipt_modal.job_status', job_id='__JOB_ID__') }}"
     data-create-url-template="{{ url_for('web_receipt_modal.create', job_id='__JOB_ID__') }}"
+    data-history-url="{{ url_for('web_receipt_modal.history') }}"
   >
-    <button
-      type="button"
-      class="receipt-fab"
-      data-receipt-open
-      aria-haspopup="dialog"
-      aria-controls="receipt-modal"
-      aria-label="영수증으로 거래 추가"
-      title="영수증으로 거래 추가"
-    >
-      <span aria-hidden="true">+</span>
-    </button>
+    <div class="receipt-fab-shell">
+      <button type="button" class="receipt-fab-status" data-receipt-fab-status hidden>
+        <span class="receipt-fab-status-indicator" data-receipt-fab-status-indicator aria-hidden="true"></span>
+        <span data-receipt-fab-status-label>영수증 확인 중</span>
+      </button>
+      <button
+        type="button"
+        class="receipt-fab"
+        data-receipt-open
+        aria-haspopup="dialog"
+        aria-controls="receipt-modal"
+        aria-label="영수증으로 거래 추가"
+        title="영수증으로 거래 추가"
+      >
+        <span aria-hidden="true">+</span>
+      </button>
+    </div>
 
     <div class="receipt-modal-shell" data-receipt-shell hidden>
       <button type="button" class="receipt-modal-backdrop" data-receipt-close aria-label="닫기"></button>
@@ -102,29 +109,46 @@
           <div class="receipt-summary-banner" data-receipt-summary hidden></div>
 
           <section data-receipt-step="1">
-            <div class="receipt-upload-card">
-              <div class="cardTitle">
-                <span>영수증 이미지 업로드</span>
-                <span class="badge">최대 50개</span>
-              </div>
-              <div class="small-note muted2" style="margin-top:8px;">
-                jpg / jpeg / png / webp / heic / heif 이미지를 올릴 수 있습니다.
-              </div>
-              <label class="receipt-upload-field" for="receipt-modal-files">
-                <span class="strong">영수증 이미지 선택</span>
-                <span class="small-note muted2">업로드하면 파일명.형식 목록을 먼저 보여줍니다.</span>
-                <input id="receipt-modal-files" type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif" multiple data-receipt-input>
-              </label>
-              <div class="row" style="margin-top:12px;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                <div class="small-note muted2" data-receipt-selection-note>선택된 파일이 없습니다.</div>
-                <div class="row" style="gap:8px;">
-                  <button type="button" class="btn ghost small" data-receipt-reset>초기화</button>
-                  <button type="button" class="btn primary small" data-receipt-start disabled>파싱 시작</button>
+            <div class="receipt-start-layout">
+              <div class="receipt-upload-card">
+                <div class="cardTitle">
+                  <span>영수증 이미지 업로드</span>
+                  <span class="badge">최대 50개</span>
+                </div>
+                <div class="small-note muted2" style="margin-top:8px;">
+                  jpg / jpeg / png / webp / heic / heif 이미지를 올릴 수 있습니다.
+                </div>
+                <label class="receipt-upload-field" for="receipt-modal-files">
+                  <span class="strong">영수증 이미지 선택</span>
+                  <span class="small-note muted2">업로드하면 파일명.형식 목록을 먼저 보여줍니다.</span>
+                  <input id="receipt-modal-files" type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif" multiple data-receipt-input>
+                </label>
+                <div class="row" style="margin-top:12px;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                  <div class="small-note muted2" data-receipt-selection-note>선택된 파일이 없습니다.</div>
+                  <div class="row" style="gap:8px;">
+                    <button type="button" class="btn ghost small" data-receipt-reset>초기화</button>
+                    <button type="button" class="btn primary small" data-receipt-start disabled>파싱 시작</button>
+                  </div>
+                </div>
+                <div class="receipt-selected-file-list" data-receipt-selected-files>
+                  <div class="small-note muted2">파일을 올리면 파일명.형식 목록이 여기에 표시됩니다.</div>
                 </div>
               </div>
-              <div class="receipt-selected-file-list" data-receipt-selected-files>
-                <div class="small-note muted2">파일을 올리면 파일명.형식 목록이 여기에 표시됩니다.</div>
-              </div>
+              <aside class="receipt-history-card">
+                <div class="cardTitle">
+                  <span>이전 업로드 기록</span>
+                  <span class="small-note muted2">최근 작업</span>
+                </div>
+                <div class="small-note muted2" style="margin-top:8px;">
+                  이전 영수증 업로드 작업을 다시 열어 파싱 상태와 결과를 확인할 수 있습니다.
+                </div>
+                <div class="receipt-history-list scrollbox" data-receipt-history-list>
+                  <div class="receipt-empty-state">
+                    <div class="strong">이전 업로드 기록이 없습니다.</div>
+                    <div class="small-note muted2">영수증 작업을 시작하면 최근 기록이 이곳에 쌓입니다.</div>
+                  </div>
+                </div>
+              </aside>
             </div>
           </section>
 
@@ -197,7 +221,7 @@
       </div>
     </div>
   </div>
-  <script defer src="{{ url_for('static', filename='receipt_modal.js') }}?v=20260318-3"></script>
+  <script defer src="{{ url_for('static', filename='receipt_modal.js') }}?v=20260318-4"></script>
 {% endif %}
 
 <footer class="footer">

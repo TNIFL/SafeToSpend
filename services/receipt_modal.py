@@ -120,6 +120,25 @@ class ReceiptModalJob:
             "last_result": self.last_result,
         }
 
+    def history_summary(self) -> dict[str, Any]:
+        snapshot = self.snapshot()
+        first_item = self.items[0] if self.items else None
+        return {
+            "job_id": self.job_id,
+            "status": self.status,
+            "is_complete": snapshot["is_complete"],
+            "item_count": len(self.items),
+            "ready_count": snapshot["ready_count"],
+            "error_count": snapshot["error_count"],
+            "processing_count": snapshot["processing_count"],
+            "created_count": snapshot["created_count"],
+            "created_at": int(self.created_at_ts),
+            "updated_at": int(self.updated_at_ts),
+            "first_filename": first_item.filename if first_item else None,
+            "has_result": bool(self.last_result),
+            "last_result": deepcopy(self.last_result) if self.last_result else None,
+        }
+
 
 def _guess_mime(filename: str | None, fallback: str = "application/octet-stream") -> str:
     if not filename:
@@ -672,6 +691,18 @@ def get_receipt_job(user_pk: int, job_id: str) -> ReceiptModalJob:
             raise KeyError(job_id)
         job.updated_at_ts = time.time()
         return job
+
+
+def list_recent_receipt_jobs(user_pk: int, *, limit: int = 8) -> list[dict[str, Any]]:
+    _cleanup_stale_jobs()
+    with _RECEIPT_JOBS_LOCK:
+        jobs = [
+            job.history_summary()
+            for job in _RECEIPT_JOBS.values()
+            if job.user_pk == user_pk
+        ]
+    jobs.sort(key=lambda row: (row.get("updated_at") or 0, row.get("created_at") or 0), reverse=True)
+    return jobs[: max(1, int(limit or 8))]
 
 
 def find_receipt_job_item(job: ReceiptModalJob, item_id: str) -> ReceiptModalJobItem | None:
