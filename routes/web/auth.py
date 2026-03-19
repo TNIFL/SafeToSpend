@@ -1,10 +1,25 @@
 # routes/web/auth.py
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from pathlib import Path
+
+from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
 
 from services.auth import register_user, authenticate
 from services.dashboard_state import save_state
 
 web_auth_bp = Blueprint("web_auth", __name__)
+_LEGAL_DOC_ROOT = Path(__file__).resolve().parents[2] / "docs" / "legal"
+_LEGAL_DOCUMENTS = {
+    "terms": {
+        "title": "이용약관",
+        "subtitle": "현재 구현 기준 초안",
+        "filename": "terms_of_service_draft.md",
+    },
+    "privacy": {
+        "title": "개인정보처리방침",
+        "subtitle": "현재 구현 기준 초안",
+        "filename": "privacy_policy_draft.md",
+    },
+}
 
 
 def _maybe_save_guest_to_db(user_id: int) -> None:
@@ -17,12 +32,39 @@ def _maybe_save_guest_to_db(user_id: int) -> None:
         session.pop("g_dirty", None)
 
 
+def _required_consents_given() -> bool:
+    return (
+        request.form.get("agree_terms") == "on"
+        and request.form.get("agree_privacy") == "on"
+    )
+
+
+def _load_legal_document(kind: str) -> dict:
+    spec = _LEGAL_DOCUMENTS.get(kind)
+    if spec is None:
+        abort(404)
+
+    path = _LEGAL_DOC_ROOT / spec["filename"]
+    if not path.exists():
+        abort(404)
+
+    return {
+        "title": spec["title"],
+        "subtitle": spec["subtitle"],
+        "body_text": path.read_text(encoding="utf-8"),
+    }
+
+
 @web_auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
         email = request.form.get("email") or ""
         password = request.form.get("password") or ""
         password2 = request.form.get("password2") or ""
+
+        if not _required_consents_given():
+            flash("이용약관과 개인정보처리방침에 동의해야 가입할 수 있습니다.", "error")
+            return redirect(url_for("web_auth.register"))
 
         if password != password2:
             flash("비밀번호가 서로 다릅니다.", "error")
@@ -37,6 +79,16 @@ def register():
         return redirect(url_for("web_auth.login"))
 
     return render_template("register.html")
+
+
+@web_auth_bp.get("/legal/terms")
+def terms_document():
+    return render_template("legal_document.html", **_load_legal_document("terms"))
+
+
+@web_auth_bp.get("/legal/privacy")
+def privacy_document():
+    return render_template("legal_document.html", **_load_legal_document("privacy"))
 
 
 @web_auth_bp.route("/login", methods=["GET", "POST"])

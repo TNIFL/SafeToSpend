@@ -13,6 +13,15 @@
   .form-grid{margin-top:12px;display:grid;gap:10px;}
   .field .label{display:block;margin-bottom:8px;color:var(--muted);font-weight:900;font-size:.9rem;}
   .field input{width:100%;height:44px;padding:0 12px;border-radius:14px;border:1px solid rgba(15,23,42,.10);background:#fff;}
+  .consent-wrap{margin-top:14px;padding:14px;border-radius:18px;border:1px solid rgba(15,23,42,.08);background:rgba(15,23,42,.02);}
+  .consent-title{font-weight:1000;letter-spacing:-.2px;}
+  .consent-note{margin-top:6px;color:var(--muted);font-size:.92rem;line-height:1.5;}
+  .consent-list{margin-top:12px;display:grid;gap:10px;}
+  .consent-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:#fff;border:1px solid rgba(15,23,42,.08);}
+  .consent-item input{margin-top:3px;flex:0 0 auto;}
+  .consent-copy{display:grid;gap:4px;min-width:0;}
+  .consent-links{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .consent-links a{font-size:.92rem;}
   .row{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
   @media (max-width:980px){.auth-grid{grid-template-columns:1fr;}}
 </style>
@@ -51,6 +60,33 @@
             <span class="label">비밀번호 확인</span>
             <input name="password2" type="password" autocomplete="new-password" required>
           </label>
+        </div>
+
+        <div class="consent-wrap">
+          <div class="consent-title">필수 약관동의</div>
+          <div class="consent-note">가입하려면 아래 두 문서를 읽고 모두 동의해야 합니다.</div>
+
+          <div class="consent-list">
+            <label class="consent-item">
+              <input name="agree_terms" type="checkbox" required>
+              <span class="consent-copy">
+                <strong>[필수] 이용약관에 동의합니다</strong>
+                <span class="consent-links">
+                  <a href="{{ url_for('web_auth.terms_document') }}" target="_blank" rel="noopener">전문보기</a>
+                </span>
+              </span>
+            </label>
+
+            <label class="consent-item">
+              <input name="agree_privacy" type="checkbox" required>
+              <span class="consent-copy">
+                <strong>[필수] 개인정보처리방침에 동의합니다</strong>
+                <span class="consent-links">
+                  <a href="{{ url_for('web_auth.privacy_document') }}" target="_blank" rel="noopener">전문보기</a>
+                </span>
+              </span>
+            </label>
+          </div>
         </div>
 
         <div style="margin-top:12px;">

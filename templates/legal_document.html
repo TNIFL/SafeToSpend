@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .legal-wrap{max-width:980px;margin:0 auto;padding:24px 16px 48px;}
+  .legal-card{border-radius:22px;border:1px solid rgba(15,23,42,.08);background:#fff;padding:20px;}
+  .legal-kicker{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(14,116,144,.08);border:1px solid rgba(14,116,144,.14);font-size:.85rem;font-weight:900;color:#155e75;}
+  .legal-title{margin-top:12px;font-size:1.7rem;line-height:1.2;font-weight:1200;letter-spacing:-.8px;}
+  .legal-subtitle{margin-top:10px;color:var(--muted);line-height:1.6;}
+  .legal-body{margin-top:18px;padding:18px;border-radius:18px;background:rgba(15,23,42,.03);border:1px solid rgba(15,23,42,.08);white-space:pre-wrap;word-break:keep-all;line-height:1.72;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.95rem;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="legal-wrap">
+  <section class="legal-card">
+    <span class="legal-kicker">현재 기준 문서 · 초안</span>
+    <div class="legal-title">{{ title }}</div>
+    <div class="legal-subtitle">{{ subtitle }}</div>
+    <div class="legal-body">{{ body_text }}</div>
+  </section>
+</div>
+{% endblock %}
