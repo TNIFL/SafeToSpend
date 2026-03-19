@@ -54,6 +54,158 @@
 
     <div class="hr"></div>
 
+    <div class="grid cols-2" style="gap:12px;">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>이 채널에 올리면 좋은 자료</span>
+          <span class="badge">설명용</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          - 거래 설명 메모<br>
+          - 경비 설명 자료<br>
+          - 수입 구조 설명 자료<br>
+          - 납부/자격 상태에 대한 보조 설명 자료<br>
+          - 세무사에게 맥락 전달이 필요한 파일
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">
+          거래만으로는 설명되지 않는 배경, 사용자가 직접 정리한 표, 세무사에게 같이 전달할 메모는 이 채널에 두는 편이 맞습니다.
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>공식자료와의 차이</span>
+          <span class="badge warn">자동 반영 아님</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          {% for item in guidance_difference_items %}
+            - {{ item }}<br>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="grid cols-3" style="gap:12px;">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>{{ guidance_recommendation_title }}</span>
+          <span class="badge primary">추천형</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">{{ guidance_recommendation_hint }}</div>
+        {% if guidance_recommended_documents %}
+          <div style="margin-top:12px;display:grid;gap:10px;">
+            {% for item in guidance_recommended_documents %}
+              <div class="panel" style="background:#fff;">
+                <div class="panel-title">{{ item.title }}</div>
+                <div class="small-note muted2" style="margin-top:6px;">권장 형식: {{ item.formats }}</div>
+                <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="small-note muted2" style="margin-top:12px;">
+            아직 저장된 정보가 없어 기본 자료 안내를 먼저 보여드리고 있습니다.
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>추가로 해당될 수 있는 자료</span>
+          <span class="badge">보완용</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">
+          입력한 정보와 실제 상황이 다를 수 있으니, 아래 자료도 함께 확인해 보세요.
+        </div>
+        <div style="margin-top:12px;display:grid;gap:10px;">
+          {% for item in guidance_additional_documents %}
+            <div class="panel" style="background:#fff;">
+              <div class="panel-title">{{ item.title }}</div>
+              <div class="small-note muted2" style="margin-top:6px;">권장 형식: {{ item.formats }}</div>
+              <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>잘 모르겠다면 먼저 올릴 기본 자료</span>
+          <span class="badge good">기본</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">
+          정보가 없거나 애매해도 아래 자료부터 시작하면 설명 채널을 가장 안전하게 채울 수 있습니다.
+        </div>
+        <div style="margin-top:12px;display:grid;gap:10px;">
+          {% for item in guidance_baseline_documents %}
+            <div class="panel" style="background:#fff;">
+              <div class="panel-title">{{ item.title }}</div>
+              <div class="small-note muted2" style="margin-top:6px;">권장 형식: {{ item.formats }}</div>
+              <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="grid cols-2" style="gap:12px;">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>처리 방식</span>
+          <span class="badge">참고용 채널</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          {% for item in guidance_process_items %}
+            - {{ item }}<br>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>보관 방식</span>
+          <span class="badge">분리 보관</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          {% for item in guidance_storage_items %}
+            - {{ item }}<br>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="gap:12px; margin-top:12px;">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>삭제 방식</span>
+          <span class="badge">현재 안내</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          {% for item in guidance_deletion_items %}
+            - {{ item }}<br>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>공식자료 업로드와 함께 보면 좋은 이유</span>
+          <span class="badge">역할 분리</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          - 공식자료는 1차 공식 기준을 확인하는 채널입니다.<br>
+          - 참고자료는 그 공식자료와 거래를 이해하기 위한 설명/맥락 자료입니다.<br>
+          - 두 채널은 함께 쓰면 좋지만, 참고자료를 올린다고 공식자료처럼 자동 구조화되거나 자동 확정되지는 않습니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
     <form method="POST" action="{{ url_for('web_reference_material.upload') }}" enctype="multipart/form-data">
       <div class="grid cols-2" style="gap:12px;">
         <label class="field">

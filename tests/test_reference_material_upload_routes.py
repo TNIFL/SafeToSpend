@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from app import create_app
 from core.extensions import db
-from domain.models import ReferenceMaterialItem, User
+from domain.models import ReferenceMaterialItem, SafeToSpendSettings, User
 from services.reference_material_upload import delete_reference_material_item_file
 
 
@@ -36,6 +36,9 @@ class ReferenceMaterialUploadRoutesTest(unittest.TestCase):
             for item in items:
                 delete_reference_material_item_file(item=item)
                 db.session.delete(item)
+            settings = SafeToSpendSettings.query.filter_by(user_pk=self.user_pk).first()
+            if settings:
+                db.session.delete(settings)
             user = User.query.filter_by(id=self.user_pk).first()
             if user:
                 db.session.delete(user)
@@ -142,6 +145,49 @@ class ReferenceMaterialUploadRoutesTest(unittest.TestCase):
         self.assertIn("세무사 참고용", body)
         self.assertIn("직접 정리 엑셀", body)
         self.assertIn("working.csv", body)
+
+    def test_index_renders_guidance_blocks_and_baseline_documents(self) -> None:
+        self._login()
+        response = self.client.get("/dashboard/reference-materials")
+        body = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("공식자료와의 차이", body)
+        self.assertIn("당신이 입력한 정보 기준 추천 자료", body)
+        self.assertIn("추가로 해당될 수 있는 자료", body)
+        self.assertIn("잘 모르겠다면 먼저 올릴 기본 자료", body)
+        self.assertIn("처리 방식", body)
+        self.assertIn("보관 방식", body)
+        self.assertIn("삭제 방식", body)
+        self.assertIn("자동 구조화나 자동 확정의 1차 기준으로 쓰이지 않습니다.", body)
+        self.assertIn("직접 정리한 메모 PDF", body)
+
+    def test_index_uses_settings_meta_for_recommendation_copy(self) -> None:
+        with self.app.app_context():
+            settings = SafeToSpendSettings(
+                user_pk=self.user_pk,
+                default_tax_rate=0.15,
+                custom_rates={
+                    "_meta": {
+                        "health_insurance_type": "지역가입자",
+                        "work_type": "프리랜서",
+                        "vat_registered": True,
+                    }
+                },
+            )
+            db.session.add(settings)
+            db.session.commit()
+
+        self._login()
+        response = self.client.get("/dashboard/reference-materials")
+        body = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("지역가입자 기준으로는 건강보험 납부·자격 상태를 설명하는 보조 자료를 같이 남겨 두는 편이 좋습니다.", body)
+        self.assertIn("프리랜서 기준으로는 수입 구조와 경비 배경을 설명하는 자료를 따로 보관하는 편이 좋습니다.", body)
+        self.assertIn("과세사업자/부가세 대상이면 매출·매입 구조를 설명하는 보조 자료를 함께 올려 두는 편이 안전합니다.", body)
+        self.assertIn("건강보험 납부/자격 상태 설명 메모", body)
+        self.assertIn("매출/매입 구조 설명 메모", body)
 
     def test_download_returns_uploaded_file(self) -> None:
         self._upload(
