@@ -23,7 +23,7 @@
     <div class="grid cols-2">
       <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
         <div class="cardTitle">
-          <span>올릴 수 있는 자료</span>
+          <span>이 채널에 올리면 좋은 자료</span>
           <span class="badge">v1 범위</span>
         </div>
         <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
@@ -39,20 +39,158 @@
 
       <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
         <div class="cardTitle">
-          <span>처리 원칙</span>
+          <span>왜 필요한지</span>
           <span class="badge warn">보수 판정</span>
         </div>
         <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
-          - 반영 가능: 핵심 항목을 읽을 수 있는 공식자료<br>
-          - 검토 필요: 공식자료로 보이지만 핵심 항목이 불완전한 자료<br>
-          - 미지원 형식: 현재 v1에서 읽지 않는 자료 형식 또는 문서 유형<br>
-          - 읽기 실패: 파일은 받았지만 구조를 읽는 중 오류가 난 자료
+          - 거래, 참고자료와 비교 가능한 기준점을 만들기 좋습니다.<br>
+          - 일반 증빙과 분리해서 보관해 세무사 전달용 근거를 정리하기 쉽습니다.<br>
+          - 지원 범위 안의 문서는 핵심 항목을 구조화해 보수적으로 상태를 보여줍니다.
         </div>
         <div class="small-note muted2" style="margin-top:10px;">
-          현재 세무사 패키지 v2에는 공식자료 목록과 원본 파일이 포함될 수 있지만, 교차검증은 여전히 보수적으로 해석해야 합니다.
+          현재 세무사 패키지 v2에는 공식자료 목록과 원본 파일이 포함될 수 있지만, 교차검증 결과가 곧바로 자동 확정을 뜻하지는 않습니다.
         </div>
       </div>
     </div>
+
+    <div class="hr"></div>
+
+    <div class="grid cols-3" style="gap:12px;">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>{{ guidance_recommendation_title }}</span>
+          <span class="badge primary">추천형</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">{{ guidance_recommendation_hint }}</div>
+        {% if guidance_recommended_documents %}
+          <div style="margin-top:12px;display:grid;gap:10px;">
+            {% for item in guidance_recommended_documents %}
+              <div class="panel" style="background:#fff;">
+                <div class="panel-title">{{ item.title }}</div>
+                <div class="small-note muted2" style="margin-top:6px;">지원 형식: {{ item.formats }}</div>
+                <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="small-note muted2" style="margin-top:12px;">
+            아직 저장된 정보가 없어 기본 자료 안내를 먼저 보여드리고 있습니다.
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>추가로 해당될 수 있는 자료</span>
+          <span class="badge">보완용</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">
+          입력한 정보와 실제 상황이 다를 수 있으니, 아래 자료도 함께 확인해 보세요.
+        </div>
+        <div style="margin-top:12px;display:grid;gap:10px;">
+          {% for item in guidance_additional_documents %}
+            <div class="panel" style="background:#fff;">
+              <div class="panel-title">{{ item.title }}</div>
+              <div class="small-note muted2" style="margin-top:6px;">지원 형식: {{ item.formats }}</div>
+              <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>잘 모르겠다면 먼저 올릴 기본 자료</span>
+          <span class="badge good">기본</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;">
+          정보가 없거나 애매해도 아래 자료부터 시작하면 현재 지원 범위 안에서 가장 안전하게 상태를 확인할 수 있습니다.
+        </div>
+        <div style="margin-top:12px;display:grid;gap:10px;">
+          {% for item in guidance_baseline_documents %}
+            <div class="panel" style="background:#fff;">
+              <div class="panel-title">{{ item.title }}</div>
+              <div class="small-note muted2" style="margin-top:6px;">지원 형식: {{ item.formats }}</div>
+              <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="grid cols-2" style="gap:12px;">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>처리 방식</span>
+          <span class="badge">자동 구조화 대상</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          {% for item in guidance_process_items %}
+            - {{ item }}<br>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>자동수집 자료와의 관계</span>
+          <span class="badge warn">안내</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          {% for item in guidance_collection_relation_items %}
+            - {{ item }}<br>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="gap:12px; margin-top:12px;">
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>보관 방식</span>
+          <span class="badge">분리 보관</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          {% for item in guidance_storage_items %}
+            - {{ item }}<br>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+        <div class="cardTitle">
+          <span>삭제 방식</span>
+          <span class="badge">현재 안내</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          {% for item in guidance_deletion_items %}
+            - {{ item }}<br>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% if guidance_show_pro_notice %}
+      <div class="hr"></div>
+
+      <div class="card pad" style="box-shadow:none;background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.18);">
+        <div class="cardTitle">
+          <span>프로 안내</span>
+          <span class="badge primary">{{ guidance_plan_label }} 사용 중</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px; line-height:1.7;">
+          프로에서는 자동 수집 가능한 공식자료를 행정 일정에 맞춰 자동으로 불러오는 기능을 지원할 예정입니다.<br>
+          지금은 직접 업로드가 필요하지만, 앞으로는 자동 수집 가능한 자료를 더 적게 손대고 관리할 수 있도록 준비 중입니다.<br>
+          자동 수집은 자동 확정을 뜻하지 않고, 직접 업로드한 자료와 함께 보완·충돌 확인에 쓰이게 됩니다.
+        </div>
+        <div class="row" style="margin-top:12px; gap:8px; flex-wrap:wrap;">
+          <a class="btn primary" href="{{ url_for('web_billing.index') }}">플랜 안내 보기</a>
+          <a class="btn ghost" href="{{ url_for('web_billing.pricing_page') }}">가격표 보기</a>
+        </div>
+      </div>
+    {% endif %}
 
     <div class="hr"></div>
 

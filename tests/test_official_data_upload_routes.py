@@ -4,12 +4,14 @@ import io
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from uuid import uuid4
 
 from app import create_app
 from core.extensions import db
-from domain.models import OfficialDataDocument, User
+from domain.models import OfficialDataDocument, SafeToSpendSettings, User
 from services.official_data_store import delete_official_data_file
+from services.plan import RuntimePlanState
 
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "official_data"
@@ -40,6 +42,9 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
             for doc in docs:
                 delete_official_data_file(doc.raw_file_key)
                 db.session.delete(doc)
+            settings = SafeToSpendSettings.query.filter_by(user_pk=self.user_pk).first()
+            if settings:
+                db.session.delete(settings)
             user = User.query.filter_by(id=self.user_pk).first()
             if user:
                 db.session.delete(user)
@@ -211,6 +216,89 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
         self.assertIn("최근 업로드", body)
         self.assertIn("홈택스 원천징수 관련 문서", body)
         self.assertIn("withholding.csv", body)
+
+    def test_index_renders_guidance_blocks_and_baseline_documents(self) -> None:
+        self._login()
+
+        response = self.client.get("/dashboard/official-data")
+        body = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("이 채널에 올리면 좋은 자료", body)
+        self.assertIn("당신이 입력한 정보 기준 추천 자료", body)
+        self.assertIn("잘 모르겠다면 먼저 올릴 기본 자료", body)
+        self.assertIn("처리 방식", body)
+        self.assertIn("보관 방식", body)
+        self.assertIn("삭제 방식", body)
+        self.assertIn("홈택스 납부내역", body)
+        self.assertIn("건강보험 납부확인서", body)
+
+    def test_index_uses_settings_meta_for_recommendation_copy(self) -> None:
+        with self.app.app_context():
+            settings = SafeToSpendSettings(
+                user_pk=self.user_pk,
+                default_tax_rate=0.15,
+                custom_rates={
+                    "_meta": {
+                        "health_insurance_type": "지역가입자",
+                        "work_type": "프리랜서",
+                        "vat_registered": True,
+                    }
+                },
+            )
+            db.session.add(settings)
+            db.session.commit()
+
+        self._login()
+        response = self.client.get("/dashboard/official-data")
+        body = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("지역가입자 기준으로 건강보험 관련 공식자료를 먼저 보는 편이 좋습니다.", body)
+        self.assertIn("프리랜서 기준으로는 원천징수와 납부내역을 함께 올리는 편이 가장 실용적입니다.", body)
+        self.assertIn("과세사업자/부가세 대상이면 지원 범위 안의 홈택스 납부 자료부터 먼저 맞추는 편이 안전합니다.", body)
+        self.assertIn("건강보험 자격 관련 문서", body)
+
+    def test_index_shows_pro_notice_for_non_pro_plan(self) -> None:
+        self._login()
+
+        with patch(
+            "routes.web.official_data.build_runtime_plan_state",
+            return_value=RuntimePlanState(
+                current_plan_code="basic",
+                current_plan_label="베이직",
+                subscription_ready=False,
+                runtime_mode="display_only",
+                status_label="구독 준비 중",
+                note="display only",
+            ),
+        ):
+            response = self.client.get("/dashboard/official-data")
+
+        body = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("프로 안내", body)
+        self.assertIn("자동 수집 가능한 공식자료를 행정 일정에 맞춰 자동으로 불러오는 기능을 지원할 예정입니다.", body)
+
+    def test_index_hides_pro_notice_for_pro_plan(self) -> None:
+        self._login()
+
+        with patch(
+            "routes.web.official_data.build_runtime_plan_state",
+            return_value=RuntimePlanState(
+                current_plan_code="pro",
+                current_plan_label="프로",
+                subscription_ready=False,
+                runtime_mode="display_only",
+                status_label="구독 준비 중",
+                note="display only",
+            ),
+        ):
+            response = self.client.get("/dashboard/official-data")
+
+        body = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("프로 안내", body)
 
 
 if __name__ == "__main__":
