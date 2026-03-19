@@ -232,6 +232,8 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
         self.assertIn("삭제 방식", body)
         self.assertIn("홈택스 납부내역", body)
         self.assertIn("건강보험 납부확인서", body)
+        self.assertIn("아직 저장된 정보가 없어 기본 자료 안내를 먼저 보여드리고 있습니다.", body)
+        self.assertIn("자동 구조화 대상", body)
 
     def test_index_uses_settings_meta_for_recommendation_copy(self) -> None:
         with self.app.app_context():

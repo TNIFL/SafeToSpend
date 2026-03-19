@@ -55,68 +55,7 @@
 
     <div class="hr"></div>
 
-    <div class="grid cols-3" style="gap:12px;">
-      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
-        <div class="cardTitle">
-          <span>{{ guidance_recommendation_title }}</span>
-          <span class="badge primary">추천형</span>
-        </div>
-        <div class="small-note muted2" style="margin-top:10px;">{{ guidance_recommendation_hint }}</div>
-        {% if guidance_recommended_documents %}
-          <div style="margin-top:12px;display:grid;gap:10px;">
-            {% for item in guidance_recommended_documents %}
-              <div class="panel" style="background:#fff;">
-                <div class="panel-title">{{ item.title }}</div>
-                <div class="small-note muted2" style="margin-top:6px;">지원 형식: {{ item.formats }}</div>
-                <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="small-note muted2" style="margin-top:12px;">
-            아직 저장된 정보가 없어 기본 자료 안내를 먼저 보여드리고 있습니다.
-          </div>
-        {% endif %}
-      </div>
-
-      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
-        <div class="cardTitle">
-          <span>추가로 해당될 수 있는 자료</span>
-          <span class="badge">보완용</span>
-        </div>
-        <div class="small-note muted2" style="margin-top:10px;">
-          입력한 정보와 실제 상황이 다를 수 있으니, 아래 자료도 함께 확인해 보세요.
-        </div>
-        <div style="margin-top:12px;display:grid;gap:10px;">
-          {% for item in guidance_additional_documents %}
-            <div class="panel" style="background:#fff;">
-              <div class="panel-title">{{ item.title }}</div>
-              <div class="small-note muted2" style="margin-top:6px;">지원 형식: {{ item.formats }}</div>
-              <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
-        <div class="cardTitle">
-          <span>잘 모르겠다면 먼저 올릴 기본 자료</span>
-          <span class="badge good">기본</span>
-        </div>
-        <div class="small-note muted2" style="margin-top:10px;">
-          정보가 없거나 애매해도 아래 자료부터 시작하면 현재 지원 범위 안에서 가장 안전하게 상태를 확인할 수 있습니다.
-        </div>
-        <div style="margin-top:12px;display:grid;gap:10px;">
-          {% for item in guidance_baseline_documents %}
-            <div class="panel" style="background:#fff;">
-              <div class="panel-title">{{ item.title }}</div>
-              <div class="small-note muted2" style="margin-top:6px;">지원 형식: {{ item.formats }}</div>
-              <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
+    {% include "partials/_upload_guidance_recommendation_blocks.html" %}
 
     <div class="hr"></div>
 

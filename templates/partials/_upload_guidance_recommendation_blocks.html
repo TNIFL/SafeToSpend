@@ -1,0 +1,62 @@
+<div class="grid cols-3" style="gap:12px;">
+  <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+    <div class="cardTitle">
+      <span>{{ guidance_recommendation_title }}</span>
+      <span class="badge primary">추천형</span>
+    </div>
+    <div class="small-note muted2" style="margin-top:10px;">{{ guidance_recommendation_hint }}</div>
+    {% if guidance_recommended_documents %}
+      <div style="margin-top:12px;display:grid;gap:10px;">
+        {% for item in guidance_recommended_documents %}
+          <div class="panel" style="background:#fff;">
+            <div class="panel-title">{{ item.title }}</div>
+            <div class="small-note muted2" style="margin-top:6px;">{{ guidance_format_label }}: {{ item.formats }}</div>
+            <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="small-note muted2" style="margin-top:12px;">
+        {{ guidance_recommendation_empty_text }}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+    <div class="cardTitle">
+      <span>{{ guidance_additional_title }}</span>
+      <span class="badge">보완용</span>
+    </div>
+    <div class="small-note muted2" style="margin-top:10px;">
+      {{ guidance_additional_intro }}
+    </div>
+    <div style="margin-top:12px;display:grid;gap:10px;">
+      {% for item in guidance_additional_documents %}
+        <div class="panel" style="background:#fff;">
+          <div class="panel-title">{{ item.title }}</div>
+          <div class="small-note muted2" style="margin-top:6px;">{{ guidance_format_label }}: {{ item.formats }}</div>
+          <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+    <div class="cardTitle">
+      <span>{{ guidance_baseline_title }}</span>
+      <span class="badge good">기본</span>
+    </div>
+    <div class="small-note muted2" style="margin-top:10px;">
+      {{ guidance_baseline_intro }}
+    </div>
+    <div style="margin-top:12px;display:grid;gap:10px;">
+      {% for item in guidance_baseline_documents %}
+        <div class="panel" style="background:#fff;">
+          <div class="panel-title">{{ item.title }}</div>
+          <div class="small-note muted2" style="margin-top:6px;">{{ guidance_format_label }}: {{ item.formats }}</div>
+          <div class="small-note muted2" style="margin-top:6px;">{{ item.reason }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
