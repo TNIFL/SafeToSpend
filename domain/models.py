@@ -1,7 +1,7 @@
 # domain/models.py
 from __future__ import annotations
 
-from sqlalchemy import CheckConstraint, Index, UniqueConstraint, Date
+from sqlalchemy import CheckConstraint, Date, Index, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -51,6 +51,33 @@ class UserConsentAgreement(db.Model):
         UniqueConstraint("user_pk", "document_type", "document_version", name="uq_user_consent_doc_version"),
         Index("idx_user_consent_user_agreed", "user_pk", "agreed_at"),
         Index("idx_user_consent_doc_version", "document_type", "document_version"),
+    )
+
+
+class LegalDocumentMetadata(db.Model):
+    __tablename__ = "legal_document_metadata"
+
+    id = db.Column(db.Integer, primary_key=True)
+    document_type = db.Column(db.String(64), nullable=False)
+    version = db.Column(db.String(32), nullable=False)
+    display_name = db.Column(db.String(120), nullable=False)
+    status = db.Column(db.String(16), nullable=False, default="draft")
+    effective_at = db.Column(db.DateTime, nullable=False)
+    requires_reconsent = db.Column(db.Boolean, nullable=False, default=False)
+    summary = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('draft','active','archived')", name="ck_legal_document_metadata_status"),
+        UniqueConstraint("document_type", "version", name="uq_legal_document_type_version"),
+        Index(
+            "uq_legal_document_active_per_type",
+            "document_type",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+        Index("idx_legal_document_type_status", "document_type", "status"),
     )
 
 
