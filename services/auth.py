@@ -6,15 +6,20 @@ from domain.models import Settings, User, UserConsentAgreement
 from services.legal_documents import RequiredConsent
 
 
-def register_user(email: str, password: str, *, consents: tuple[RequiredConsent, ...] = ()) -> tuple[bool, str]:
+def register_user(
+    email: str,
+    password: str,
+    *,
+    consents: tuple[RequiredConsent, ...] = (),
+) -> tuple[bool, str, int | None]:
     email = (email or "").strip().lower()
     if not email or "@" not in email:
-        return False, "올바른 이메일을 입력해 주세요."
+        return False, "올바른 이메일을 입력해 주세요.", None
     if not password or len(password) < 8:
-        return False, "비밀번호는 8자 이상으로 설정해 주세요."
+        return False, "비밀번호는 8자 이상으로 설정해 주세요.", None
 
     if User.query.filter_by(email=email).first():
-        return False, "이미 가입된 이메일입니다."
+        return False, "이미 가입된 이메일입니다.", None
 
     user = User(email=email)
     user.set_password(password)
@@ -35,7 +40,7 @@ def register_user(email: str, password: str, *, consents: tuple[RequiredConsent,
         )
 
     db.session.commit()
-    return True, "가입 완료"
+    return True, "가입 완료", user.id
 
 
 def authenticate(identifier: str, password: str) -> tuple[bool, str, int | None]:

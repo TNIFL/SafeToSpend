@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}처음 설정 | 쓸수있어{% endblock %}
+
+{% block head_extra %}
+<style>
+  .setup-wrap{max-width:1040px;margin:0 auto;padding:28px 16px 56px;}
+  .setup-shell{display:grid;gap:16px;}
+  .setup-hero{padding:20px;border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,#fff,rgba(15,23,42,.03));box-shadow:var(--shadow-sm);}
+  .setup-kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.18);font-size:.84rem;font-weight:900;color:#166534;}
+  .setup-title{margin:12px 0 0;font-size:1.8rem;line-height:1.15;font-weight:1100;letter-spacing:-.6px;}
+  .setup-sub{margin:10px 0 0;color:var(--muted);line-height:1.7;max-width:700px;}
+  .setup-form{display:grid;gap:14px;}
+  .setup-card{padding:18px;border:1px solid var(--line);border-radius:22px;background:#fff;box-shadow:var(--shadow-sm);}
+  .setup-card h2{margin:0;font-size:1.08rem;font-weight:1000;letter-spacing:-.3px;}
+  .setup-note{margin:6px 0 0;color:var(--muted);line-height:1.6;font-size:.94rem;}
+  .choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;}
+  .choice-card{display:block;cursor:pointer;}
+  .choice-card input{position:absolute;opacity:0;pointer-events:none;}
+  .choice-body{display:grid;gap:6px;height:100%;padding:14px 15px;border-radius:18px;border:1px solid rgba(15,23,42,.1);background:var(--surface-1);transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease;}
+  .choice-card:hover .choice-body{border-color:rgba(37,99,235,.28);}
+  .choice-card input:checked + .choice-body{border-color:rgba(37,99,235,.56);background:rgba(37,99,235,.06);box-shadow:0 0 0 2px rgba(37,99,235,.12);}
+  .choice-title{font-weight:950;letter-spacing:-.2px;}
+  .choice-help{color:var(--muted);font-size:.9rem;line-height:1.5;}
+  .setup-actions{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px;}
+  .setup-actions .btn{min-width:160px;}
+  .setup-meta{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted-2);font-size:.9rem;}
+  @media (max-width:860px){
+    .choice-grid{grid-template-columns:1fr;}
+    .setup-actions{align-items:stretch;}
+    .setup-actions .row{width:100%;}
+    .setup-actions .btn{width:100%;}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="setup-wrap">
+  <div class="setup-shell">
+    <section class="setup-hero">
+      <span class="setup-kicker">처음 설정</span>
+      <h1 class="setup-title">딱 세 가지만 알려주시면<br>추천 안내를 더 정확하게 맞출 수 있어요.</h1>
+      <p class="setup-sub">
+        자료 추천, 건보료/세금 안내에 반영돼요. 잘 모르셔도 괜찮고, 지금 건너뛰어도 바로 사용할 수 있어요.
+      </p>
+      {% if onboarding_state.completed_at %}
+        <div class="setup-meta" style="margin-top:12px;">
+          <span>이미 저장된 값을 다시 바꿀 수 있어요.</span>
+        </div>
+      {% endif %}
+    </section>
+
+    <form class="setup-form" method="POST" action="{{ url_for('web_auth.getting_started') }}">
+      <input type="hidden" name="next" value="{{ next_url or '' }}">
+
+      <section class="setup-card">
+        <h2>어떤 방식으로 일하고 계신가요?</h2>
+        <p class="setup-note">자료 추천과 기본 세금 안내를 맞추는 데 필요해요.</p>
+        <div class="choice-grid">
+          {% for option in user_type_options %}
+            <label class="choice-card">
+              <input
+                type="radio"
+                name="user_type"
+                value="{{ option.value }}"
+                {% if onboarding_state.user_type == option.value %}checked{% endif %}
+                required
+              >
+              <span class="choice-body">
+                <span class="choice-title">{{ option.label }}</span>
+                <span class="choice-help">{{ option.help }}</span>
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="setup-card">
+        <h2>건강보험은 어느 쪽에 가까우세요?</h2>
+        <p class="setup-note">건보료 관련 안내와 추천 자료에 반영돼요.</p>
+        <div class="choice-grid">
+          {% for option in health_insurance_options %}
+            <label class="choice-card">
+              <input
+                type="radio"
+                name="health_insurance"
+                value="{{ option.value }}"
+                {% if onboarding_state.health_insurance == option.value %}checked{% endif %}
+                required
+              >
+              <span class="choice-body">
+                <span class="choice-title">{{ option.label }}</span>
+                <span class="choice-help">{{ option.help }}</span>
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="setup-card">
+        <h2>부가세 대상 여부를 알고 계신가요?</h2>
+        <p class="setup-note">공식자료와 참고자료 추천을 더 덜 헷갈리게 보여드릴 때 써요.</p>
+        <div class="choice-grid">
+          {% for option in vat_status_options %}
+            <label class="choice-card">
+              <input
+                type="radio"
+                name="vat_status"
+                value="{{ option.value }}"
+                {% if onboarding_state.vat_status == option.value %}checked{% endif %}
+                required
+              >
+              <span class="choice-body">
+                <span class="choice-title">{{ option.label }}</span>
+                <span class="choice-help">{{ option.help }}</span>
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+      </section>
+
+      <div class="setup-actions">
+        <div class="setup-meta">
+          <span>민감정보나 상세 금액은 여기서 받지 않습니다.</span>
+          <span>나중에 내 계정에서 다시 바꿀 수 있어요.</span>
+        </div>
+        <div class="row" style="gap:8px;">
+          <button class="btn ghost" type="submit" name="action" value="skip" formnovalidate>지금은 건너뛰기</button>
+          <button class="btn primary" type="submit" name="action" value="save">이 설정으로 시작하기</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

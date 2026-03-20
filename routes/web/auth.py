@@ -3,9 +3,18 @@ from pathlib import Path
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
 
+from core.auth import login_required
 from services.auth import register_user, authenticate
 from services.dashboard_state import save_state
 from services.legal_documents import required_signup_consents
+from services.onboarding import (
+    HEALTH_INSURANCE_OPTIONS,
+    USER_TYPE_OPTIONS,
+    VAT_STATUS_OPTIONS,
+    get_onboarding_state,
+    save_onboarding_state,
+    skip_onboarding,
+)
 
 web_auth_bp = Blueprint("web_auth", __name__)
 _LEGAL_DOC_ROOT = Path(__file__).resolve().parents[2] / "docs" / "legal"
@@ -62,24 +71,28 @@ def register():
         email = request.form.get("email") or ""
         password = request.form.get("password") or ""
         password2 = request.form.get("password2") or ""
+        next_url = request.form.get("next") or request.args.get("next") or url_for("web_overview.overview")
 
         if not _required_consents_given():
             flash("이용약관과 개인정보처리방침에 동의해야 가입할 수 있습니다.", "error")
-            return redirect(url_for("web_auth.register"))
+            return redirect(url_for("web_auth.register", next=next_url))
 
         if password != password2:
             flash("비밀번호가 서로 다릅니다.", "error")
-            return redirect(url_for("web_auth.register"))
+            return redirect(url_for("web_auth.register", next=next_url))
 
-        ok, msg = register_user(email, password, consents=required_signup_consents())
+        ok, msg, user_id = register_user(email, password, consents=required_signup_consents())
         if not ok:
             flash(msg, "error")
-            return redirect(url_for("web_auth.register"))
+            return redirect(url_for("web_auth.register", next=next_url))
 
-        flash("가입이 완료되었습니다. 로그인해 주세요.", "success")
-        return redirect(url_for("web_auth.login"))
+        session["user_id"] = user_id
+        _maybe_save_guest_to_db(user_id)
 
-    return render_template("register.html")
+        flash("가입이 완료되었습니다. 시작 전에 추천 설정만 가볍게 맞춰볼게요.", "success")
+        return redirect(url_for("web_auth.getting_started", next=next_url))
+
+    return render_template("register.html", next_url=request.args.get("next") or "")
 
 
 @web_auth_bp.get("/legal/terms")
@@ -113,6 +126,43 @@ def login():
         return redirect(next_url)
 
     return render_template("login.html")
+
+
+@web_auth_bp.route("/getting-started", methods=["GET", "POST"])
+@login_required
+def getting_started():
+    user_pk = int(session["user_id"])
+    next_url = request.form.get("next") or request.args.get("next") or url_for("web_overview.overview")
+
+    if request.method == "POST":
+        action = request.form.get("action") or "save"
+        if action == "skip":
+            skip_onboarding(user_pk)
+            flash("초기 설정은 건너뛰었어요. 나중에 다시 바꿀 수 있습니다.", "success")
+            return redirect(next_url)
+
+        try:
+            save_onboarding_state(
+                user_pk,
+                user_type=(request.form.get("user_type") or "").strip(),
+                health_insurance=(request.form.get("health_insurance") or "").strip(),
+                vat_status=(request.form.get("vat_status") or "").strip(),
+            )
+        except ValueError:
+            flash("모르는 항목은 '잘 모르겠어요'를 선택해 주세요.", "error")
+            return redirect(url_for("web_auth.getting_started", next=next_url))
+
+        flash("초기 설정을 저장했어요. 추천 안내에 바로 반영됩니다.", "success")
+        return redirect(next_url)
+
+    return render_template(
+        "getting_started.html",
+        next_url=next_url,
+        onboarding_state=get_onboarding_state(user_pk),
+        user_type_options=USER_TYPE_OPTIONS,
+        health_insurance_options=HEALTH_INSURANCE_OPTIONS,
+        vat_status_options=VAT_STATUS_OPTIONS,
+    )
 
 
 @web_auth_bp.route("/logout", methods=["GET"])
