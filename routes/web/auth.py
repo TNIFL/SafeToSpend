@@ -5,6 +5,7 @@ from flask import Blueprint, abort, render_template, request, redirect, url_for,
 
 from services.auth import register_user, authenticate
 from services.dashboard_state import save_state
+from services.legal_documents import required_signup_consents
 
 web_auth_bp = Blueprint("web_auth", __name__)
 _LEGAL_DOC_ROOT = Path(__file__).resolve().parents[2] / "docs" / "legal"
@@ -70,7 +71,7 @@ def register():
             flash("비밀번호가 서로 다릅니다.", "error")
             return redirect(url_for("web_auth.register"))
 
-        ok, msg = register_user(email, password)
+        ok, msg = register_user(email, password, consents=required_signup_consents())
         if not ok:
             flash(msg, "error")
             return redirect(url_for("web_auth.register"))

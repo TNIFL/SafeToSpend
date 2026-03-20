@@ -5,7 +5,8 @@ from uuid import uuid4
 
 from app import create_app
 from core.extensions import db
-from domain.models import SafeToSpendSettings, User
+from domain.models import SafeToSpendSettings, User, UserConsentAgreement
+from services.legal_documents import PRIVACY_POLICY, PRIVACY_VERSION, TERMS_OF_SERVICE, TERMS_VERSION
 
 
 class AuthRegisterRoutesTest(unittest.TestCase):
@@ -18,6 +19,9 @@ class AuthRegisterRoutesTest(unittest.TestCase):
     def tearDown(self) -> None:
         with self.app.app_context():
             if self.created_user_ids:
+                UserConsentAgreement.query.filter(
+                    UserConsentAgreement.user_pk.in_(self.created_user_ids)
+                ).delete(synchronize_session=False)
                 SafeToSpendSettings.query.filter(
                     SafeToSpendSettings.user_pk.in_(self.created_user_ids)
                 ).delete(synchronize_session=False)
@@ -68,6 +72,7 @@ class AuthRegisterRoutesTest(unittest.TestCase):
 
         with self.app.app_context():
             self.assertIsNone(User.query.filter_by(email=email).first())
+            self.assertEqual(UserConsentAgreement.query.count(), 0)
 
     def test_register_succeeds_when_both_required_consents_are_checked(self) -> None:
         email, response = self._register(agree_terms="on", agree_privacy="on")
@@ -82,6 +87,20 @@ class AuthRegisterRoutesTest(unittest.TestCase):
             self.created_user_ids.append(int(user.id))
             settings = SafeToSpendSettings.query.filter_by(user_pk=int(user.id)).first()
             self.assertIsNotNone(settings)
+            agreements = (
+                UserConsentAgreement.query.filter_by(user_pk=int(user.id))
+                .order_by(UserConsentAgreement.document_type.asc())
+                .all()
+            )
+            self.assertEqual(len(agreements), 2)
+            self.assertEqual(
+                {(row.document_type, row.document_version) for row in agreements},
+                {
+                    (TERMS_OF_SERVICE, TERMS_VERSION),
+                    (PRIVACY_POLICY, PRIVACY_VERSION),
+                },
+            )
+            self.assertTrue(all(row.agreed_at is not None for row in agreements))
 
 
 if __name__ == "__main__":

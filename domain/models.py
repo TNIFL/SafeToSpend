@@ -38,6 +38,22 @@ class User(db.Model):
         return check_password_hash(self.password_hash, raw_password)
 
 
+class UserConsentAgreement(db.Model):
+    __tablename__ = "user_consent_agreements"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_pk = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    document_type = db.Column(db.String(64), nullable=False)
+    document_version = db.Column(db.String(32), nullable=False)
+    agreed_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_pk", "document_type", "document_version", name="uq_user_consent_doc_version"),
+        Index("idx_user_consent_user_agreed", "user_pk", "agreed_at"),
+        Index("idx_user_consent_doc_version", "document_type", "document_version"),
+    )
+
+
 # =========================
 #   Import / Transactions
 # =========================

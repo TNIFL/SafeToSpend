@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from core.extensions import db
-from domain.models import User, Settings
+from domain.models import Settings, User, UserConsentAgreement
+from services.legal_documents import RequiredConsent
 
 
-def register_user(email: str, password: str) -> tuple[bool, str]:
+def register_user(email: str, password: str, *, consents: tuple[RequiredConsent, ...] = ()) -> tuple[bool, str]:
     email = (email or "").strip().lower()
     if not email or "@" not in email:
         return False, "올바른 이메일을 입력해 주세요."
@@ -23,6 +24,15 @@ def register_user(email: str, password: str) -> tuple[bool, str]:
     # settings는 0a656...에서 safe_to_spend_settings 대신 새로 생김
     st = Settings(user_pk=user.id, default_tax_rate=0.15, custom_rates={})
     db.session.add(st)
+
+    for consent in consents:
+        db.session.add(
+            UserConsentAgreement(
+                user_pk=user.id,
+                document_type=consent.document_type,
+                document_version=consent.document_version,
+            )
+        )
 
     db.session.commit()
     return True, "가입 완료"
