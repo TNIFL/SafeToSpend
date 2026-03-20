@@ -260,6 +260,9 @@ class OfficialDataUploadRoutesTest(unittest.TestCase):
         self.assertIn("프리랜서 기준으로는 원천징수와 납부내역을 함께 올리는 편이 가장 실용적입니다.", body)
         self.assertIn("과세사업자/부가세 대상이면 지원 범위 안의 홈택스 납부 자료부터 먼저 맞추는 편이 안전합니다.", body)
         self.assertIn("건강보험 자격 관련 문서", body)
+        self.assertIn("입력하신 정보 기준으로는 프리랜서 자료를 먼저 올리는 편이 좋습니다.", body)
+        self.assertIn("과세사업자/부가세 대상이면 세금계산서·현금영수증·사업용카드 자료도 준비 후보로 같이 챙겨 두는 편이 좋습니다.", body)
+        self.assertIn("건강보험 납부확인서와 자격 관련 문서를 함께 올리면 건보 안내와 공식자료 흐름이 덜 끊깁니다.", body)
 
     def test_index_shows_pro_notice_for_non_pro_plan(self) -> None:
         self._login()

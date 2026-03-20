@@ -59,6 +59,19 @@
   <section class="nhis-guide-grid">
     <article class="card pad">
       <div class="cardTitle">
+        <span>입력하신 정보 기준 안내</span>
+        <span class="badge {% if profile_has_specific %}primary{% else %}warn{% endif %}">{% if profile_has_specific %}현재 설정 기준{% else %}fallback{% endif %}</span>
+      </div>
+      <ul class="nhis-guide-list">
+        <li><strong>{{ profile_title }}</strong></li>
+        {% for item in profile_items %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </article>
+
+    <article class="card pad">
+      <div class="cardTitle">
         <span>현재 확인 가능한 것</span>
         <span class="badge primary">main 기준</span>
       </div>

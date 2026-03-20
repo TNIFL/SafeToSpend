@@ -21,6 +21,7 @@ from domain.models import (
 )
 from routes.web.vault import _ensure_month_evidence_rows
 
+from services.onboarding import build_onboarding_reflection
 from services.risk import compute_risk_summary
 web_calendar_bp = Blueprint("web_calendar", __name__, url_prefix="/dashboard")
 
@@ -70,6 +71,80 @@ def _uid() -> int:
     if not uid:
         raise Unauthorized()
     return int(uid)
+
+
+def _review_profile_guidance(user_pk: int) -> dict[str, object]:
+    profile = build_onboarding_reflection(user_pk)
+    title = "현재 설정 정보가 없어 기본 정리 순서를 먼저 보여드리고 있습니다."
+    items = [
+        "필수 영수증과 분류부터 먼저 정리한 뒤, 공식자료와 참고자료를 순서대로 보강해 주세요.",
+    ]
+
+    if profile["is_freelancer"]:
+        title = "입력하신 정보 기준으로는 프리랜서 자료를 먼저 맞추는 편이 좋습니다."
+        items = [
+            "원천징수 관련 문서와 홈택스 납부내역을 먼저 챙기면 정리 결과를 세무 자료와 연결하기 쉽습니다.",
+        ]
+    elif profile["is_business_owner"]:
+        title = "입력하신 정보 기준으로는 사업자용 자료를 먼저 나눠 두는 편이 좋습니다."
+        items = [
+            "사업 관련 지출을 먼저 정리한 뒤 공식자료 업로드로 넘어가면 전달 흐름이 덜 꼬입니다.",
+        ]
+    elif profile["is_employee_sidejob"]:
+        title = "입력하신 정보 기준으로는 본업과 부업 자료를 나눠 정리하는 편이 좋습니다."
+        items = [
+            "원천징수 문서와 부업 관련 지출/증빙을 섞지 않게 먼저 분리해 두세요.",
+        ]
+
+    if profile["is_vat_business"]:
+        items.append("과세사업자/부가세 대상이면 이번 달 지출 정리 후 공식자료에서 납부내역을 먼저 확인해 두는 편이 안전합니다.")
+    if profile["is_local_insured"]:
+        items.append("지역가입자 기준이라면 건보 납부확인서와 자격 관련 문서를 같이 준비해 두세요.")
+    elif profile["is_employee_insured"] and profile["is_employee_sidejob"]:
+        items.append("직장가입자 + 부업이면 부업 자료와 건보 관련 참고자료를 따로 남겨 두면 설명이 쉬워집니다.")
+
+    return {
+        "review_profile_title": title,
+        "review_profile_items": items,
+        "review_profile_has_specific": profile["has_any_specific"],
+    }
+
+
+def _tax_buffer_profile_guidance(user_pk: int) -> dict[str, object]:
+    profile = build_onboarding_reflection(user_pk)
+    title = "현재 설정 정보가 없어 기본 해석 가이드를 먼저 보여드리고 있습니다."
+    items = [
+        "세금 보관함 숫자는 우선 참고용으로 보고, 거래 정리와 공식자료 보강을 같이 진행해 주세요.",
+    ]
+
+    if profile["is_freelancer"]:
+        title = "입력하신 정보 기준으로는 프리랜서용 세금/건보 자료를 같이 보는 편이 좋습니다."
+        items = [
+            "원천징수 관련 문서와 홈택스 납부내역을 같이 보면 보관 금액 해석이 쉬워집니다.",
+        ]
+    elif profile["is_business_owner"]:
+        title = "입력하신 정보 기준으로는 사업자용 자료를 같이 보며 해석하는 편이 좋습니다."
+        items = [
+            "사업 관련 지출과 공식자료를 먼저 맞춘 뒤 보관 금액을 보면 덜 헷갈립니다.",
+        ]
+    elif profile["is_employee_sidejob"]:
+        title = "입력하신 정보 기준으로는 본업과 부업을 섞지 않고 보는 편이 좋습니다."
+        items = [
+            "직장인 + 부업이면 세금 보관함 숫자를 확정값처럼 보기보다, 본업/부업 자료를 나눠 확인해 주세요.",
+        ]
+
+    if profile["is_vat_business"]:
+        items.append("과세사업자/부가세 대상이면 부가세 관련 자료 준비를 더 빨리 시작하는 편이 안전합니다.")
+    if profile["is_local_insured"]:
+        items.append("지역가입자 기준이라면 건보 납부확인 자료를 같이 보면 부족분 해석이 쉬워집니다.")
+    elif profile["is_employee_insured"]:
+        items.append("직장가입자 기준이라면 건보 자료는 예외 상황 확인용으로만 보수적으로 참고해 주세요.")
+
+    return {
+        "tax_buffer_profile_title": title,
+        "tax_buffer_profile_items": items,
+        "tax_buffer_profile_has_specific": profile["has_any_specific"],
+    }
 
 # -----------------------------
 # Export: 세무사 전달 패키지 (ZIP)
@@ -1101,6 +1176,7 @@ def review():
 
         items=items,
         rows=rows,  # 기존 호환
+        **_review_profile_guidance(user_pk),
     )
 
 
@@ -1503,6 +1579,7 @@ def tax_buffer():
         progress_pct=progress_pct,
         shortage=shortage,
         overage=overage,
+        **_tax_buffer_profile_guidance(user_pk),
     )
 
 

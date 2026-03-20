@@ -60,6 +60,18 @@
       <div class="small-note muted2" style="margin-top:12px;">
         정리하기는 거래와 증빙을 정돈하는 화면입니다. 건보료 관련 자료, 설명 메모, 세무사 전달 준비는 아래 경로로 이어서 진행하는 것이 안전합니다.
       </div>
+      <div class="card pad" style="margin-top:12px;box-shadow:none;background:#fff;">
+        <div class="cardTitle">
+          <span>입력하신 정보 기준 추천</span>
+          <span class="badge {% if review_profile_has_specific %}primary{% else %}warn{% endif %}">{% if review_profile_has_specific %}현재 설정 기준{% else %}fallback{% endif %}</span>
+        </div>
+        <div class="small-note muted2" style="margin-top:10px;"><strong>{{ review_profile_title }}</strong></div>
+        <div class="small-note muted2" style="margin-top:8px;line-height:1.7;">
+          {% for item in review_profile_items %}
+            - {{ item }}<br>
+          {% endfor %}
+        </div>
+      </div>
       <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
         <a class="btn small ghost" href="{{ url_for('web_vault.index', month=month_key) }}">증빙 보관함</a>
         <a class="btn small ghost" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>

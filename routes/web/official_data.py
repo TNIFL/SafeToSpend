@@ -11,6 +11,7 @@ from services.official_data_upload import (
     process_official_data_upload,
     query_official_data_documents,
 )
+from services.onboarding import build_onboarding_reflection
 from services.plan import build_runtime_plan_state
 from services.upload_guidance import build_recommendation_guidance, doc_item
 
@@ -20,6 +21,7 @@ web_official_data_bp = Blueprint("web_official_data", __name__, url_prefix="/das
 
 def _guidance_context(user_pk: int) -> dict[str, Any]:
     plan_state = build_runtime_plan_state(user_pk=user_pk)
+    onboarding = build_onboarding_reflection(user_pk)
 
     process_items = (
         "업로드한 원본 파일은 공식자료 전용 채널에 따로 보관하고, 문서 종류를 먼저 판별합니다.",
@@ -40,6 +42,34 @@ def _guidance_context(user_pk: int) -> dict[str, Any]:
         "앞으로 프로에서는 자동 수집 가능한 공식자료를 행정 일정에 맞춰 불러오는 기능을 지원할 예정입니다.",
         "자동 수집본이 생기더라도 직접 업로드한 공식자료는 보조, 대체, 충돌 확인용으로 같이 쓸 수 있습니다.",
     )
+
+    priority_title = "현재 설정 정보가 없어 기본 자료를 먼저 추천하고 있습니다."
+    priority_items = [
+        "홈택스 납부내역과 원천징수 관련 문서부터 확인하면 현재 지원 범위 안에서 가장 빠르게 상태를 맞출 수 있습니다.",
+    ]
+
+    if onboarding["is_freelancer"]:
+        priority_title = "입력하신 정보 기준으로는 프리랜서 자료를 먼저 올리는 편이 좋습니다."
+        priority_items = [
+            "원천징수 관련 문서와 홈택스 납부내역을 같이 올리면 소득 흐름을 맞추기 쉽습니다.",
+        ]
+    elif onboarding["is_employee_sidejob"]:
+        priority_title = "입력하신 정보 기준으로는 본업과 부업 자료를 나눠 준비하는 편이 좋습니다."
+        priority_items = [
+            "원천징수 관련 문서로 본업 흐름을 먼저 확인하고, 부업 쪽 납부 자료를 따로 챙겨 주세요.",
+        ]
+    elif onboarding["is_business_owner"]:
+        priority_title = "입력하신 정보 기준으로는 사업자용 공식자료를 먼저 구분해 두는 편이 좋습니다."
+        priority_items = [
+            "홈택스 납부내역을 먼저 맞추고, 사업 관련 자료는 공식자료와 참고자료를 구분해서 모아 두세요.",
+        ]
+
+    if onboarding["is_vat_business"]:
+        priority_items.append("과세사업자/부가세 대상이면 세금계산서·현금영수증·사업용카드 자료도 준비 후보로 같이 챙겨 두는 편이 좋습니다.")
+    if onboarding["is_local_insured"]:
+        priority_items.append("건강보험 납부확인서와 자격 관련 문서를 함께 올리면 건보 안내와 공식자료 흐름이 덜 끊깁니다.")
+    elif onboarding["is_employee_insured"]:
+        priority_items.append("직장가입자 기준이라면 원천징수 자료를 먼저 확인하고, 건보 자료는 예외 상황이 있을 때 보강해 주세요.")
 
     return build_recommendation_guidance(
         user_pk=user_pk,
@@ -137,6 +167,9 @@ def _guidance_context(user_pk: int) -> dict[str, Any]:
             ),
         ),
         extra_context={
+            "guidance_priority_title": priority_title,
+            "guidance_priority_items": priority_items,
+            "guidance_priority_has_specific": onboarding["has_any_specific"],
             "guidance_recommendation_empty_text": "아직 저장된 정보가 없어 기본 자료 안내를 먼저 보여드리고 있습니다.",
             "guidance_format_label": "지원 형식",
             "guidance_additional_title": "추가로 해당될 수 있는 자료",

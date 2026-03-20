@@ -55,6 +55,21 @@
 
     <div class="hr"></div>
 
+    <div class="card pad" style="box-shadow:none;background:var(--surface-2);">
+      <div class="cardTitle">
+        <span>입력하신 정보 기준 우선순위</span>
+        <span class="badge {% if guidance_priority_has_specific %}primary{% else %}warn{% endif %}">{% if guidance_priority_has_specific %}현재 설정 기준{% else %}fallback{% endif %}</span>
+      </div>
+      <div class="small-note muted2" style="margin-top:10px;"><strong>{{ guidance_priority_title }}</strong></div>
+      <div class="small-note muted2" style="margin-top:8px; line-height:1.7;">
+        {% for item in guidance_priority_items %}
+          - {{ item }}<br>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
     {% include "partials/_upload_guidance_recommendation_blocks.html" %}
 
     <div class="hr"></div>

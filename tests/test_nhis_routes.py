@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from app import create_app
 from core.extensions import db
-from domain.models import User
+from domain.models import SafeToSpendSettings, User
 
 
 class NhisRoutesTest(unittest.TestCase):
@@ -23,6 +23,7 @@ class NhisRoutesTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         with self.app.app_context():
+            SafeToSpendSettings.query.filter_by(user_pk=self.user_pk).delete(synchronize_session=False)
             User.query.filter(User.id == self.user_pk).delete(synchronize_session=False)
             db.session.commit()
             db.session.remove()
@@ -52,6 +53,24 @@ class NhisRoutesTest(unittest.TestCase):
         self.assertIn("정리하기", body)
         self.assertIn("세무사 패키지", body)
         self.assertIn("세금 보관함", body)
+
+    def test_nhis_page_uses_onboarding_health_insurance_copy(self) -> None:
+        with self.app.app_context():
+            db.session.add(
+                SafeToSpendSettings(
+                    user_pk=self.user_pk,
+                    default_tax_rate=0.15,
+                    custom_rates={"_meta": {"insurance_type": "local", "employment_type": "freelancer"}},
+                )
+            )
+            db.session.commit()
+
+        self._login()
+        body = self.client.get("/dashboard/nhis").get_data(as_text=True)
+
+        self.assertIn("입력하신 정보 기준으로는 지역가입자 쪽 자료를 먼저 챙기는 편이 좋습니다.", body)
+        self.assertIn("건강보험 납부확인서와 자격 관련 문서를 공식자료 채널에 먼저 모아 두세요.", body)
+        self.assertIn("프리랜서/사업자 흐름이 있으면 홈택스 납부내역과 같이 준비하는 편이 실용적입니다.", body)
 
     def test_nhis_page_does_not_claim_unavailable_capabilities(self) -> None:
         self._login()
