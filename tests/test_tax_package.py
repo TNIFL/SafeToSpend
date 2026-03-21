@@ -9,7 +9,12 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-from services.tax_package import PackageSnapshot, PackageStats, build_tax_package_zip_from_snapshot
+from services.tax_package import (
+    PackageSnapshot,
+    PackageStats,
+    _source_labels,
+    build_tax_package_zip_from_snapshot,
+)
 
 
 class TaxPackageServiceTest(unittest.TestCase):
@@ -285,3 +290,9 @@ class TaxPackageServiceTest(unittest.TestCase):
         key_ws = official_wb["공식자료핵심값"]
         self.assertEqual(key_ws["A2"].value, 7001)
         self.assertEqual(key_ws["D2"].value, "기준일")
+
+    def test_source_labels_support_new_bank_sync_provider_shape(self) -> None:
+        self.assertEqual(_source_labels("bank_sync", "popbill"), ("자동연동", "팝빌"))
+
+    def test_source_labels_keep_legacy_popbill_rows_compatible(self) -> None:
+        self.assertEqual(_source_labels("popbill", None), ("자동연동", "팝빌"))

@@ -26,6 +26,7 @@ from services.import_csv import (
     _load_expense_rules,
     _load_income_rules,
 )
+from services.transaction_origin import TX_PROVIDER_POPBILL, TX_SOURCE_BANK_SYNC
 
 KST = ZoneInfo("Asia/Seoul")
 
@@ -145,7 +146,8 @@ def sync_popbill_for_user(
     # ImportJob 생성 (CSV import와 동일하게 started_at 기록)
     job = ImportJob(
         user_pk=user_pk,
-        source="popbill",
+        source=TX_SOURCE_BANK_SYNC,
+        provider=TX_PROVIDER_POPBILL,
         filename=None,
         total_rows=0,
         inserted_rows=0,
@@ -326,7 +328,8 @@ def sync_popbill_for_user(
             amount_krw=int(p["amount_krw"]),
             counterparty=p["counterparty"],
             memo=p["memo"],
-            source="popbill",
+            source=TX_SOURCE_BANK_SYNC,
+            provider=TX_PROVIDER_POPBILL,
             external_hash=p["external_hash"],
             created_at=utcnow(),
         )

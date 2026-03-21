@@ -92,6 +92,7 @@ class ImportJob(db.Model):
 
     # 0a656...에서 source 길이 32
     source = db.Column(db.String(32), nullable=False, default="csv")
+    provider = db.Column(db.String(32), nullable=True)
     filename = db.Column(db.String(255), nullable=True)
 
     total_rows = db.Column(db.Integer, nullable=False, default=0)
@@ -110,6 +111,7 @@ class ImportJob(db.Model):
 
     __table_args__ = (
         Index("idx_import_jobs_user_time", "user_pk", "started_at"),
+        Index("idx_import_jobs_user_source_provider", "user_pk", "source", "provider"),
     )
 
 
@@ -131,6 +133,7 @@ class Transaction(db.Model):
     memo = db.Column(db.Text, nullable=True)
 
     source = db.Column(db.String(32), nullable=False, default="csv")
+    provider = db.Column(db.String(32), nullable=True)
 
     # 0a656... 길이 64
     external_hash = db.Column(db.String(64), nullable=False)
@@ -143,6 +146,7 @@ class Transaction(db.Model):
         UniqueConstraint("user_pk", "external_hash", name="uq_tx_user_hash"),
         Index("idx_tx_user_direction", "user_pk", "direction"),
         Index("idx_tx_user_occurred", "user_pk", "occurred_at"),
+        Index("idx_tx_user_source_provider", "user_pk", "source", "provider"),
     )
 
 

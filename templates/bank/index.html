@@ -457,7 +457,7 @@
             <div class="l" style="min-width:0;">
               <div class="t">
                 {{ j.created_at.strftime('%m-%d %H:%M') }} · {{ job_title(j) }}
-                <span class="badge {{ job_badge(j) }}" style="margin-left:8px;">{{ j.source }}</span>
+                <span class="badge {{ job_badge(j) }}" style="margin-left:8px;">{{ job_source_badge_label(j.source, j.provider) }}</span>
               </div>
               <div class="s">
                 총 {{ j.total_rows }} · 추가 {{ j.inserted_rows }} · 중복 {{ j.duplicate_rows }} · 실패 {{ j.failed_rows }}

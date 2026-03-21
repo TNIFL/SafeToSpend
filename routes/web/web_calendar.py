@@ -23,6 +23,7 @@ from routes.web.vault import _ensure_month_evidence_rows
 
 from services.onboarding import build_onboarding_reflection
 from services.risk import compute_risk_summary
+from services.transaction_origin import get_transaction_badge_label
 web_calendar_bp = Blueprint("web_calendar", __name__, url_prefix="/dashboard")
 
 
@@ -624,6 +625,7 @@ def day_detail(ymd: str):
         "calendar/day.html",
         d=d,
         txs=txs,
+        tx_source_badge_label=get_transaction_badge_label,
         direction=direction,
         q=q,
         day_income=day_income,

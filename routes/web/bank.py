@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
-from sqlalchemy import desc
+from sqlalchemy import and_, desc, or_
 
 from core.auth import login_required
 from core.extensions import db
@@ -12,6 +12,7 @@ from services.bank_provider import (
     BankProviderSyncError,
     get_bank_provider,
 )
+from services.transaction_origin import TX_SOURCE_BANK_SYNC, get_transaction_badge_label
 
 web_bank_bp = Blueprint("web_bank", __name__)
 
@@ -101,7 +102,19 @@ def index():
 
     # 최근 동기화 작업 로그(신뢰/디버깅)
     recent_jobs = (
-        ImportJob.query.filter(ImportJob.user_pk == user_id, ImportJob.source == provider_name)
+        ImportJob.query.filter(
+            ImportJob.user_pk == user_id,
+            or_(
+                and_(
+                    ImportJob.source == TX_SOURCE_BANK_SYNC,
+                    ImportJob.provider == provider_name,
+                ),
+                and_(
+                    ImportJob.source == provider_name,
+                    ImportJob.provider.is_(None),
+                ),
+            ),
+        )
         .order_by(desc(ImportJob.created_at))
         .limit(5)
         .all()
@@ -124,6 +137,7 @@ def index():
         recent_jobs=recent_jobs,
         job_badge=_job_badge,
         job_title=_job_title,
+        job_source_badge_label=get_transaction_badge_label,
     )
 
 

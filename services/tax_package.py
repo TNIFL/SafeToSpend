@@ -30,6 +30,11 @@ from domain.models import (
 from services.official_data_store import resolve_official_data_path
 from services.official_data_upload import official_data_document_to_view_model
 from services.evidence_vault import resolve_file_path
+from services.transaction_origin import (
+    get_transaction_provider_label,
+    get_transaction_source_label,
+    resolve_transaction_origin,
+)
 
 
 KST = ZoneInfo("Asia/Seoul")
@@ -219,17 +224,11 @@ def _official_summary_text(view: dict[str, Any]) -> str:
     return " / ".join(parts)
 
 
-def _source_labels(source: str | None) -> tuple[str, str]:
-    raw = (source or "").strip().lower()
-    if raw == "manual":
-        return "수동입력", "없음"
-    if raw == "csv":
-        return "수동업로드", "없음"
-    if raw == "popbill":
-        return "자동연동", "은행연동"
-    if raw:
-        return "기타", "없음"
-    return "기타", "없음"
+def _source_labels(source: str | None, provider: str | None = None) -> tuple[str, str]:
+    return (
+        get_transaction_source_label(source, provider),
+        get_transaction_provider_label(source, provider),
+    )
 
 
 def _classification_labels(tx: dict[str, Any]) -> tuple[str, str, str, bool, str, str]:
@@ -481,7 +480,8 @@ def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
 
     for tx, income_label, expense_label, evidence in rows:
         amount = _safe_int(tx.amount_krw)
-        source_label, provider_label = _source_labels(tx.source)
+        resolved_source, resolved_provider = resolve_transaction_origin(tx.source, tx.provider)
+        source_label, provider_label = _source_labels(tx.source, tx.provider)
         source_labels.add(source_label)
         import_job = import_job_map.get(int(tx.import_job_id)) if tx.import_job_id else None
 
@@ -516,7 +516,8 @@ def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
             "amount_krw": amount,
             "counterparty": tx.counterparty or "",
             "memo": tx.memo or "",
-            "source": tx.source or "",
+            "source": resolved_source or "",
+            "provider": resolved_provider or "",
             "source_label": source_label,
             "provider_label": provider_label,
             "external_hash": tx.external_hash or "",

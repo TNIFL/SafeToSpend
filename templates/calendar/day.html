@@ -77,7 +77,7 @@
                   <span class="badge {% if t.direction=='in' %}in{% else %}out{% endif %}">
                     {% if t.direction=='in' %}수입{% else %}지출{% endif %}
                   </span>
-                  <span class="badge ghost">{{ t.source }}</span>
+                  <span class="badge ghost">{{ tx_source_badge_label(t.source, t.provider) }}</span>
                 </div>
               </div>
 
