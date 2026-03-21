@@ -6,19 +6,14 @@ from sqlalchemy import desc
 from core.auth import login_required
 from core.extensions import db
 from domain.models import BankAccountLink, ImportJob
-from services.import_popbill import PopbillImportError, sync_popbill_for_user
-from services.popbill_easyfinbank import (
-    PopbillApiError,
-    PopbillConfigError,
-    get_bank_account_mgt_url,
-    list_bank_accounts,
+from services.bank_provider import (
+    BankProviderConfigError,
+    BankProviderError,
+    BankProviderSyncError,
+    get_bank_provider,
 )
 
 web_bank_bp = Blueprint("web_bank", __name__)
-
-# 팝빌 권장 팝업 크기(문서/샘플 기준)
-POPBILL_POPUP_W = 1550
-POPBILL_POPUP_H = 680
 
 # 은행 기관코드(일부) -> 사용자 친화 표기
 BANK_CODE_NAME = {
@@ -75,6 +70,9 @@ def _job_title(job: ImportJob) -> str:
 @login_required
 def index():
     user_id = session.get("user_id")
+    provider = get_bank_provider()
+    provider_name = provider.get_provider_name()
+    provider_display_name = provider.get_provider_display_name()
 
     # 로컬 설정된 링크(= 이 앱에서 동기화 대상으로 선택한 계좌)
     links = (
@@ -90,23 +88,20 @@ def index():
         if l.last_synced_at and (last_synced_at is None or l.last_synced_at > last_synced_at):
             last_synced_at = l.last_synced_at
 
-    # 팝빌에 등록된 계좌 목록(표시용)
-    popbill_accounts = []
-    popbill_error = None
-    popbill_configured = True
-    try:
-        popbill_accounts = list_bank_accounts()
-    except PopbillConfigError as e:
-        popbill_configured = False
-        popbill_error = str(e)
-    except PopbillApiError as e:
-        popbill_error = str(e)
-    except Exception as e:
-        popbill_error = f"알 수 없는 오류: {e}"
+    # 공급자에 등록된 계좌 목록(표시용)
+    connection_status = provider.get_connection_status()
+    provider_accounts = []
+    provider_error = connection_status.error_message
+    provider_configured = connection_status.configured
+    if provider_configured:
+        try:
+            provider_accounts = provider.list_accounts()
+        except BankProviderError as e:
+            provider_error = str(e)
 
     # 최근 동기화 작업 로그(신뢰/디버깅)
     recent_jobs = (
-        ImportJob.query.filter(ImportJob.user_pk == user_id, ImportJob.source == "popbill")
+        ImportJob.query.filter(ImportJob.user_pk == user_id, ImportJob.source == provider_name)
         .order_by(desc(ImportJob.created_at))
         .limit(5)
         .all()
@@ -114,33 +109,45 @@ def index():
 
     return render_template(
         "bank/index.html",
-        popbill_accounts=popbill_accounts,
-        popbill_configured=popbill_configured,
-        popbill_error=popbill_error,
+        provider_name=provider_name,
+        provider_display_name=provider_display_name,
+        provider_management_label=f"{provider_display_name}에서 계좌 등록/관리",
+        provider_accounts=provider_accounts,
+        provider_configured=provider_configured,
+        provider_error=provider_error,
         link_map=link_map,
         total_count=len(links),
         active_count=active_count,
         last_synced_at=last_synced_at,
         bank_name=_bank_name,
         mask_account=_mask_account,
-        popup_w=POPBILL_POPUP_W,
-        popup_h=POPBILL_POPUP_H,
         recent_jobs=recent_jobs,
         job_badge=_job_badge,
         job_title=_job_title,
     )
 
 
+@web_bank_bp.get("/bank/provider-url")
 @web_bank_bp.get("/bank/popbill-url")
 @login_required
-def popbill_url():
-    """팝빌 '계좌 등록/관리' 팝업 URL은 유효시간이 짧을 수 있어 클릭 시점에 생성한다."""
+def provider_url():
+    """공급자 계좌 등록/관리 링크는 유효시간이 짧을 수 있어 클릭 시점에 생성한다."""
+    provider = get_bank_provider()
     try:
-        url = get_bank_account_mgt_url()
-        return jsonify({"ok": True, "url": url, "w": POPBILL_POPUP_W, "h": POPBILL_POPUP_H})
-    except PopbillConfigError as e:
+        link = provider.get_account_management_link()
+        return jsonify(
+            {
+                "ok": True,
+                "url": link.url,
+                "w": link.popup_width,
+                "h": link.popup_height,
+                "provider_name": provider.get_provider_name(),
+                "provider_display_name": provider.get_provider_display_name(),
+            }
+        )
+    except BankProviderConfigError as e:
         return jsonify({"ok": False, "error": str(e)}), 400
-    except PopbillApiError as e:
+    except BankProviderError as e:
         return jsonify({"ok": False, "error": str(e)}), 400
     except Exception as e:
         return jsonify({"ok": False, "error": f"알 수 없는 오류: {e}"}), 500
@@ -215,9 +222,10 @@ def alias():
 @login_required
 def sync_now():
     user_id = session.get("user_id")
+    provider = get_bank_provider()
 
     try:
-        result = sync_popbill_for_user(user_id)
+        result = provider.sync_transactions(user_pk=user_id)
         if result.failed_rows:
             flash(
                 f"동기화 완료: {result.inserted_rows}건 추가, {result.duplicate_rows}건 중복, {result.failed_rows}건 실패",
@@ -229,9 +237,11 @@ def sync_now():
                 "success",
             )
 
-    except PopbillConfigError as e:
+    except BankProviderConfigError as e:
         flash(str(e), "error")
-    except PopbillImportError as e:
+    except BankProviderSyncError as e:
+        flash(f"동기화 실패: {e}", "error")
+    except BankProviderError as e:
         flash(f"동기화 실패: {e}", "error")
     except Exception as e:
         flash(f"동기화 실패(알 수 없는 오류): {e}", "error")

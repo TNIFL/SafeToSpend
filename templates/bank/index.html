@@ -259,13 +259,13 @@
     <div class="bank-title">
       <div class="h1">계좌 연동</div>
       <div class="p">
-        팝빌(계좌조회)로 거래내역을 자동으로 가져옵니다.<br>
-        <span class="muted">팝빌 팝업에서 계좌 등록 → 여기서 동기화 ON → “지금 동기화”</span>
+        {{ provider_display_name }}로 거래내역을 가져옵니다.<br>
+        <span class="muted">{{ provider_display_name }} 계좌 등록/관리 → 여기서 동기화 ON → “지금 동기화”</span>
       </div>
     </div>
 
     <div class="bank-actions">
-      <button class="btn" type="button" id="btn-popbill-open">팝빌에서 계좌 등록/관리</button>
+      <button class="btn" type="button" id="btn-provider-open">{{ provider_management_label }}</button>
       <form method="POST" action="{{ url_for('web_bank.sync_now') }}">
         <button class="btn primary" type="submit" {% if active_count == 0 %}disabled{% endif %}>지금 동기화</button>
       </form>
@@ -276,8 +276,8 @@
   <div class="bank-steps">
     <div class="bank-step">
       <div class="k">STEP 1</div>
-      <div class="t">팝빌에서 계좌 등록</div>
-      <div class="d">팝업에서 계좌를 추가/삭제합니다. 등록 후 이 페이지를 새로고침하세요.</div>
+      <div class="t">{{ provider_display_name }}에서 계좌 등록</div>
+      <div class="d">계좌 등록/관리 화면에서 계좌를 추가/삭제합니다. 등록 후 이 페이지를 새로고침하세요.</div>
     </div>
     <div class="bank-step">
       <div class="k">STEP 2</div>
@@ -322,7 +322,7 @@
       </div>
 
       <div class="bank-note">
-        팝빌에 계좌를 등록했는데 목록이 안 보이면, <b>팝업에서 등록 완료</b> 후 이 페이지를 <b>새로고침</b>하세요.
+        {{ provider_display_name }}에 계좌를 등록했는데 목록이 안 보이면, <b>등록 완료</b> 후 이 페이지를 <b>새로고침</b>하세요.
       </div>
     </div>
 
@@ -341,16 +341,16 @@
         </div>
       </div>
 
-      {% if not popbill_configured %}
+      {% if not provider_configured %}
         <div class="bank-note">
-          <b>팝빌 설정이 아직 안 되어 있어요.</b><br>
-          서버 환경변수(.env)에 팝빌 계정/연동키가 필요합니다.
-          {% if popbill_error %}<br><span class="muted">(현재 메시지: {{ popbill_error }})</span>{% endif %}
+          <b>{{ provider_display_name }} 설정이 아직 안 되어 있어요.</b><br>
+          서버 환경변수(.env)에 {{ provider_display_name }} 계정/연동키가 필요합니다.
+          {% if provider_error %}<br><span class="muted">(현재 메시지: {{ provider_error }})</span>{% endif %}
         </div>
-      {% elif popbill_error %}
+      {% elif provider_error %}
         <div class="bank-note">
-          <b>팝빌 연결 오류</b><br>
-          {{ popbill_error }}
+          <b>{{ provider_display_name }} 연결 오류</b><br>
+          {{ provider_error }}
         </div>
       {% else %}
         <div class="bank-note">
@@ -367,7 +367,7 @@
       <span class="badge">여기서 선택</span>
     </div>
 
-    {% if popbill_accounts and popbill_accounts|length > 0 %}
+    {% if provider_accounts and provider_accounts|length > 0 %}
       <table class="acc-table">
         <thead>
           <tr>
@@ -376,16 +376,16 @@
           </tr>
         </thead>
         <tbody>
-          {% for acc in popbill_accounts %}
-            {% set key = (acc.bankCode, acc.accountNumber) %}
+          {% for acc in provider_accounts %}
+            {% set key = (acc.bank_code, acc.account_number) %}
             {% set link = link_map.get(key) %}
 
             <tr>
               <td>
                 <div class="acc-left">
-                  <div class="acc-name">{{ bank_name(acc.bankCode) }} · {{ acc.accountName or '계좌' }}</div>
+                  <div class="acc-name">{{ bank_name(acc.bank_code) }} · {{ acc.account_name or '계좌' }}</div>
                   <div class="acc-sub">
-                    <span class="badge">{{ mask_account(acc.accountNumber) }}</span>
+                    <span class="badge">{{ mask_account(acc.account_number) }}</span>
 
                     {% if link and link.last_synced_at %}
                       <span class="badge ghost">최근 동기화 {{ link.last_synced_at.strftime('%m-%d %H:%M') }}</span>
@@ -407,8 +407,8 @@
                   <div class="acc-controls">
                     <!-- Toggle -->
                     <form method="POST" action="{{ url_for('web_bank.toggle') }}">
-                      <input type="hidden" name="bank_code" value="{{ acc.bankCode }}">
-                      <input type="hidden" name="account_number" value="{{ acc.accountNumber }}">
+                      <input type="hidden" name="bank_code" value="{{ acc.bank_code }}">
+                      <input type="hidden" name="account_number" value="{{ acc.account_number }}">
                       <label class="switch" title="동기화 ON/OFF">
                         <input type="checkbox" name="is_active" {% if link and link.is_active %}checked{% endif %} onchange="this.form.submit()">
                         <span class="slider"></span>
@@ -417,8 +417,8 @@
 
                     <!-- Alias -->
                     <form method="POST" action="{{ url_for('web_bank.alias') }}" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                      <input type="hidden" name="bank_code" value="{{ acc.bankCode }}">
-                      <input type="hidden" name="account_number" value="{{ acc.accountNumber }}">
+                      <input type="hidden" name="bank_code" value="{{ acc.bank_code }}">
+                      <input type="hidden" name="account_number" value="{{ acc.account_number }}">
                       <input class="alias" name="alias" placeholder="별칭(예: 사업용, 생활비)" value="{{ link.alias if link else '' }}">
                       <button class="btn small ghost" type="submit" {% if not link %}disabled{% endif %}>저장</button>
                     </form>
@@ -438,7 +438,7 @@
     {% else %}
       <div class="empty">
         <div class="h2">등록된 계좌가 아직 없어요</div>
-        <div class="p" style="margin-top:6px;">“팝빌에서 계좌 등록/관리”에서 계좌를 추가한 뒤, 이 페이지를 새로고침하세요.</div>
+        <div class="p" style="margin-top:6px;">“{{ provider_management_label }}”에서 계좌를 추가한 뒤, 이 페이지를 새로고침하세요.</div>
       </div>
     {% endif %}
   </div>
@@ -493,19 +493,21 @@
 
 <script>
 (function(){
-  const btn = document.getElementById('btn-popbill-open');
+  const btn = document.getElementById('btn-provider-open');
   if(!btn) return;
 
   btn.addEventListener('click', async () => {
     // 팝업 차단 회피: 클릭 이벤트 안에서 먼저 창을 열어둔다
-    const w = window.open('about:blank', 'popbill_bank', `width={{ popup_w }},height={{ popup_h }},scrollbars=yes,resizable=yes`);
+    const defaultW = 1550;
+    const defaultH = 680;
+    const w = window.open('about:blank', 'bank_provider_account_management', `width=${defaultW},height=${defaultH},scrollbars=yes,resizable=yes`);
     try{
-      const res = await fetch('{{ url_for('web_bank.popbill_url') }}', { credentials: 'same-origin' });
+      const res = await fetch('{{ url_for('web_bank.provider_url') }}', { credentials: 'same-origin' });
       const data = await res.json();
 
       if(!data.ok){
         if(w) w.close();
-        alert(data.error || '팝빌 URL 생성에 실패했습니다.');
+        alert(data.error || '계좌 관리 URL 생성에 실패했습니다.');
         return;
       }
 
@@ -514,11 +516,12 @@
         return;
       }
 
+      w.resizeTo(data.w || defaultW, data.h || defaultH);
       w.location.href = data.url;
       w.focus();
     }catch(e){
       if(w) w.close();
-      alert('팝빌 연결 중 오류가 발생했습니다: ' + (e?.message || e));
+      alert('계좌 연동 연결 중 오류가 발생했습니다: ' + (e?.message || e));
     }
   });
 })();
