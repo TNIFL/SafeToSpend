@@ -17,18 +17,22 @@ from sqlalchemy import and_, func, or_
 from core.extensions import db
 from core.time import utcnow
 from domain.models import (
+    BankAccountLink,
     EvidenceItem,
     ExpenseLabel,
     ImportJob,
     IncomeLabel,
     OfficialDataDocument,
+    ReferenceMaterialItem,
     SafeToSpendSettings,
     TaxBufferLedger,
     Transaction,
     User,
 )
+from services.onboarding import build_onboarding_reflection
 from services.official_data_upload import official_data_document_to_view_model
 from services.evidence_vault import resolve_file_path
+from services.reference_material_upload import reference_material_to_view_model
 from services.transaction_origin import (
     get_transaction_provider_label,
     get_transaction_source_label,
@@ -43,7 +47,7 @@ GOOD_FILL = PatternFill("solid", fgColor="E7F5EA")
 WARN_FILL = PatternFill("solid", fgColor="FFF4E5")
 BAD_FILL = PatternFill("solid", fgColor="FDECEC")
 TOP_ALIGN = Alignment(vertical="top", wrap_text=True)
-PACKAGE_VERSION = "세무사 패키지 v2 1차"
+PACKAGE_VERSION = "세무사 패키지 v2 2차"
 EVIDENCE_ATTACHMENTS_DIR = "attachments/evidence"
 
 
@@ -95,6 +99,9 @@ class PackageSnapshot:
     review_trade_items: list[dict[str, Any]]
     included_source_labels: list[str]
     official_documents: list[dict[str, Any]] = field(default_factory=list)
+    business_status_rows: list[dict[str, Any]] = field(default_factory=list)
+    withholding_summary_rows: list[dict[str, Any]] = field(default_factory=list)
+    reference_material_rows: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _month_range_kst_naive(month_key: str) -> tuple[datetime, datetime]:
@@ -195,6 +202,387 @@ def _official_summary_text(view: dict[str, Any]) -> str:
         if label and value:
             parts.append(f"{label}: {value}")
     return " / ".join(parts)
+
+
+def _label_or_unconfirmed(value: str | None) -> str:
+    return (value or "").strip() or "미확인"
+
+
+def _parse_krw_text(value: Any) -> int | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    digits = re.sub(r"[^0-9-]", "", text)
+    if not digits or digits == "-":
+        return None
+    try:
+        return int(digits)
+    except ValueError:
+        return None
+
+
+def _sum_official_amounts(
+    documents: list[dict[str, Any]],
+    *,
+    document_keywords: tuple[str, ...],
+    item_keywords: tuple[str, ...],
+) -> tuple[bool, int]:
+    total = 0
+    found = False
+    for row in documents:
+        document_type = str(row.get("문서종류", ""))
+        if not any(keyword in document_type for keyword in document_keywords):
+            continue
+        for item in row.get("_summary_items") or []:
+            label = str(item.get("label") or "")
+            if not any(keyword in label for keyword in item_keywords):
+                continue
+            amount = _parse_krw_text(item.get("value"))
+            if amount is None:
+                continue
+            total += amount
+            found = True
+    return found, total
+
+
+def _extract_single_month_token(*texts: str) -> str:
+    matches: set[str] = set()
+    for text in texts:
+        for year, month in re.findall(r"(20\d{2})[./-]?\s?(0?[1-9]|1[0-2])", text or ""):
+            matches.add(f"{year}-{int(month):02d}")
+    if len(matches) == 1:
+        return next(iter(matches))
+    return "미확인"
+
+
+def _extract_single_amount_token(*texts: str) -> int | str:
+    matches: set[int] = set()
+    for text in texts:
+        for raw in re.findall(r"(?<!\d)(\d{1,3}(?:,\d{3})+|\d{4,})(?!\d)\s*원?", text or ""):
+            amount = _parse_krw_text(raw)
+            if amount is not None:
+                matches.add(amount)
+    if len(matches) == 1:
+        return next(iter(matches))
+    return ""
+
+
+def _link_official_document_type(text: str, documents: list[dict[str, Any]]) -> str:
+    lowered = (text or "").lower()
+    keyword_groups = (
+        ("원천징수", "원천세"),
+        ("홈택스 납부", "기납부", "납부세액", "세금 납부"),
+        ("건강보험", "건보", "자격"),
+    )
+    for keywords in keyword_groups:
+        if not any(keyword in lowered for keyword in keywords):
+            continue
+        for row in documents:
+            document_type = str(row.get("문서종류", ""))
+            if any(keyword in document_type.lower() for keyword in keywords):
+                return document_type
+    return ""
+
+
+def _official_document_total_for_link(document_type: str, documents: list[dict[str, Any]]) -> int | None:
+    if "원천징수" in document_type:
+        found, total = _sum_official_amounts(
+            documents,
+            document_keywords=("원천징수",),
+            item_keywords=("원천징수세액",),
+        )
+        return total if found else None
+    if "홈택스 납부" in document_type:
+        found, total = _sum_official_amounts(
+            documents,
+            document_keywords=("홈택스 납부",),
+            item_keywords=("납부세액",),
+        )
+        return total if found else None
+    return None
+
+
+def _collect_business_status_rows(user_pk: int) -> list[dict[str, Any]]:
+    reflection = build_onboarding_reflection(user_pk)
+    active_links = (
+        BankAccountLink.query.filter_by(user_pk=user_pk, is_active=True)
+        .order_by(BankAccountLink.created_at.asc(), BankAccountLink.id.asc())
+        .all()
+    )
+    business_aliases = [link.alias.strip() for link in active_links if (link.alias or "").strip() and "사업" in link.alias]
+
+    if reflection["is_business_owner"]:
+        business_registration_status = "예(입력값 기준)"
+    else:
+        business_registration_status = "미확인"
+
+    if business_aliases:
+        business_account_usage_status = "사업용 계좌 사용 흔적 있음"
+    elif active_links:
+        business_account_usage_status = "연결 계좌 있음 · 사업용 여부 미확인"
+    else:
+        business_account_usage_status = "미연결"
+
+    basis_parts: list[str] = []
+    if reflection["has_any_specific"]:
+        basis_parts.append("온보딩 입력값")
+    elif reflection.get("skipped_at"):
+        basis_parts.append("온보딩 건너뛰기")
+    else:
+        basis_parts.append("온보딩 미설정")
+    if active_links:
+        basis_parts.append("계좌 별칭 참고")
+
+    note_parts: list[str] = []
+    if business_aliases:
+        note_parts.append(f"사업용으로 보이는 계좌 별칭: {', '.join(business_aliases[:3])}")
+    if not reflection["has_any_specific"]:
+        note_parts.append("사용자 유형/건보/과세 상태 중 미확인 항목이 있습니다")
+
+    return [
+        {
+            "user_type": _label_or_unconfirmed(reflection.get("user_type_label")),
+            "health_insurance_status": _label_or_unconfirmed(reflection.get("health_insurance_label")),
+            "vat_status": _label_or_unconfirmed(reflection.get("vat_status_label")),
+            "business_registration_status": business_registration_status,
+            "business_account_usage_status": business_account_usage_status,
+            "business_card_usage_status": "미확인",
+            "onboarding_basis": " / ".join(basis_parts),
+            "note": " / ".join(note_parts),
+        }
+    ]
+
+
+def _collect_withholding_summary_rows(user_pk: int, documents: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    reflection = build_onboarding_reflection(user_pk)
+    has_withholding_data = any("원천징수" in str(row.get("문서종류", "")) for row in documents)
+    has_paid_tax_data = any("홈택스 납부" in str(row.get("문서종류", "")) for row in documents)
+    withholding_found, withholding_total = _sum_official_amounts(
+        documents,
+        document_keywords=("원천징수",),
+        item_keywords=("원천징수세액",),
+    )
+    paid_found, paid_total = _sum_official_amounts(
+        documents,
+        document_keywords=("홈택스 납부",),
+        item_keywords=("납부세액",),
+    )
+
+    if reflection["is_freelancer"] or reflection["is_employee_sidejob"]:
+        other_income_flag = "예(입력값 기준)"
+    else:
+        other_income_flag = "미확인"
+
+    basis_parts = []
+    if documents:
+        basis_parts.append("공식자료 요약값")
+    if reflection["has_specific_user_type"]:
+        basis_parts.append("온보딩 입력값")
+
+    note_parts: list[str] = []
+    if has_withholding_data and not withholding_found:
+        note_parts.append("원천징수세액 합계가 현재 구조화되지 않아 합계를 확정하지 못했습니다")
+    if has_paid_tax_data and not paid_found:
+        note_parts.append("납부세액 합계가 현재 구조화되지 않아 합계를 확정하지 못했습니다")
+    if not has_withholding_data and not has_paid_tax_data:
+        note_parts.append("대상 월에 포함된 원천징수/기납부세액 공식자료가 없습니다")
+
+    return [
+        {
+            "has_withholding_data": "예" if has_withholding_data else "아니오",
+            "withholding_tax_total_krw": withholding_total if withholding_found else "",
+            "has_paid_tax_data": "예" if has_paid_tax_data else "아니오",
+            "paid_tax_total_krw": paid_total if paid_found else "",
+            "other_income_flag": other_income_flag,
+            "source_basis": " / ".join(basis_parts) or "미확인",
+            "note": " / ".join(note_parts),
+        }
+    ]
+
+
+def _collect_reference_material_rows(
+    *,
+    user_pk: int,
+    start_dt: datetime,
+    end_dt: datetime,
+    official_documents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    items = (
+        ReferenceMaterialItem.query.filter(ReferenceMaterialItem.user_pk == user_pk)
+        .filter(ReferenceMaterialItem.created_at >= start_dt, ReferenceMaterialItem.created_at < end_dt)
+        .order_by(ReferenceMaterialItem.created_at.asc(), ReferenceMaterialItem.id.asc())
+        .all()
+    )
+
+    rows: list[dict[str, Any]] = []
+    for item in items:
+        view = reference_material_to_view_model(item)
+        merged_text = " ".join(part for part in [view.get("title"), view.get("note")] if part)
+        linked_official_doc_type = _link_official_document_type(merged_text, official_documents)
+        reported_amount = _extract_single_amount_token(str(view.get("title") or ""), str(view.get("note") or ""))
+        official_amount = _official_document_total_for_link(linked_official_doc_type, official_documents) if linked_official_doc_type else None
+        difference = ""
+        link_status = "reference_only"
+        needs_review = "예"
+
+        if linked_official_doc_type:
+            if reported_amount != "" and official_amount is not None:
+                difference = int(reported_amount) - int(official_amount)
+                if difference == 0:
+                    link_status = "linked_hint"
+                    needs_review = "아니오"
+                else:
+                    link_status = "difference_detected"
+            else:
+                link_status = "linked_hint"
+
+        note_parts: list[str] = []
+        if view.get("note"):
+            note_parts.append(str(view["note"]))
+        if link_status == "reference_only":
+            note_parts.append("공식자료 대체가 아니라 보조 설명 자료로 전달합니다")
+        elif link_status == "difference_detected":
+            note_parts.append("연결된 공식자료와 금액 차이가 있어 세무사 확인이 필요합니다")
+        elif reported_amount == "":
+            note_parts.append("금액은 구조화하지 못해 참고용으로만 표기했습니다")
+
+        rows.append(
+            {
+                "reference_material_id": int(item.id),
+                "title": view.get("title", ""),
+                "reference_type": view.get("material_kind_label", "참고자료"),
+                "reported_period": _extract_single_month_token(str(view.get("title") or ""), str(view.get("note") or "")),
+                "reported_amount_krw": reported_amount,
+                "linked_official_doc_type": linked_official_doc_type,
+                "link_status": link_status,
+                "difference_krw": difference,
+                "needs_review": needs_review,
+                "note": " / ".join(dict.fromkeys(part for part in note_parts if part)),
+                "_original_filename": item.original_filename,
+                "_attachment_index_key": f"reference-{int(item.id)}",
+                "_period_basis": _extract_single_month_token(str(view.get("title") or ""), str(view.get("note") or "")),
+            }
+        )
+
+    return rows
+
+
+def _append_review_item(rows: list[dict[str, Any]], *, item_type: str, related_kind: str, related_no: Any, summary: str, status: str, needed: str, priority: str, note: str = "") -> None:
+    rows.append(
+        {
+            "항목번호": len(rows) + 1,
+            "항목유형": item_type,
+            "관련자료구분": related_kind,
+            "관련번호": related_no,
+            "요약설명": summary,
+            "현재상태": status,
+            "필요한확인내용": needed,
+            "우선순위": priority,
+            "메모": note,
+        }
+    )
+
+
+def _extend_review_items(
+    *,
+    review_items: list[dict[str, Any]],
+    official_documents: list[dict[str, Any]],
+    business_status_rows: list[dict[str, Any]],
+    withholding_summary_rows: list[dict[str, Any]],
+    reference_material_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows = [dict(item) for item in review_items]
+
+    for row in official_documents:
+        if row.get("재확인필요여부") != "예":
+            continue
+        priority = "높음" if row.get("읽기상태") in {"읽기 실패", "미지원 형식"} else "보통"
+        _append_review_item(
+            rows,
+            item_type="공식자료재확인",
+            related_kind="공식자료",
+            related_no=row.get("자료번호", ""),
+            summary=f"{row.get('문서종류', '공식자료')} 재확인 필요",
+            status=f"{row.get('읽기상태', '')} / {row.get('검증상태', '')}".strip(" /"),
+            needed="공식자료 요약값과 원본 기준이 맞는지 다시 확인해 주세요",
+            priority=priority,
+            note=row.get("메모", ""),
+        )
+
+    business_row = business_status_rows[0] if business_status_rows else {}
+    missing_status_fields = [
+        label
+        for key, label in (
+            ("user_type", "사용자 유형"),
+            ("health_insurance_status", "건강보험 상태"),
+            ("vat_status", "과세 상태"),
+        )
+        if business_row.get(key) == "미확인"
+    ]
+    if missing_status_fields:
+        _append_review_item(
+            rows,
+            item_type="사용자상태확인",
+            related_kind="내 상태 설정",
+            related_no="",
+            summary="사용자 상태 설정 추가 확인 필요",
+            status=" / ".join(missing_status_fields),
+            needed="내 상태 설정 또는 추가 안내를 통해 미확인 상태를 보완해 주세요",
+            priority="보통",
+            note=business_row.get("note", ""),
+        )
+
+    withholding_row = withholding_summary_rows[0] if withholding_summary_rows else {}
+    other_income_flag = str(withholding_row.get("other_income_flag", ""))
+    if other_income_flag.startswith("예") and withholding_row.get("has_withholding_data") != "예":
+        _append_review_item(
+            rows,
+            item_type="원천징수자료누락",
+            related_kind="공식자료",
+            related_no="",
+            summary="원천징수 자료 추가 확인 필요",
+            status="자료 미첨부",
+            needed="원천징수 관련 공식자료가 있다면 추가 업로드가 필요합니다",
+            priority="높음",
+            note=str(withholding_row.get("source_basis", "")),
+        )
+    if other_income_flag.startswith("예") and withholding_row.get("has_paid_tax_data") != "예":
+        _append_review_item(
+            rows,
+            item_type="기납부세액자료누락",
+            related_kind="공식자료",
+            related_no="",
+            summary="기납부세액 자료 추가 확인 필요",
+            status="자료 미첨부",
+            needed="홈택스 납부내역 등 기납부세액 자료가 있으면 함께 확인해 주세요",
+            priority="보통",
+            note=str(withholding_row.get("source_basis", "")),
+        )
+
+    for row in reference_material_rows:
+        if row.get("needs_review") != "예":
+            continue
+        if row.get("link_status") == "difference_detected":
+            summary = "참고자료와 공식자료 금액 차이 확인 필요"
+            needed = "참고자료의 설명 금액과 공식자료 요약값 차이를 확인해 주세요"
+            priority = "보통"
+        else:
+            summary = "참고자료 보조 설명 연결 확인 필요"
+            needed = "공식자료와 연결되는 설명인지, 참고용 메모인지 확인해 주세요"
+            priority = "보통"
+        _append_review_item(
+            rows,
+            item_type="참고자료검토",
+            related_kind="참고자료",
+            related_no=row.get("reference_material_id", ""),
+            summary=summary,
+            status=str(row.get("link_status", "reference_only")),
+            needed=needed,
+            priority=priority,
+            note=str(row.get("title", "")),
+        )
+
+    return rows
 
 
 def _source_labels(source: str | None, provider: str | None = None) -> tuple[str, str]:
@@ -648,6 +1036,22 @@ def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
             }
         )
 
+    business_status_rows = _collect_business_status_rows(user_pk)
+    withholding_summary_rows = _collect_withholding_summary_rows(user_pk, official_rows)
+    reference_material_rows = _collect_reference_material_rows(
+        user_pk=user_pk,
+        start_dt=start_dt,
+        end_dt=end_dt,
+        official_documents=official_rows,
+    )
+    review_items = _extend_review_items(
+        review_items=review_items,
+        official_documents=official_rows,
+        business_status_rows=business_status_rows,
+        withholding_summary_rows=withholding_summary_rows,
+        reference_material_rows=reference_material_rows,
+    )
+
     settings = _get_settings(user_pk)
     rate = _tax_rate(settings)
     tax_buffer_total = (
@@ -704,6 +1108,9 @@ def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
         review_trade_items=review_trade_items,
         included_source_labels=sorted(source_labels),
         official_documents=official_rows,
+        business_status_rows=business_status_rows,
+        withholding_summary_rows=withholding_summary_rows,
+        reference_material_rows=reference_material_rows,
     )
 
 
@@ -743,9 +1150,9 @@ def _write_table_sheet(ws, headers: list[str], rows: list[dict[str, Any]], freez
 
 
 def _style_table_sheet(ws, headers: list[str], rows: list[dict[str, Any]]) -> None:
-    amount_keywords = ("금액", "합계", "총", "세액", "부족", "목표")
-    wrap_keywords = ("메모", "적요", "사유", "설명", "요약", "내용", "파일명", "값")
-    status_keywords = ("상태", "구분", "여부", "우선순위", "신뢰", "반영")
+    amount_keywords = ("금액", "합계", "총", "세액", "부족", "목표", "amount", "_krw", "total")
+    wrap_keywords = ("메모", "적요", "사유", "설명", "요약", "내용", "파일명", "값", "note", "summary", "basis", "title", "path", "link")
+    status_keywords = ("상태", "구분", "여부", "우선순위", "신뢰", "반영", "status", "flag", "review", "contains_sensitive_info")
 
     for idx, header in enumerate(headers, start=1):
         column = get_column_letter(idx)
@@ -761,7 +1168,7 @@ def _style_table_sheet(ws, headers: list[str], rows: list[dict[str, Any]]) -> No
                 value = str(cell.value or "")
                 if value in {"반영됨", "첨부됨", "예", "반영 가능", "포함"}:
                     cell.fill = GOOD_FILL
-                elif value in {"재확인필요", "검토 필요", "보류", "확인 필요", "기본 제외"}:
+                elif value in {"재확인필요", "검토 필요", "보류", "확인 필요", "기본 제외", "미확인", "reference_only", "difference_detected"}:
                     cell.fill = WARN_FILL
                 elif value in {"필수 누락", "아니오", "미지원 형식", "읽기 실패"}:
                     cell.fill = BAD_FILL
@@ -785,6 +1192,7 @@ def _workbook_bytes(builder) -> bytes:
 
 def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
     stats = snapshot.stats
+    reference_count = len([row for row in snapshot.reference_material_rows if row.get("reference_material_id")])
 
     def build() -> Workbook:
         wb = Workbook()
@@ -800,10 +1208,11 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
             {"항목명": "업무 관련 지출 합계", "값": stats.expense_business_total},
             {"항목명": "증빙 첨부 수", "값": stats.evidence_attached_count},
             {"항목명": "공식자료 수", "값": stats.official_data_total},
+            {"항목명": "참고자료 수", "값": reference_count},
             {"항목명": "읽기 가능한 공식자료 수", "값": stats.official_data_parsed_count},
             {"항목명": "검토 필요 공식자료 수", "값": stats.official_data_review_count},
             {"항목명": "확인 필요 항목 수", "값": stats.review_needed_count},
-            {"항목명": "참고", "값": "공식자료는 목록/상태/핵심 추출값만 포함하고 원본은 기본 패키지에서 제외합니다."},
+            {"항목명": "참고", "값": "공식자료/참고자료 원본은 기본 패키지에 포함하지 않고 요약값 중심으로 전달합니다."},
         ]
         _write_table_sheet(ws, ["항목명", "값"], summary_rows)
 
@@ -851,6 +1260,7 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
                 {"자료 구분": "거래내역", "개수": len(snapshot.transactions), "반영 건수": tx_status["반영됨"], "참고용 건수": tx_status["참고용"], "재확인 건수": tx_status["재확인필요"], "미지원/실패 건수": 0},
                 {"자료 구분": "증빙자료", "개수": len(snapshot.evidences), "반영 건수": ev_status["반영됨"], "참고용 건수": ev_status["참고용"], "재확인 건수": ev_status["재확인필요"], "미지원/실패 건수": 0},
                 {"자료 구분": "공식자료", "개수": stats.official_data_total, "반영 건수": stats.official_data_parsed_count, "참고용 건수": 0, "재확인 건수": stats.official_data_review_count, "미지원/실패 건수": stats.official_data_unsupported_count + stats.official_data_failed_count},
+                {"자료 구분": "참고자료", "개수": reference_count, "반영 건수": 0, "참고용 건수": reference_count, "재확인 건수": len([row for row in snapshot.reference_material_rows if row.get("needs_review") == "예"]), "미지원/실패 건수": 0},
                 {"자료 구분": "확인필요항목", "개수": len(snapshot.review_items), "반영 건수": review_status["반영됨"], "참고용 건수": review_status["참고용"], "재확인 건수": review_status["재확인필요"], "미지원/실패 건수": 0},
             ],
         )
@@ -862,9 +1272,10 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
             [
                 {"항목명": "패키지 버전", "값": PACKAGE_VERSION},
                 {"항목명": "생성 기준 월", "값": stats.month_key},
-                {"항목명": "포함 파일 수", "값": 5 + len(snapshot.evidences)},
+                {"항목명": "포함 파일 수", "값": 8 + len(snapshot.evidences)},
                 {"항목명": "포함 증빙 수", "값": len(snapshot.evidences)},
                 {"항목명": "목록 반영 공식자료 수", "값": stats.official_data_total},
+                {"항목명": "요약 반영 참고자료 수", "값": reference_count},
                 {"항목명": "연동 포함 여부", "값": ", ".join(snapshot.included_source_labels) if snapshot.included_source_labels else "없음"},
             ],
         )
@@ -1097,6 +1508,116 @@ def _build_review_workbook(snapshot: PackageSnapshot) -> bytes:
     return _workbook_bytes(build)
 
 
+def _build_business_status_workbook(snapshot: PackageSnapshot) -> bytes:
+    def build() -> Workbook:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "사업_상태_요약"
+        rows = snapshot.business_status_rows or [
+            {
+                "user_type": "미확인",
+                "health_insurance_status": "미확인",
+                "vat_status": "미확인",
+                "business_registration_status": "미확인",
+                "business_account_usage_status": "미연결",
+                "business_card_usage_status": "미확인",
+                "onboarding_basis": "온보딩 미설정",
+                "note": "현재 저장된 사업 상태 요약값이 없습니다.",
+            }
+        ]
+        _write_table_sheet(
+            ws,
+            [
+                "user_type",
+                "health_insurance_status",
+                "vat_status",
+                "business_registration_status",
+                "business_account_usage_status",
+                "business_card_usage_status",
+                "onboarding_basis",
+                "note",
+            ],
+            rows,
+        )
+        return wb
+
+    return _workbook_bytes(build)
+
+
+def _build_withholding_summary_workbook(snapshot: PackageSnapshot) -> bytes:
+    def build() -> Workbook:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "원천징수_기납부세액_요약"
+        rows = snapshot.withholding_summary_rows or [
+            {
+                "has_withholding_data": "아니오",
+                "withholding_tax_total_krw": "",
+                "has_paid_tax_data": "아니오",
+                "paid_tax_total_krw": "",
+                "other_income_flag": "미확인",
+                "source_basis": "미확인",
+                "note": "현재 구조화된 원천징수/기납부세액 자료가 없습니다.",
+            }
+        ]
+        _write_table_sheet(
+            ws,
+            [
+                "has_withholding_data",
+                "withholding_tax_total_krw",
+                "has_paid_tax_data",
+                "paid_tax_total_krw",
+                "other_income_flag",
+                "source_basis",
+                "note",
+            ],
+            rows,
+        )
+        return wb
+
+    return _workbook_bytes(build)
+
+
+def _build_reference_material_workbook(snapshot: PackageSnapshot) -> bytes:
+    def build() -> Workbook:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "참고자료_요약"
+        rows = snapshot.reference_material_rows or [
+            {
+                "reference_material_id": "",
+                "title": "현재 포함된 참고자료 없음",
+                "reference_type": "",
+                "reported_period": "",
+                "reported_amount_krw": "",
+                "linked_official_doc_type": "",
+                "link_status": "reference_only",
+                "difference_krw": "",
+                "needs_review": "아니오",
+                "note": "대상 월 기준으로 포함된 참고자료가 없습니다.",
+            }
+        ]
+        _write_table_sheet(
+            ws,
+            [
+                "reference_material_id",
+                "title",
+                "reference_type",
+                "reported_period",
+                "reported_amount_krw",
+                "linked_official_doc_type",
+                "link_status",
+                "difference_krw",
+                "needs_review",
+                "note",
+            ],
+            rows,
+        )
+        return wb
+
+    return _workbook_bytes(build)
+
+
 def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot) -> None:
     ws = wb.create_sheet("공식자료목록")
 
@@ -1253,6 +1774,22 @@ def _build_attachment_index_rows(snapshot: PackageSnapshot) -> list[dict[str, An
             }
         )
 
+    for material in snapshot.reference_material_rows:
+        rows.append(
+            {
+                "attachment_index_key": material.get("_attachment_index_key", f"reference-{len(rows) + 1}"),
+                "display_file_name": material.get("_original_filename", ""),
+                "document_type": f"{material.get('reference_type', '참고자료')} 원본",
+                "related_transaction_id": "",
+                "period_basis": material.get("_period_basis", material.get("reported_period", "")),
+                "contains_sensitive_info": "중간",
+                "package_status": "기본 제외",
+                "relative_path": "",
+                "file_open_link": "",
+                "note": "참고자료 원본은 기본 패키지에 포함하지 않고 요약값만 제공합니다.",
+            }
+        )
+
     return rows
 
 
@@ -1285,7 +1822,7 @@ def _build_attachment_index_workbook(snapshot: PackageSnapshot) -> bytes:
 def _render_package_guide(snapshot: PackageSnapshot) -> str:
     stats = snapshot.stats
     lines = [
-        "[쓸수있어(SafeToSpend) 세무사 패키지 v2 1차]",
+        "[쓸수있어(SafeToSpend) 세무사 패키지 v2 2차]",
         f"- 패키지 버전: {PACKAGE_VERSION}",
         f"- 대상 기간: {stats.period_start_kst} ~ {stats.period_end_kst}",
         f"- 생성 시각(KST): {stats.generated_at_kst}",
@@ -1293,10 +1830,13 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "",
         "[포함 파일]",
         "- 00_패키지요약.xlsx : 전체 요약, 패키지안내, 공식자료 목록/상태/핵심값",
+        "- 01_사업_상태_요약.xlsx : 사용자 유형/건보/과세 상태와 사업용 사용 흔적 요약",
         "- 03_거래원장.xlsx : 거래 목록, 원본 메타, 분류/증빙 연결",
         "- 04_증빙상태표.xlsx : 첨부된 증빙 목록과 거래별 대표 첨부 연결",
+        "- 05_원천징수_기납부세액_요약.xlsx : 원천징수/기납부세액 존재 여부와 합계 요약",
         "- 06_세무사_확인필요목록.xlsx : 필수 누락/분류 미확정 등 재확인 목록",
         "- 07_첨부인덱스.xlsx : 패키지 첨부 전체 인덱스와 상대경로 링크",
+        "- 10_참고자료_요약.xlsx : 참고자료 제목/유형/연결 힌트 중심 요약",
         "- attachments/evidence/ : 현재 연결된 대표 증빙 파일",
         "",
         "[현재 포함되는 자료 범위]",
@@ -1305,6 +1845,7 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "- 자동연동 거래",
         "- 거래에 연결된 대표 증빙 1개",
         "- 기준일 또는 업로드 시각 기준으로 대상 월에 포함된 공식자료 목록/상태/핵심 추출값",
+        "- 기준 기간에 업로드된 참고자료의 제목/유형/보조 설명 요약",
         "- 누락/검토 필요 상태",
         "",
         "[기본 제외되는 자료 범위]",
@@ -1322,6 +1863,7 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "[현재 한계]",
         "- 거래당 대표 증빙 1개 기준으로 정리됩니다. 전체 첨부 접근은 07_첨부인덱스.xlsx를 기준으로 봐 주세요.",
         f"- 공식자료는 {stats.official_data_total}건이 목록에 반영될 수 있지만, 현재는 교차검증 없이 목록/상태/핵심값만 제공합니다.",
+        "- 참고자료는 공식자료를 대체하지 않고 보조 설명/맥락 전달용으로만 요약합니다.",
         "- 공식자료의 검증상태가 '검증 미실시'이면 세무사 확인이 필요합니다.",
         "- ZIP 내부 링크는 압축을 푼 뒤 여는 방식이 가장 안정적입니다.",
     ]
@@ -1333,10 +1875,13 @@ def build_tax_package_zip_from_snapshot(snapshot: PackageSnapshot) -> tuple[io.B
     with zipfile.ZipFile(out, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         root = snapshot.root_name
         zf.writestr(f"{root}/00_패키지요약.xlsx", _build_summary_workbook(snapshot))
+        zf.writestr(f"{root}/01_사업_상태_요약.xlsx", _build_business_status_workbook(snapshot))
         zf.writestr(f"{root}/03_거래원장.xlsx", _build_transactions_workbook(snapshot))
         zf.writestr(f"{root}/04_증빙상태표.xlsx", _build_evidence_workbook(snapshot))
+        zf.writestr(f"{root}/05_원천징수_기납부세액_요약.xlsx", _build_withholding_summary_workbook(snapshot))
         zf.writestr(f"{root}/06_세무사_확인필요목록.xlsx", _build_review_workbook(snapshot))
         zf.writestr(f"{root}/07_첨부인덱스.xlsx", _build_attachment_index_workbook(snapshot))
+        zf.writestr(f"{root}/10_참고자료_요약.xlsx", _build_reference_material_workbook(snapshot))
         zf.writestr(f"{root}/attachments/", b"")
         zf.writestr(f"{root}/{EVIDENCE_ATTACHMENTS_DIR}/", b"")
 

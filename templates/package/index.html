@@ -6,9 +6,9 @@
 <div class="container package-page">
 
   <div class="page-head">
-    <div>
-      <div class="h1">세무사 전달 패키지</div>
-      <div class="p">{{ month_first.strftime("%Y-%m") }} · 요약 + 거래원장 + 증빙상태표 + 확인필요목록 + 첨부인덱스 패키지</div>
+      <div>
+        <div class="h1">세무사 전달 패키지</div>
+      <div class="p">{{ month_first.strftime("%Y-%m") }} · 요약 + 사업상태 + 거래원장 + 증빙상태표 + 원천징수/기납부세액 + 확인필요목록 + 참고자료 요약 패키지</div>
     </div>
 
     <div class="page-actions">
@@ -82,10 +82,13 @@
 
       <div class="vmeta" style="margin-top:10px;">
         <span class="tag good">00_패키지요약.xlsx</span>
+        <span class="tag">01_사업_상태_요약.xlsx</span>
         <span class="tag">03_거래원장.xlsx</span>
         <span class="tag">04_증빙상태표.xlsx</span>
+        <span class="tag">05_원천징수_기납부세액_요약.xlsx</span>
         <span class="tag warn">06_세무사_확인필요목록.xlsx</span>
         <span class="tag">07_첨부인덱스.xlsx</span>
+        <span class="tag">10_참고자료_요약.xlsx</span>
         <span class="tag">attachments/</span>
         <span class="tag">attachments/evidence/</span>
       </div>
@@ -100,7 +103,7 @@
       </div>
 
       <div class="small-note muted2" style="margin-top:10px;">
-        공식자료는 목록/상태/핵심값만 포함하고 원본은 기본 패키지에서 제외합니다. 참고자료/추가설명은 채널만 먼저 도입되고, 패키지 반영은 v3에서 다룰 예정입니다.
+        공식자료와 참고자료는 원본 대신 목록/상태/요약값 중심으로 전달하고, 위험한 원본 파일은 기본 패키지에서 제외합니다.
       </div>
 
       <div class="panel" style="margin-top:12px;">
