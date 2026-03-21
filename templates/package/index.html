@@ -8,7 +8,7 @@
   <div class="page-head">
     <div>
       <div class="h1">세무사 전달 패키지</div>
-      <div class="p">{{ month_first.strftime("%Y-%m") }} · 거래정리 + 증빙목록 + 공식자료목록 + 확인필요 엑셀 패키지</div>
+      <div class="p">{{ month_first.strftime("%Y-%m") }} · 요약 + 거래원장 + 증빙상태표 + 확인필요목록 + 첨부인덱스 패키지</div>
     </div>
 
     <div class="page-actions">
@@ -81,14 +81,13 @@
       </div>
 
       <div class="vmeta" style="margin-top:10px;">
-        <span class="tag good">00_패키지안내.txt</span>
-        <span class="tag">01_패키지요약.xlsx</span>
-        <span class="tag">02_거래정리.xlsx</span>
-        <span class="tag">03_증빙목록.xlsx</span>
-        <span class="tag">04_공식자료목록.xlsx</span>
-        <span class="tag warn">05_확인필요항목.xlsx</span>
-        <span class="tag">증빙자료/</span>
-        <span class="tag">공식자료/</span>
+        <span class="tag good">00_패키지요약.xlsx</span>
+        <span class="tag">03_거래원장.xlsx</span>
+        <span class="tag">04_증빙상태표.xlsx</span>
+        <span class="tag warn">06_세무사_확인필요목록.xlsx</span>
+        <span class="tag">07_첨부인덱스.xlsx</span>
+        <span class="tag">attachments/</span>
+        <span class="tag">attachments/evidence/</span>
       </div>
 
       <div class="panel" style="margin-top:12px;">
@@ -96,12 +95,12 @@
         <div class="panel-text">
           1) 누락(필수)부터 1~3건만 처리<br>
           2) ZIP을 내려받아 압축 해제<br>
-          3) 거래정리/증빙목록부터 검토
+          3) 거래원장/증빙상태표/첨부인덱스부터 검토
         </div>
       </div>
 
       <div class="small-note muted2" style="margin-top:10px;">
-        공식자료는 분리 목록과 원본 폴더로 포함될 수 있습니다. 참고자료/추가설명은 채널만 먼저 도입되고, 패키지 반영은 v3에서 다룰 예정입니다.
+        공식자료는 목록/상태/핵심값만 포함하고 원본은 기본 패키지에서 제외합니다. 참고자료/추가설명은 채널만 먼저 도입되고, 패키지 반영은 v3에서 다룰 예정입니다.
       </div>
 
       <div class="panel" style="margin-top:12px;">

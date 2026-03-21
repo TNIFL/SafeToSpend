@@ -76,7 +76,7 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "evidence_status_label": "첨부됨",
                     "representative_evidence_type": "PDF 증빙",
                     "evidence_count": 1,
-                    "evidence_zip_path": "증빙자료/101_receipt.pdf",
+                    "evidence_zip_path": "attachments/evidence/101_receipt.pdf",
                     "trust_label": "반영됨",
                     "calculation_included_label": "예",
                     "recheck_required_label": "아니오",
@@ -114,14 +114,14 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "금액": 180000,
                     "증빙종류": "PDF 증빙",
                     "파일명": "receipt.pdf",
-                    "파일열기": ("열기", "증빙자료/101_receipt.pdf"),
-                    "저장위치": "증빙자료/101_receipt.pdf",
+                    "파일열기": ("열기", "attachments/evidence/101_receipt.pdf"),
+                    "저장위치": "attachments/evidence/101_receipt.pdf",
                     "업로드일시": "2026-03-03 10:10",
                     "신뢰구분": "반영됨",
                     "계산반영여부": "예",
                     "재확인필요여부": "아니오",
                     "메모": "카드 전표 첨부",
-                    "_zip_path": "증빙자료/101_receipt.pdf",
+                    "_zip_path": "attachments/evidence/101_receipt.pdf",
                     "_abs_path": self.evidence_path,
                 }
             ],
@@ -190,17 +190,17 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "문서종류": "홈택스 납부내역",
                     "기준일": "2026-03-10",
                     "원본파일명": "hometax_payment.csv",
-                    "파일열기": ("열기", "공식자료/홈택스_납부내역_2026-03-10.csv"),
                     "읽기상태": "반영 가능",
                     "검증상태": "검증 미실시",
                     "구조확인": "구조 확인됨",
                     "신뢰등급": "구조 확인됨 (B)",
                     "핵심값요약": "기준일: 2026-03-10 / 납부세액 합계: 150,000원",
-                    "패키지반영여부": "예",
+                    "목록반영여부": "예",
+                    "원본첨부여부": "아니오",
                     "재확인필요여부": "예",
-                    "메모": "검증 미실시",
-                    "_zip_path": "공식자료/홈택스_납부내역_2026-03-10.csv",
-                    "_abs_path": self.official_path,
+                    "메모": "검증 미실시 / 원본 파일은 기본 패키지에 포함하지 않습니다",
+                    "_attachment_index_key": "official-7001",
+                    "_period_basis": "2026-03-10",
                     "_summary_items": [
                         {"label": "기준일", "value": "2026-03-10"},
                         {"label": "납부세액 합계", "value": "150,000원"},
@@ -217,79 +217,94 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.addCleanup(archive.close)
         return payload, archive
 
-    def test_zip_contains_expected_files_and_keeps_official_outputs_when_no_docs(self) -> None:
+    def test_zip_contains_expected_files_and_keeps_summary_outputs_when_no_docs(self) -> None:
         _, archive = self._build_zip()
         names = set(archive.namelist())
         root = "세무사전달패키지_2026-03_테스터"
 
-        self.assertIn(f"{root}/00_패키지안내.txt", names)
-        self.assertIn(f"{root}/01_패키지요약.xlsx", names)
-        self.assertIn(f"{root}/02_거래정리.xlsx", names)
-        self.assertIn(f"{root}/03_증빙목록.xlsx", names)
-        self.assertIn(f"{root}/04_공식자료목록.xlsx", names)
-        self.assertIn(f"{root}/05_확인필요항목.xlsx", names)
-        self.assertIn(f"{root}/증빙자료/101_receipt.pdf", names)
-        self.assertIn(f"{root}/공식자료/", names)
+        self.assertIn(f"{root}/00_패키지요약.xlsx", names)
+        self.assertIn(f"{root}/03_거래원장.xlsx", names)
+        self.assertIn(f"{root}/04_증빙상태표.xlsx", names)
+        self.assertIn(f"{root}/06_세무사_확인필요목록.xlsx", names)
+        self.assertIn(f"{root}/07_첨부인덱스.xlsx", names)
+        self.assertIn(f"{root}/attachments/", names)
+        self.assertIn(f"{root}/attachments/evidence/", names)
+        self.assertIn(f"{root}/attachments/evidence/101_receipt.pdf", names)
 
-        self.assertFalse(any(name.startswith(f"{root}/참고자료/") for name in names))
-        self.assertFalse(any(name.startswith(f"{root}/추가설명/") for name in names))
+        self.assertFalse(any(name.startswith(f"{root}/공식자료/") for name in names))
+        self.assertFalse(any(name.startswith(f"{root}/attachments/official/") for name in names))
 
-        official_wb = load_workbook(io.BytesIO(archive.read(f"{root}/04_공식자료목록.xlsx")))
+        summary_wb = load_workbook(io.BytesIO(archive.read(f"{root}/00_패키지요약.xlsx")))
+        official_wb = summary_wb
         official_ws = official_wb["공식자료목록"]
         self.assertEqual(official_ws["C2"].value, "현재 포함된 공식자료 없음")
 
-    def test_package_guide_explains_scope_and_limitations(self) -> None:
+    def test_package_guide_sheet_explains_scope_and_limitations(self) -> None:
         _, archive = self._build_zip()
-        guide = archive.read("세무사전달패키지_2026-03_테스터/00_패키지안내.txt").decode("utf-8")
+        wb = load_workbook(io.BytesIO(archive.read("세무사전달패키지_2026-03_테스터/00_패키지요약.xlsx")))
+        ws = wb["패키지안내"]
+        guide = "\n".join(str(cell.value or "") for cell in ws["A"][1:])
 
-        self.assertIn("04_공식자료목록.xlsx", guide)
-        self.assertIn("공식자료/ : 대상 월에 포함된 공식자료 원본 파일", guide)
-        self.assertIn("참고자료 폴더", guide)
+        self.assertIn("07_첨부인덱스.xlsx", guide)
+        self.assertIn("공식자료 원본 파일", guide)
+        self.assertIn("attachments/evidence/", guide)
         self.assertIn("거래당 대표 증빙 1개 기준", guide)
         self.assertIn("검증상태가 '검증 미실시'", guide)
 
     def test_workbooks_include_relative_evidence_hyperlinks(self) -> None:
         _, archive = self._build_zip()
 
-        tx_wb = load_workbook(io.BytesIO(archive.read("세무사전달패키지_2026-03_테스터/02_거래정리.xlsx")))
-        tx_ws = tx_wb["거래정리"]
+        tx_wb = load_workbook(io.BytesIO(archive.read("세무사전달패키지_2026-03_테스터/03_거래원장.xlsx")))
+        tx_ws = tx_wb["거래원장"]
         tx_headers = {cell.value: idx + 1 for idx, cell in enumerate(tx_ws[1])}
-        tx_link_cell = tx_ws.cell(2, tx_headers["증빙바로열기"])
+        tx_link_cell = tx_ws.cell(2, tx_headers["대표첨부열기"])
         self.assertEqual(tx_link_cell.value, "열기")
         self.assertIsNotNone(tx_link_cell.hyperlink)
-        self.assertEqual(tx_link_cell.hyperlink.target, "증빙자료/101_receipt.pdf")
+        self.assertEqual(tx_link_cell.hyperlink.target, "attachments/evidence/101_receipt.pdf")
 
-        evidence_wb = load_workbook(io.BytesIO(archive.read("세무사전달패키지_2026-03_테스터/03_증빙목록.xlsx")))
-        evidence_ws = evidence_wb["증빙목록"]
+        evidence_wb = load_workbook(io.BytesIO(archive.read("세무사전달패키지_2026-03_테스터/04_증빙상태표.xlsx")))
+        evidence_ws = evidence_wb["증빙상태표"]
         evidence_headers = {cell.value: idx + 1 for idx, cell in enumerate(evidence_ws[1])}
-        evidence_link_cell = evidence_ws.cell(2, evidence_headers["파일열기"])
+        evidence_link_cell = evidence_ws.cell(2, evidence_headers["첨부열기"])
         self.assertEqual(evidence_link_cell.value, "열기")
         self.assertIsNotNone(evidence_link_cell.hyperlink)
-        self.assertEqual(evidence_link_cell.hyperlink.target, "증빙자료/101_receipt.pdf")
+        self.assertEqual(evidence_link_cell.hyperlink.target, "attachments/evidence/101_receipt.pdf")
 
-    def test_official_data_workbook_and_folder_are_created_when_docs_exist(self) -> None:
+        attachment_wb = load_workbook(io.BytesIO(archive.read("세무사전달패키지_2026-03_테스터/07_첨부인덱스.xlsx")))
+        attachment_ws = attachment_wb["첨부인덱스"]
+        attachment_headers = {cell.value: idx + 1 for idx, cell in enumerate(attachment_ws[1])}
+        attachment_link_cell = attachment_ws.cell(2, attachment_headers["file_open_link"])
+        self.assertEqual(attachment_link_cell.value, "열기")
+        self.assertIsNotNone(attachment_link_cell.hyperlink)
+        self.assertEqual(attachment_link_cell.hyperlink.target, "attachments/evidence/101_receipt.pdf")
+
+    def test_official_data_is_summarized_without_raw_attachment_when_docs_exist(self) -> None:
         _, archive = self._build_zip(self.snapshot_with_official)
         names = set(archive.namelist())
         root = "세무사전달패키지_2026-03_테스터"
 
-        self.assertIn(f"{root}/04_공식자료목록.xlsx", names)
-        self.assertIn(f"{root}/공식자료/홈택스_납부내역_2026-03-10.csv", names)
+        self.assertNotIn(f"{root}/공식자료/홈택스_납부내역_2026-03-10.csv", names)
+        self.assertIn(f"{root}/00_패키지요약.xlsx", names)
+        self.assertIn(f"{root}/07_첨부인덱스.xlsx", names)
 
-        official_wb = load_workbook(io.BytesIO(archive.read(f"{root}/04_공식자료목록.xlsx")))
+        official_wb = load_workbook(io.BytesIO(archive.read(f"{root}/00_패키지요약.xlsx")))
         official_ws = official_wb["공식자료목록"]
         headers = {cell.value: idx + 1 for idx, cell in enumerate(official_ws[1])}
-        link_cell = official_ws.cell(2, headers["파일열기"])
-        self.assertEqual(link_cell.value, "열기")
-        self.assertIsNotNone(link_cell.hyperlink)
-        self.assertEqual(link_cell.hyperlink.target, "공식자료/홈택스_납부내역_2026-03-10.csv")
+        self.assertEqual(official_ws.cell(2, headers["원본첨부여부"]).value, "아니오")
+        self.assertEqual(official_ws.cell(2, headers["목록반영여부"]).value, "예")
 
-        summary_ws = official_wb["공식자료반영요약"]
+        summary_ws = official_wb["공식자료상태요약"]
         self.assertEqual(summary_ws["A2"].value, "홈택스 납부내역")
         self.assertEqual(summary_ws["C2"].value, 1)
 
         key_ws = official_wb["공식자료핵심값"]
         self.assertEqual(key_ws["A2"].value, 7001)
         self.assertEqual(key_ws["D2"].value, "기준일")
+
+        attachment_ws = load_workbook(io.BytesIO(archive.read(f"{root}/07_첨부인덱스.xlsx")))["첨부인덱스"]
+        attachment_headers = {cell.value: idx + 1 for idx, cell in enumerate(attachment_ws[1])}
+        self.assertEqual(attachment_ws.cell(3, attachment_headers["package_status"]).value, "기본 제외")
+        self.assertEqual(attachment_ws.cell(3, attachment_headers["relative_path"]).value or "", "")
 
     def test_source_labels_support_new_bank_sync_provider_shape(self) -> None:
         self.assertEqual(_source_labels("bank_sync", "popbill"), ("자동연동", "팝빌"))
