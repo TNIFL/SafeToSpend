@@ -342,11 +342,23 @@ def _collect_business_status_rows(user_pk: int) -> list[dict[str, Any]]:
     return [
         {
             "user_type": _label_or_unconfirmed(reflection.get("user_type_label")),
+            "user_type_source": "사용자 입력" if reflection["has_specific_user_type"] else "미확인",
+            "user_type_confidence": "참고용" if reflection["has_specific_user_type"] else "미확인",
             "health_insurance_status": _label_or_unconfirmed(reflection.get("health_insurance_label")),
+            "health_insurance_source": "사용자 입력" if reflection["has_specific_health_insurance"] else "미확인",
+            "health_insurance_confidence": "참고용" if reflection["has_specific_health_insurance"] else "미확인",
             "vat_status": _label_or_unconfirmed(reflection.get("vat_status_label")),
+            "vat_status_source": "사용자 입력" if reflection["has_specific_vat_status"] else "미확인",
+            "vat_status_confidence": "참고용" if reflection["has_specific_vat_status"] else "미확인",
             "business_registration_status": business_registration_status,
+            "business_registration_source": "사용자 입력" if reflection["is_business_owner"] else "미확인",
+            "business_registration_confidence": "참고용" if reflection["is_business_owner"] else "미확인",
             "business_account_usage_status": business_account_usage_status,
+            "business_account_usage_source": "계좌 별칭" if business_aliases else ("계좌 연결 정보" if active_links else "미확인"),
+            "business_account_usage_confidence": "참고용" if business_aliases else "미확인",
             "business_card_usage_status": "미확인",
+            "business_card_usage_source": "미확인",
+            "business_card_usage_confidence": "미확인",
             "onboarding_basis": " / ".join(basis_parts),
             "note": " / ".join(note_parts),
         }
@@ -422,26 +434,38 @@ def _collect_reference_material_rows(
         reported_amount = _extract_single_amount_token(str(view.get("title") or ""), str(view.get("note") or ""))
         official_amount = _official_document_total_for_link(linked_official_doc_type, official_documents) if linked_official_doc_type else None
         difference = ""
-        link_status = "reference_only"
+        link_status_key = "reference_only"
+        link_status = "참고용"
         needs_review = "예"
+        comparison_basis = "비교 기준 없음"
+        comparison_target = "연결 가능한 공식자료 요약값 없음"
+        difference_description = "구조화된 비교 기준이 없어 참고용으로만 전달합니다"
 
         if linked_official_doc_type:
+            comparison_basis = "공식자료 요약 대비"
+            comparison_target = linked_official_doc_type
             if reported_amount != "" and official_amount is not None:
                 difference = int(reported_amount) - int(official_amount)
                 if difference == 0:
-                    link_status = "linked_hint"
+                    link_status_key = "linked_hint"
+                    link_status = "공식자료 연결됨"
                     needs_review = "아니오"
+                    difference_description = "기재 금액과 연결된 공식자료 요약값 차이가 없습니다"
                 else:
-                    link_status = "difference_detected"
+                    link_status_key = "difference_detected"
+                    link_status = "공식자료 요약과 차이 있음"
+                    difference_description = "기재 금액과 연결된 공식자료 요약값 차이를 확인해 주세요"
             else:
-                link_status = "linked_hint"
+                link_status_key = "linked_hint"
+                link_status = "공식자료 연결됨"
+                difference_description = "연결 가능한 공식자료는 찾았지만, 차이 금액을 계산할 구조화 금액이 부족합니다"
 
         note_parts: list[str] = []
         if view.get("note"):
             note_parts.append(str(view["note"]))
-        if link_status == "reference_only":
+        if link_status_key == "reference_only":
             note_parts.append("공식자료 대체가 아니라 보조 설명 자료로 전달합니다")
-        elif link_status == "difference_detected":
+        elif link_status_key == "difference_detected":
             note_parts.append("연결된 공식자료와 금액 차이가 있어 세무사 확인이 필요합니다")
         elif reported_amount == "":
             note_parts.append("금액은 구조화하지 못해 참고용으로만 표기했습니다")
@@ -455,7 +479,11 @@ def _collect_reference_material_rows(
                 "reported_amount_krw": reported_amount,
                 "linked_official_doc_type": linked_official_doc_type,
                 "link_status": link_status,
+                "link_status_key": link_status_key,
+                "comparison_basis": comparison_basis,
+                "comparison_target": comparison_target,
                 "difference_krw": difference,
+                "difference_description": difference_description,
                 "needs_review": needs_review,
                 "note": " / ".join(dict.fromkeys(part for part in note_parts if part)),
                 "_original_filename": item.original_filename,
@@ -481,6 +509,40 @@ def _append_review_item(rows: list[dict[str, Any]], *, item_type: str, related_k
             "메모": note,
         }
     )
+
+
+def _review_priority_profile(item_type: str) -> tuple[int, str, str]:
+    if item_type in {"거래검토"}:
+        return 1, "높음", "신고·세액 영향이 큰 분류 미확정 항목"
+    if item_type in {"원천징수자료누락", "기납부세액자료누락"}:
+        return 2, "높음", "원천징수·기납부세액 자료 누락"
+    if item_type in {"공식자료재확인"}:
+        return 3, "중간", "공식자료 재확인 또는 충돌 확인 필요"
+    if item_type in {"증빙누락", "증빙검토"}:
+        return 4, "중간", "증빙 누락 또는 증빙 불충분 검토"
+    if item_type in {"참고자료검토"}:
+        return 5, "낮음", "참고자료 보조 설명 검토"
+    if item_type in {"사용자상태확인"}:
+        return 6, "낮음", "사용자 상태값 미확인"
+    return 9, "낮음", "기타 확인 필요 항목"
+
+
+def _finalize_review_items(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for idx, row in enumerate(rows, start=1):
+        priority_order, priority_label, priority_reason = _review_priority_profile(str(row.get("항목유형", "")))
+        enriched = dict(row)
+        enriched["_original_order"] = idx
+        enriched["우선확인순서"] = priority_order
+        enriched["우선순위"] = priority_label
+        enriched["우선순위기준"] = priority_reason
+        normalized.append(enriched)
+
+    normalized.sort(key=lambda item: (item.get("우선확인순서", 99), item.get("_original_order", 0)))
+    for idx, row in enumerate(normalized, start=1):
+        row["항목번호"] = idx
+        row.pop("_original_order", None)
+    return normalized
 
 
 def _extend_review_items(
@@ -562,7 +624,7 @@ def _extend_review_items(
     for row in reference_material_rows:
         if row.get("needs_review") != "예":
             continue
-        if row.get("link_status") == "difference_detected":
+        if row.get("link_status_key") == "difference_detected":
             summary = "참고자료와 공식자료 금액 차이 확인 필요"
             needed = "참고자료의 설명 금액과 공식자료 요약값 차이를 확인해 주세요"
             priority = "보통"
@@ -582,7 +644,7 @@ def _extend_review_items(
             note=str(row.get("title", "")),
         )
 
-    return rows
+    return _finalize_review_items(rows)
 
 
 def _source_labels(source: str | None, provider: str | None = None) -> tuple[str, str]:
@@ -1166,11 +1228,23 @@ def _style_table_sheet(ws, headers: list[str], rows: list[dict[str, Any]]) -> No
         if any(keyword in header for keyword in status_keywords):
             for cell in ws[column][1:]:
                 value = str(cell.value or "")
-                if value in {"반영됨", "첨부됨", "예", "반영 가능", "포함"}:
+                if value in {"반영됨", "첨부됨", "예", "반영 가능", "포함", "확인됨"}:
                     cell.fill = GOOD_FILL
-                elif value in {"재확인필요", "검토 필요", "보류", "확인 필요", "기본 제외", "미확인", "reference_only", "difference_detected"}:
+                elif value in {
+                    "재확인필요",
+                    "검토 필요",
+                    "보류",
+                    "확인 필요",
+                    "기본 제외",
+                    "미확인",
+                    "참고용",
+                    "공식자료 연결됨",
+                    "공식자료 요약과 차이 있음",
+                    "중간",
+                    "낮음",
+                }:
                     cell.fill = WARN_FILL
-                elif value in {"필수 누락", "아니오", "미지원 형식", "읽기 실패"}:
+                elif value in {"필수 누락", "아니오", "미지원 형식", "읽기 실패", "높음"}:
                     cell.fill = BAD_FILL
 
     ws.sheet_view.showGridLines = True
@@ -1484,10 +1558,29 @@ def _build_review_workbook(snapshot: PackageSnapshot) -> bytes:
         wb = Workbook()
         ws = wb.active
         ws.title = "세무사_확인필요목록"
+        prioritized_rows = []
+        for row in snapshot.review_items:
+            priority_order, priority_label, priority_reason = _review_priority_profile(str(row.get("항목유형", "")))
+            has_explicit_priority = row.get("우선확인순서") not in (None, "")
+            prioritized_rows.append(
+                {
+                    "항목번호": row.get("항목번호", ""),
+                    "우선확인순서": row.get("우선확인순서", priority_order) if has_explicit_priority else priority_order,
+                    "우선순위": row.get("우선순위", priority_label) if has_explicit_priority else priority_label,
+                    "우선순위 기준": row.get("우선순위기준", priority_reason) if has_explicit_priority else priority_reason,
+                    "항목유형": row.get("항목유형", ""),
+                    "관련자료구분": row.get("관련자료구분", ""),
+                    "관련번호": row.get("관련번호", ""),
+                    "요약설명": row.get("요약설명", ""),
+                    "현재상태": row.get("현재상태", ""),
+                    "필요한확인내용": row.get("필요한확인내용", ""),
+                    "메모": row.get("메모", ""),
+                }
+            )
         _write_table_sheet(
             ws,
-            ["항목번호", "항목유형", "관련자료구분", "관련번호", "요약설명", "현재상태", "필요한확인내용", "우선순위", "메모"],
-            snapshot.review_items,
+            ["항목번호", "우선확인순서", "우선순위", "우선순위 기준", "항목유형", "관련자료구분", "관련번호", "요약설명", "현재상태", "필요한확인내용", "메모"],
+            prioritized_rows,
         )
 
         ws2 = wb.create_sheet("증빙누락")
@@ -1512,31 +1605,81 @@ def _build_business_status_workbook(snapshot: PackageSnapshot) -> bytes:
     def build() -> Workbook:
         wb = Workbook()
         ws = wb.active
-        ws.title = "사업_상태_요약"
-        rows = snapshot.business_status_rows or [
+        ws.title = "사업 상태 요약"
+        source = (snapshot.business_status_rows or [{}])[0]
+
+        def inferred_source(key: str, default_source: str) -> str:
+            explicit = str(source.get(f"{key}_source", "") or "").strip()
+            if explicit:
+                return explicit
+            value = str(source.get(key, "") or "").strip()
+            if value and value not in {"미확인", "미연결"}:
+                return default_source
+            return "미확인"
+
+        def inferred_confidence(key: str, default_confidence: str = "참고용") -> str:
+            explicit = str(source.get(f"{key}_confidence", "") or "").strip()
+            if explicit:
+                return explicit
+            value = str(source.get(key, "") or "").strip()
+            if value and value not in {"미확인", "미연결"}:
+                return default_confidence
+            return "미확인"
+
+        rows = [
             {
-                "user_type": "미확인",
-                "health_insurance_status": "미확인",
-                "vat_status": "미확인",
-                "business_registration_status": "미확인",
-                "business_account_usage_status": "미연결",
-                "business_card_usage_status": "미확인",
-                "onboarding_basis": "온보딩 미설정",
-                "note": "현재 저장된 사업 상태 요약값이 없습니다.",
-            }
+                "항목명": "사용자 유형",
+                "현재 값": source.get("user_type", "미확인"),
+                "값 출처": inferred_source("user_type", "사용자 입력"),
+                "확인 수준": inferred_confidence("user_type"),
+                "비고": source.get("note", "") if source.get("user_type") == "미확인" else "",
+            },
+            {
+                "항목명": "건강보험 상태",
+                "현재 값": source.get("health_insurance_status", "미확인"),
+                "값 출처": inferred_source("health_insurance_status", "사용자 입력"),
+                "확인 수준": inferred_confidence("health_insurance_status"),
+                "비고": source.get("note", "") if source.get("health_insurance_status") == "미확인" else "",
+            },
+            {
+                "항목명": "과세 상태",
+                "현재 값": source.get("vat_status", "미확인"),
+                "값 출처": inferred_source("vat_status", "사용자 입력"),
+                "확인 수준": inferred_confidence("vat_status"),
+                "비고": source.get("note", "") if source.get("vat_status") == "미확인" else "",
+            },
+            {
+                "항목명": "사업자등록 유무",
+                "현재 값": source.get("business_registration_status", "미확인"),
+                "값 출처": inferred_source("business_registration_status", "사용자 입력"),
+                "확인 수준": inferred_confidence("business_registration_status"),
+                "비고": "",
+            },
+            {
+                "항목명": "사업용 계좌 사용 여부",
+                "현재 값": source.get("business_account_usage_status", "미확인"),
+                "값 출처": inferred_source("business_account_usage_status", "계좌 연결 정보"),
+                "확인 수준": inferred_confidence("business_account_usage_status"),
+                "비고": source.get("note", ""),
+            },
+            {
+                "항목명": "사업용 카드 사용 여부",
+                "현재 값": source.get("business_card_usage_status", "미확인"),
+                "값 출처": inferred_source("business_card_usage_status", "미확인"),
+                "확인 수준": inferred_confidence("business_card_usage_status", "미확인"),
+                "비고": "현재 구조에서 별도 확인값이 없습니다.",
+            },
+            {
+                "항목명": "기준값 출처 요약",
+                "현재 값": source.get("onboarding_basis", "미확인"),
+                "값 출처": "시스템 정리",
+                "확인 수준": "참고용",
+                "비고": source.get("note", "") or "온보딩 입력값과 현재 연결 상태를 함께 봐 주세요.",
+            },
         ]
         _write_table_sheet(
             ws,
-            [
-                "user_type",
-                "health_insurance_status",
-                "vat_status",
-                "business_registration_status",
-                "business_account_usage_status",
-                "business_card_usage_status",
-                "onboarding_basis",
-                "note",
-            ],
+            ["항목명", "현재 값", "값 출처", "확인 수준", "비고"],
             rows,
         )
         return wb
@@ -1548,29 +1691,22 @@ def _build_withholding_summary_workbook(snapshot: PackageSnapshot) -> bytes:
     def build() -> Workbook:
         wb = Workbook()
         ws = wb.active
-        ws.title = "원천징수_기납부세액_요약"
-        rows = snapshot.withholding_summary_rows or [
+        ws.title = "원천징수·기납부세액 요약"
+        source = (snapshot.withholding_summary_rows or [{}])[0]
+        rows = [
             {
-                "has_withholding_data": "아니오",
-                "withholding_tax_total_krw": "",
-                "has_paid_tax_data": "아니오",
-                "paid_tax_total_krw": "",
-                "other_income_flag": "미확인",
-                "source_basis": "미확인",
-                "note": "현재 구조화된 원천징수/기납부세액 자료가 없습니다.",
+                "원천징수 자료 있음": source.get("has_withholding_data", "아니오"),
+                "원천징수세액 합계": source.get("withholding_tax_total_krw", ""),
+                "기납부세액 자료 있음": source.get("has_paid_tax_data", "아니오"),
+                "기납부세액 합계": source.get("paid_tax_total_krw", ""),
+                "다른 소득 있음": source.get("other_income_flag", "미확인"),
+                "기준 자료": source.get("source_basis", "미확인"),
+                "비고": source.get("note", ""),
             }
         ]
         _write_table_sheet(
             ws,
-            [
-                "has_withholding_data",
-                "withholding_tax_total_krw",
-                "has_paid_tax_data",
-                "paid_tax_total_krw",
-                "other_income_flag",
-                "source_basis",
-                "note",
-            ],
+            ["원천징수 자료 있음", "원천징수세액 합계", "기납부세액 자료 있음", "기납부세액 합계", "다른 소득 있음", "기준 자료", "비고"],
             rows,
         )
         return wb
@@ -1582,35 +1718,48 @@ def _build_reference_material_workbook(snapshot: PackageSnapshot) -> bytes:
     def build() -> Workbook:
         wb = Workbook()
         ws = wb.active
-        ws.title = "참고자료_요약"
-        rows = snapshot.reference_material_rows or [
-            {
-                "reference_material_id": "",
-                "title": "현재 포함된 참고자료 없음",
-                "reference_type": "",
-                "reported_period": "",
-                "reported_amount_krw": "",
-                "linked_official_doc_type": "",
-                "link_status": "reference_only",
-                "difference_krw": "",
-                "needs_review": "아니오",
-                "note": "대상 월 기준으로 포함된 참고자료가 없습니다.",
-            }
-        ]
+        ws.title = "참고자료 요약"
+        rows = []
+        if snapshot.reference_material_rows:
+            for row in snapshot.reference_material_rows:
+                rows.append(
+                    {
+                        "참고자료 번호": row.get("reference_material_id", ""),
+                        "제목": row.get("title", ""),
+                        "자료 유형": row.get("reference_type", ""),
+                        "기준 기간": row.get("reported_period", ""),
+                        "기재 금액": row.get("reported_amount_krw", ""),
+                        "연결된 공식자료 유형": row.get("linked_official_doc_type", ""),
+                        "연결 상태": row.get("link_status", "참고용"),
+                        "비교 기준": row.get("comparison_basis", "비교 기준 없음"),
+                        "비교 대상": row.get("comparison_target", "연결 가능한 공식자료 요약값 없음"),
+                        "차이 금액": row.get("difference_krw", ""),
+                        "차이 설명": row.get("difference_description", ""),
+                        "재확인 필요": row.get("needs_review", "예"),
+                        "비고": row.get("note", ""),
+                    }
+                )
+        else:
+            rows.append(
+                {
+                    "참고자료 번호": "",
+                    "제목": "현재 포함된 참고자료 없음",
+                    "자료 유형": "",
+                    "기준 기간": "",
+                    "기재 금액": "",
+                    "연결된 공식자료 유형": "",
+                    "연결 상태": "참고용",
+                    "비교 기준": "비교 기준 없음",
+                    "비교 대상": "연결 가능한 공식자료 요약값 없음",
+                    "차이 금액": "",
+                    "차이 설명": "대상 월 기준으로 포함된 참고자료가 없습니다.",
+                    "재확인 필요": "아니오",
+                    "비고": "참고자료 원본은 기본 패키지에 포함하지 않습니다.",
+                }
+            )
         _write_table_sheet(
             ws,
-            [
-                "reference_material_id",
-                "title",
-                "reference_type",
-                "reported_period",
-                "reported_amount_krw",
-                "linked_official_doc_type",
-                "link_status",
-                "difference_krw",
-                "needs_review",
-                "note",
-            ],
+            ["참고자료 번호", "제목", "자료 유형", "기준 기간", "기재 금액", "연결된 공식자료 유형", "연결 상태", "비교 기준", "비교 대상", "차이 금액", "차이 설명", "재확인 필요", "비고"],
             rows,
         )
         return wb
@@ -1798,21 +1947,26 @@ def _build_attachment_index_workbook(snapshot: PackageSnapshot) -> bytes:
         wb = Workbook()
         ws = wb.active
         ws.title = "첨부인덱스"
+        rows = []
+        for row in _build_attachment_index_rows(snapshot):
+            rows.append(
+                {
+                    "첨부 인덱스 키": row.get("attachment_index_key", ""),
+                    "표시 파일명": row.get("display_file_name", ""),
+                    "자료 유형": row.get("document_type", ""),
+                    "관련 거래번호": row.get("related_transaction_id", ""),
+                    "기준 기간": row.get("period_basis", ""),
+                    "민감정보 가능성": row.get("contains_sensitive_info", ""),
+                    "패키지 포함 상태": row.get("package_status", ""),
+                    "상대경로": row.get("relative_path", ""),
+                    "파일 열기": row.get("file_open_link", ""),
+                    "비고": row.get("note", ""),
+                }
+            )
         _write_table_sheet(
             ws,
-            [
-                "attachment_index_key",
-                "display_file_name",
-                "document_type",
-                "related_transaction_id",
-                "period_basis",
-                "contains_sensitive_info",
-                "package_status",
-                "relative_path",
-                "file_open_link",
-                "note",
-            ],
-            _build_attachment_index_rows(snapshot),
+            ["첨부 인덱스 키", "표시 파일명", "자료 유형", "관련 거래번호", "기준 기간", "민감정보 가능성", "패키지 포함 상태", "상대경로", "파일 열기", "비고"],
+            rows,
         )
         return wb
 
@@ -1830,14 +1984,21 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "",
         "[포함 파일]",
         "- 00_패키지요약.xlsx : 전체 요약, 패키지안내, 공식자료 목록/상태/핵심값",
-        "- 01_사업_상태_요약.xlsx : 사용자 유형/건보/과세 상태와 사업용 사용 흔적 요약",
+        "- 01_사업_상태_요약.xlsx : 사용자 유형/건보/과세 상태와 각 값의 출처/확인 수준 요약",
         "- 03_거래원장.xlsx : 거래 목록, 원본 메타, 분류/증빙 연결",
         "- 04_증빙상태표.xlsx : 첨부된 증빙 목록과 거래별 대표 첨부 연결",
-        "- 05_원천징수_기납부세액_요약.xlsx : 원천징수/기납부세액 존재 여부와 합계 요약",
-        "- 06_세무사_확인필요목록.xlsx : 필수 누락/분류 미확정 등 재확인 목록",
+        "- 05_원천징수_기납부세액_요약.xlsx : 원천징수/기납부세액 존재 여부, 합계, 기준 자료 요약",
+        "- 06_세무사_확인필요목록.xlsx : 우선확인순서 기준 재확인 목록",
         "- 07_첨부인덱스.xlsx : 패키지 첨부 전체 인덱스와 상대경로 링크",
-        "- 10_참고자료_요약.xlsx : 참고자료 제목/유형/연결 힌트 중심 요약",
+        "- 10_참고자료_요약.xlsx : 참고자료 제목/유형/비교 기준/차이 설명 중심 요약",
         "- attachments/evidence/ : 현재 연결된 대표 증빙 파일",
+        "",
+        "[권장 읽는 순서]",
+        "- 1) 06_세무사_확인필요목록.xlsx",
+        "- 2) 01_사업_상태_요약.xlsx",
+        "- 3) 05_원천징수_기납부세액_요약.xlsx",
+        "- 4) 03_거래원장.xlsx / 04_증빙상태표.xlsx",
+        "- 5) 10_참고자료_요약.xlsx",
         "",
         "[현재 포함되는 자료 범위]",
         "- 수동입력 거래",
@@ -1864,6 +2025,7 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "- 거래당 대표 증빙 1개 기준으로 정리됩니다. 전체 첨부 접근은 07_첨부인덱스.xlsx를 기준으로 봐 주세요.",
         f"- 공식자료는 {stats.official_data_total}건이 목록에 반영될 수 있지만, 현재는 교차검증 없이 목록/상태/핵심값만 제공합니다.",
         "- 참고자료는 공식자료를 대체하지 않고 보조 설명/맥락 전달용으로만 요약합니다.",
+        "- 사업 상태 요약의 사용자 입력값은 세무사 확인 전까지 참고용으로 봐 주세요.",
         "- 공식자료의 검증상태가 '검증 미실시'이면 세무사 확인이 필요합니다.",
         "- ZIP 내부 링크는 압축을 푼 뒤 여는 방식이 가장 안정적입니다.",
     ]

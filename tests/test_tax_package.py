@@ -225,7 +225,7 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "관련자료구분": "참고자료",
                     "관련번호": 8101,
                     "요약설명": "참고자료 보조 설명 연결 확인 필요",
-                    "현재상태": "reference_only",
+                    "현재상태": "참고용",
                     "필요한확인내용": "공식자료와 연결되는 설명인지, 참고용 메모인지 확인해 주세요",
                     "우선순위": "보통",
                     "메모": "수입 구조 메모",
@@ -275,8 +275,12 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "reported_period": "2026-03",
                     "reported_amount_krw": 3200000,
                     "linked_official_doc_type": "홈택스 납부내역",
-                    "link_status": "reference_only",
+                    "link_status": "참고용",
+                    "link_status_key": "reference_only",
+                    "comparison_basis": "비교 기준 없음",
+                    "comparison_target": "연결 가능한 공식자료 요약값 없음",
                     "difference_krw": "",
+                    "difference_description": "구조화된 비교 기준이 없어 참고용으로만 전달합니다",
                     "needs_review": "예",
                     "note": "공식자료 대체가 아니라 보조 설명 자료로 전달합니다",
                     "_original_filename": "income_note.pdf",
@@ -340,28 +344,32 @@ class TaxPackageServiceTest(unittest.TestCase):
         root = "세무사전달패키지_2026-03_테스터"
 
         business_wb = load_workbook(io.BytesIO(archive.read(f"{root}/01_사업_상태_요약.xlsx")))
-        business_ws = business_wb["사업_상태_요약"]
+        business_ws = business_wb["사업 상태 요약"]
         business_headers = {cell.value: idx + 1 for idx, cell in enumerate(business_ws[1])}
-        self.assertEqual(business_ws.cell(2, business_headers["user_type"]).value, "프리랜서(3.3)")
-        self.assertEqual(business_ws.cell(2, business_headers["health_insurance_status"]).value, "지역가입자")
-        self.assertEqual(business_ws.cell(2, business_headers["onboarding_basis"]).value, "온보딩 입력값")
+        self.assertEqual(business_ws.cell(2, business_headers["항목명"]).value, "사용자 유형")
+        self.assertEqual(business_ws.cell(2, business_headers["현재 값"]).value, "프리랜서(3.3)")
+        self.assertEqual(business_ws.cell(2, business_headers["값 출처"]).value, "사용자 입력")
+        self.assertEqual(business_ws.cell(2, business_headers["확인 수준"]).value, "참고용")
 
         withholding_wb = load_workbook(io.BytesIO(archive.read(f"{root}/05_원천징수_기납부세액_요약.xlsx")))
-        withholding_ws = withholding_wb["원천징수_기납부세액_요약"]
+        withholding_ws = withholding_wb["원천징수·기납부세액 요약"]
         withholding_headers = {cell.value: idx + 1 for idx, cell in enumerate(withholding_ws[1])}
-        self.assertEqual(withholding_ws.cell(2, withholding_headers["has_withholding_data"]).value, "아니오")
-        self.assertEqual(withholding_ws.cell(2, withholding_headers["other_income_flag"]).value, "예(입력값 기준)")
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["원천징수 자료 있음"]).value, "아니오")
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["다른 소득 있음"]).value, "예(입력값 기준)")
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["기준 자료"]).value, "온보딩 입력값")
 
     def test_reference_material_workbook_and_review_expansion_are_added(self) -> None:
         _, archive = self._build_zip(self.snapshot_with_official)
         root = "세무사전달패키지_2026-03_테스터"
 
         reference_wb = load_workbook(io.BytesIO(archive.read(f"{root}/10_참고자료_요약.xlsx")))
-        reference_ws = reference_wb["참고자료_요약"]
+        reference_ws = reference_wb["참고자료 요약"]
         reference_headers = {cell.value: idx + 1 for idx, cell in enumerate(reference_ws[1])}
-        self.assertEqual(reference_ws.cell(2, reference_headers["title"]).value, "수입 구조 메모")
-        self.assertEqual(reference_ws.cell(2, reference_headers["link_status"]).value, "reference_only")
-        self.assertEqual(reference_ws.cell(2, reference_headers["needs_review"]).value, "예")
+        self.assertEqual(reference_ws.cell(2, reference_headers["제목"]).value, "수입 구조 메모")
+        self.assertEqual(reference_ws.cell(2, reference_headers["연결 상태"]).value, "참고용")
+        self.assertEqual(reference_ws.cell(2, reference_headers["비교 기준"]).value, "비교 기준 없음")
+        self.assertEqual(reference_ws.cell(2, reference_headers["차이 설명"]).value, "구조화된 비교 기준이 없어 참고용으로만 전달합니다")
+        self.assertEqual(reference_ws.cell(2, reference_headers["재확인 필요"]).value, "예")
 
         review_wb = load_workbook(io.BytesIO(archive.read(f"{root}/06_세무사_확인필요목록.xlsx")))
         review_ws = review_wb["세무사_확인필요목록"]
@@ -369,6 +377,9 @@ class TaxPackageServiceTest(unittest.TestCase):
         review_types = [review_ws.cell(row_idx, review_headers["항목유형"]).value for row_idx in range(2, review_ws.max_row + 1)]
         self.assertIn("공식자료재확인", review_types)
         self.assertIn("참고자료검토", review_types)
+        self.assertEqual(review_ws.cell(2, review_headers["우선확인순서"]).value, 1)
+        self.assertEqual(review_ws.cell(2, review_headers["우선순위"]).value, "높음")
+        self.assertIn("세액 영향", str(review_ws.cell(2, review_headers["우선순위 기준"]).value))
 
     def test_workbooks_include_relative_evidence_hyperlinks(self) -> None:
         _, archive = self._build_zip()
@@ -392,7 +403,7 @@ class TaxPackageServiceTest(unittest.TestCase):
         attachment_wb = load_workbook(io.BytesIO(archive.read("세무사전달패키지_2026-03_테스터/07_첨부인덱스.xlsx")))
         attachment_ws = attachment_wb["첨부인덱스"]
         attachment_headers = {cell.value: idx + 1 for idx, cell in enumerate(attachment_ws[1])}
-        attachment_link_cell = attachment_ws.cell(2, attachment_headers["file_open_link"])
+        attachment_link_cell = attachment_ws.cell(2, attachment_headers["파일 열기"])
         self.assertEqual(attachment_link_cell.value, "열기")
         self.assertIsNotNone(attachment_link_cell.hyperlink)
         self.assertEqual(attachment_link_cell.hyperlink.target, "attachments/evidence/101_receipt.pdf")
@@ -422,10 +433,10 @@ class TaxPackageServiceTest(unittest.TestCase):
 
         attachment_ws = load_workbook(io.BytesIO(archive.read(f"{root}/07_첨부인덱스.xlsx")))["첨부인덱스"]
         attachment_headers = {cell.value: idx + 1 for idx, cell in enumerate(attachment_ws[1])}
-        self.assertEqual(attachment_ws.cell(3, attachment_headers["package_status"]).value, "기본 제외")
-        self.assertEqual(attachment_ws.cell(3, attachment_headers["relative_path"]).value or "", "")
-        self.assertEqual(attachment_ws.cell(4, attachment_headers["package_status"]).value, "기본 제외")
-        self.assertEqual(attachment_ws.cell(4, attachment_headers["document_type"]).value, "참고자료 원본")
+        self.assertEqual(attachment_ws.cell(3, attachment_headers["패키지 포함 상태"]).value, "기본 제외")
+        self.assertEqual(attachment_ws.cell(3, attachment_headers["상대경로"]).value or "", "")
+        self.assertEqual(attachment_ws.cell(4, attachment_headers["패키지 포함 상태"]).value, "기본 제외")
+        self.assertEqual(attachment_ws.cell(4, attachment_headers["자료 유형"]).value, "참고자료 원본")
 
     def test_source_labels_support_new_bank_sync_provider_shape(self) -> None:
         self.assertEqual(_source_labels("bank_sync", "popbill"), ("자동연동", "팝빌"))
