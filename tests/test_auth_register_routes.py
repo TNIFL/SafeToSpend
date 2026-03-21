@@ -66,6 +66,9 @@ class AuthRegisterRoutesTest(unittest.TestCase):
         self.assertIn("개인정보처리방침 초안", privacy_response.get_data(as_text=True))
 
     def test_register_rejects_submission_without_required_consents(self) -> None:
+        with self.app.app_context():
+            agreement_count_before = UserConsentAgreement.query.count()
+
         email, response = self._register()
         body = response.get_data(as_text=True)
 
@@ -74,7 +77,7 @@ class AuthRegisterRoutesTest(unittest.TestCase):
 
         with self.app.app_context():
             self.assertIsNone(User.query.filter_by(email=email).first())
-            self.assertEqual(UserConsentAgreement.query.count(), 0)
+            self.assertEqual(UserConsentAgreement.query.count(), agreement_count_before)
 
     def test_register_succeeds_and_redirects_new_user_to_onboarding(self) -> None:
         email, response = self._register(agree_terms="on", agree_privacy="on")

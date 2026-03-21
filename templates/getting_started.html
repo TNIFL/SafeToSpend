@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}처음 설정 | 쓸수있어{% endblock %}
+{% block title %}{{ setup_page_title or '처음 설정' }} | 쓸수있어{% endblock %}
 
 {% block head_extra %}
 <style>
@@ -37,19 +37,23 @@
 <div class="setup-wrap">
   <div class="setup-shell">
     <section class="setup-hero">
-      <span class="setup-kicker">처음 설정</span>
-      <h1 class="setup-title">딱 세 가지만 알려주시면<br>추천 안내를 더 정확하게 맞출 수 있어요.</h1>
+      <span class="setup-kicker">{{ setup_kicker or '처음 설정' }}</span>
+      <h1 class="setup-title">{{ (setup_title or '딱 세 가지만 알려주시면<br>추천 안내를 더 정확하게 맞출 수 있어요.')|safe }}</h1>
       <p class="setup-sub">
-        자료 추천, 건보료/세금 안내에 반영돼요. 잘 모르셔도 괜찮고, 지금 건너뛰어도 바로 사용할 수 있어요.
+        {{ setup_subtitle or '자료 추천, 건보료/세금 안내에 반영돼요. 잘 모르셔도 괜찮고, 지금 건너뛰어도 바로 사용할 수 있어요.' }}
       </p>
-      {% if onboarding_state.completed_at %}
+      {% if setup_meta_text %}
+        <div class="setup-meta" style="margin-top:12px;">
+          <span>{{ setup_meta_text }}</span>
+        </div>
+      {% elif onboarding_state.completed_at %}
         <div class="setup-meta" style="margin-top:12px;">
           <span>이미 저장된 값을 다시 바꿀 수 있어요.</span>
         </div>
       {% endif %}
     </section>
 
-    <form class="setup-form" method="POST" action="{{ url_for('web_auth.getting_started') }}">
+    <form class="setup-form" method="POST" action="{{ setup_form_action or url_for('web_auth.getting_started') }}">
       <input type="hidden" name="next" value="{{ next_url or '' }}">
 
       <section class="setup-card">
@@ -121,11 +125,15 @@
       <div class="setup-actions">
         <div class="setup-meta">
           <span>민감정보나 상세 금액은 여기서 받지 않습니다.</span>
-          <span>나중에 내 계정에서 다시 바꿀 수 있어요.</span>
+          <span>{{ setup_footer_note or '나중에 내 상태 설정에서 다시 바꿀 수 있어요.' }}</span>
         </div>
         <div class="row" style="gap:8px;">
-          <button class="btn ghost" type="submit" name="action" value="skip" formnovalidate>지금은 건너뛰기</button>
-          <button class="btn primary" type="submit" name="action" value="save">이 설정으로 시작하기</button>
+          {% if show_skip_action is not defined or show_skip_action %}
+            <button class="btn ghost" type="submit" name="action" value="skip" formnovalidate>{{ skip_button_label or '지금은 건너뛰기' }}</button>
+          {% else %}
+            <a class="btn ghost" href="{{ secondary_href or next_url or url_for('web_profile.mypage') }}">{{ secondary_label or '돌아가기' }}</a>
+          {% endif %}
+          <button class="btn primary" type="submit" name="action" value="save">{{ primary_button_label or '이 설정으로 시작하기' }}</button>
         </div>
       </div>
     </form>

@@ -219,6 +219,16 @@ def build_onboarding_reflection(user_pk: int) -> dict[str, Any]:
     }
 
 
+def build_onboarding_summary(user_pk: int) -> dict[str, str | bool]:
+    reflection = build_onboarding_reflection(user_pk)
+    return {
+        "user_type_label": reflection["user_type_label"] or "아직 설정하지 않음",
+        "health_insurance_label": reflection["health_insurance_label"] or "아직 설정하지 않음",
+        "vat_status_label": reflection["vat_status_label"] or "아직 설정하지 않음",
+        "has_any_specific": reflection["has_any_specific"],
+    }
+
+
 def save_onboarding_state(
     user_pk: int,
     *,

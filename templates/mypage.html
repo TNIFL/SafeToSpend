@@ -96,6 +96,30 @@
 
     <div style="display:grid;gap:16px;">
       <section class="account-card">
+        <h2 class="h2" style="margin-top:0;">내 상태 설정</h2>
+        <p class="account-sub">현재 설정값은 공식자료 추천, NHIS 안내, 정리하기 우선순위에 반영됩니다.</p>
+
+        <div class="account-summary" style="grid-template-columns:1fr;">
+          <div class="summary-item">
+            <span class="summary-label">사용자 유형</span>
+            <span class="summary-value">{{ onboarding_summary.user_type_label }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">건강보험 상태</span>
+            <span class="summary-value">{{ onboarding_summary.health_insurance_label }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">과세 상태</span>
+            <span class="summary-value">{{ onboarding_summary.vat_status_label }}</span>
+          </div>
+        </div>
+
+        <div class="account-actions">
+          <a class="btn primary" href="{{ url_for('web_profile.status_settings', next=url_for('web_profile.mypage')) }}">내 상태 설정</a>
+        </div>
+      </section>
+
+      <section class="account-card">
         <h2 class="h2" style="margin-top:0;">바로 가기</h2>
         <div class="account-links">
           <a class="account-link" href="{{ url_for('web_package.page') }}">
@@ -116,13 +140,6 @@
             <div>
               <strong>참고자료 업로드</strong>
               <span>추가 설명과 참고용 파일을 별도로 보관합니다.</span>
-            </div>
-            <span>열기</span>
-          </a>
-          <a class="account-link" href="{{ url_for('web_auth.getting_started') }}">
-            <div>
-              <strong>처음 설정 다시 보기</strong>
-              <span>사용자 유형, 건보 상태, 과세 상태를 다시 정할 수 있습니다.</span>
             </div>
             <span>열기</span>
           </a>
