@@ -185,6 +185,32 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "note": "대상 월에 포함된 원천징수/기납부세액 공식자료가 없습니다",
                 }
             ],
+            vat_summary_rows=[
+                {
+                    "vat_status": "미확인",
+                    "recent_vat_filing_status": "자료 없음",
+                    "tax_invoice_sales_total_krw": "",
+                    "tax_invoice_purchase_total_krw": "",
+                    "card_purchase_total_krw": "",
+                    "cash_receipt_purchase_total_krw": "",
+                    "source_basis": "거래 집계 참고",
+                    "needs_review": "예",
+                    "note": "과세 상태 또는 부가세 관련 공식자료 요약이 미확인입니다",
+                }
+            ],
+            nhis_pension_summary_rows=[
+                {
+                    "health_insurance_status": "지역가입자",
+                    "period_basis": "2026-03",
+                    "nhis_total_krw": "",
+                    "has_nhis_data": "아니오",
+                    "has_pension_data": "아니오",
+                    "pension_total_krw": "",
+                    "source_basis": "사용자 입력",
+                    "needs_review": "예",
+                    "note": "건강보험/국민연금 공식자료 요약이 없습니다",
+                }
+            ],
         )
 
         official_stats = replace(
@@ -230,6 +256,28 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "우선순위": "보통",
                     "메모": "수입 구조 메모",
                 },
+                {
+                    "항목번호": 4,
+                    "항목유형": "부가세자료누락",
+                    "관련자료구분": "공식자료",
+                    "관련번호": "",
+                    "요약설명": "부가세 신고 자료 추가 확인 필요",
+                    "현재상태": "자료 없음",
+                    "필요한확인내용": "최근 부가세 신고 자료와 부가세 관련 공식자료를 다시 확인해 주세요",
+                    "우선순위": "높음",
+                    "메모": "공식자료 요약값 / 사용자 입력",
+                },
+                {
+                    "항목번호": 5,
+                    "항목유형": "건보자료누락",
+                    "관련자료구분": "공식자료",
+                    "관련번호": "",
+                    "요약설명": "건강보험 자료 추가 확인 필요",
+                    "현재상태": "자료 미첨부",
+                    "필요한확인내용": "건강보험 납부 자료 또는 안전한 요약 자료가 있으면 추가 확인해 주세요",
+                    "우선순위": "보통",
+                    "메모": "공식자료 요약값 / 사용자 입력",
+                },
             ],
             official_documents=[
                 {
@@ -267,26 +315,71 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "note": "",
                 }
             ],
+            vat_summary_rows=[
+                {
+                    "vat_status": "과세사업자/부가세 대상이에요",
+                    "recent_vat_filing_status": "예",
+                    "tax_invoice_sales_total_krw": 2100000,
+                    "tax_invoice_purchase_total_krw": 560000,
+                    "card_purchase_total_krw": 180000,
+                    "cash_receipt_purchase_total_krw": 90000,
+                    "source_basis": "공식자료 요약값 / 사용자 입력",
+                    "needs_review": "아니오",
+                    "note": "",
+                }
+            ],
+            nhis_pension_summary_rows=[
+                {
+                    "health_insurance_status": "지역가입자",
+                    "period_basis": "2026-03",
+                    "nhis_total_krw": 119000,
+                    "has_nhis_data": "예",
+                    "has_pension_data": "예",
+                    "pension_total_krw": 152000,
+                    "source_basis": "공식자료 요약값 / 사용자 입력",
+                    "needs_review": "아니오",
+                    "note": "",
+                }
+            ],
             reference_material_rows=[
                 {
                     "reference_material_id": 8101,
-                    "title": "수입 구조 메모",
+                    "title": "기납부세액 메모",
                     "reference_type": "참고자료",
                     "reported_period": "2026-03",
-                    "reported_amount_krw": 3200000,
+                    "reported_amount_krw": 330000,
                     "linked_official_doc_type": "홈택스 납부내역",
-                    "link_status": "참고용",
-                    "link_status_key": "reference_only",
-                    "comparison_basis": "비교 기준 없음",
-                    "comparison_target": "연결 가능한 공식자료 요약값 없음",
-                    "difference_krw": "",
-                    "difference_description": "구조화된 비교 기준이 없어 참고용으로만 전달합니다",
+                    "link_status": "공식자료 요약과 차이 있음",
+                    "link_status_key": "official_difference",
+                    "comparison_basis": "공식자료 요약 대비",
+                    "comparison_target": "홈택스 납부내역",
+                    "difference_krw": 180000,
+                    "difference_description": "기재 금액과 연결된 공식자료 요약값 차이를 확인해 주세요",
                     "needs_review": "예",
-                    "note": "공식자료 대체가 아니라 보조 설명 자료로 전달합니다",
+                    "note": "연결된 공식자료와 금액 차이가 있어 세무사 확인이 필요합니다",
                     "_original_filename": "income_note.pdf",
                     "_attachment_index_key": "reference-8101",
                     "_period_basis": "2026-03",
-                }
+                },
+                {
+                    "reference_material_id": 8102,
+                    "title": "월 매출 정리 메모",
+                    "reference_type": "추가설명",
+                    "reported_period": "2026-03",
+                    "reported_amount_krw": 3200000,
+                    "linked_official_doc_type": "",
+                    "link_status": "거래 합계와 대체로 일치",
+                    "link_status_key": "transaction_match",
+                    "comparison_basis": "거래 합계 대비",
+                    "comparison_target": "월간 수입 합계",
+                    "difference_krw": 0,
+                    "difference_description": "기재 금액과 대상 월 거래 합계 차이가 없습니다",
+                    "needs_review": "아니오",
+                    "note": "공식자료 대체가 아니라 보조 설명 자료로 전달합니다",
+                    "_original_filename": "sales_note.pdf",
+                    "_attachment_index_key": "reference-8102",
+                    "_period_basis": "2026-03",
+                },
             ],
         )
 
@@ -310,6 +403,8 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertIn(f"{root}/05_원천징수_기납부세액_요약.xlsx", names)
         self.assertIn(f"{root}/06_세무사_확인필요목록.xlsx", names)
         self.assertIn(f"{root}/07_첨부인덱스.xlsx", names)
+        self.assertIn(f"{root}/08_부가세_자료_요약.xlsx", names)
+        self.assertIn(f"{root}/09_건보_연금_요약.xlsx", names)
         self.assertIn(f"{root}/10_참고자료_요약.xlsx", names)
         self.assertIn(f"{root}/attachments/", names)
         self.assertIn(f"{root}/attachments/evidence/", names)
@@ -331,6 +426,8 @@ class TaxPackageServiceTest(unittest.TestCase):
 
         self.assertIn("01_사업_상태_요약.xlsx", guide)
         self.assertIn("05_원천징수_기납부세액_요약.xlsx", guide)
+        self.assertIn("08_부가세_자료_요약.xlsx", guide)
+        self.assertIn("09_건보_연금_요약.xlsx", guide)
         self.assertIn("07_첨부인덱스.xlsx", guide)
         self.assertIn("10_참고자료_요약.xlsx", guide)
         self.assertIn("공식자료 원본 파일", guide)
@@ -358,6 +455,18 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertEqual(withholding_ws.cell(2, withholding_headers["다른 소득 있음"]).value, "예(입력값 기준)")
         self.assertEqual(withholding_ws.cell(2, withholding_headers["기준 자료"]).value, "온보딩 입력값")
 
+        vat_wb = load_workbook(io.BytesIO(archive.read(f"{root}/08_부가세_자료_요약.xlsx")))
+        vat_ws = vat_wb["부가세 자료 요약"]
+        vat_headers = {cell.value: idx + 1 for idx, cell in enumerate(vat_ws[1])}
+        self.assertEqual(vat_ws.cell(2, vat_headers["과세 상태"]).value, "미확인")
+        self.assertEqual(vat_ws.cell(2, vat_headers["재확인 필요"]).value, "예")
+
+        nhis_wb = load_workbook(io.BytesIO(archive.read(f"{root}/09_건보_연금_요약.xlsx")))
+        nhis_ws = nhis_wb["건보·연금 요약"]
+        nhis_headers = {cell.value: idx + 1 for idx, cell in enumerate(nhis_ws[1])}
+        self.assertEqual(nhis_ws.cell(2, nhis_headers["건강보험 상태"]).value, "지역가입자")
+        self.assertEqual(nhis_ws.cell(2, nhis_headers["건강보험 자료 있음"]).value, "아니오")
+
     def test_reference_material_workbook_and_review_expansion_are_added(self) -> None:
         _, archive = self._build_zip(self.snapshot_with_official)
         root = "세무사전달패키지_2026-03_테스터"
@@ -365,11 +474,14 @@ class TaxPackageServiceTest(unittest.TestCase):
         reference_wb = load_workbook(io.BytesIO(archive.read(f"{root}/10_참고자료_요약.xlsx")))
         reference_ws = reference_wb["참고자료 요약"]
         reference_headers = {cell.value: idx + 1 for idx, cell in enumerate(reference_ws[1])}
-        self.assertEqual(reference_ws.cell(2, reference_headers["제목"]).value, "수입 구조 메모")
-        self.assertEqual(reference_ws.cell(2, reference_headers["연결 상태"]).value, "참고용")
-        self.assertEqual(reference_ws.cell(2, reference_headers["비교 기준"]).value, "비교 기준 없음")
-        self.assertEqual(reference_ws.cell(2, reference_headers["차이 설명"]).value, "구조화된 비교 기준이 없어 참고용으로만 전달합니다")
+        self.assertEqual(reference_ws.cell(2, reference_headers["제목"]).value, "기납부세액 메모")
+        self.assertEqual(reference_ws.cell(2, reference_headers["연결 상태"]).value, "공식자료 요약과 차이 있음")
+        self.assertEqual(reference_ws.cell(2, reference_headers["비교 기준"]).value, "공식자료 요약 대비")
+        self.assertEqual(reference_ws.cell(2, reference_headers["차이 설명"]).value, "기재 금액과 연결된 공식자료 요약값 차이를 확인해 주세요")
         self.assertEqual(reference_ws.cell(2, reference_headers["재확인 필요"]).value, "예")
+        self.assertEqual(reference_ws.cell(3, reference_headers["연결 상태"]).value, "거래 합계와 대체로 일치")
+        self.assertEqual(reference_ws.cell(3, reference_headers["비교 기준"]).value, "거래 합계 대비")
+        self.assertEqual(reference_ws.cell(3, reference_headers["비교 대상"]).value, "월간 수입 합계")
 
         review_wb = load_workbook(io.BytesIO(archive.read(f"{root}/06_세무사_확인필요목록.xlsx")))
         review_ws = review_wb["세무사_확인필요목록"]
@@ -377,6 +489,8 @@ class TaxPackageServiceTest(unittest.TestCase):
         review_types = [review_ws.cell(row_idx, review_headers["항목유형"]).value for row_idx in range(2, review_ws.max_row + 1)]
         self.assertIn("공식자료재확인", review_types)
         self.assertIn("참고자료검토", review_types)
+        self.assertIn("부가세자료누락", review_types)
+        self.assertIn("건보자료누락", review_types)
         self.assertEqual(review_ws.cell(2, review_headers["우선확인순서"]).value, 1)
         self.assertEqual(review_ws.cell(2, review_headers["우선순위"]).value, "높음")
         self.assertIn("세액 영향", str(review_ws.cell(2, review_headers["우선순위 기준"]).value))
@@ -423,6 +537,17 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertEqual(official_ws.cell(2, headers["원본첨부여부"]).value, "아니오")
         self.assertEqual(official_ws.cell(2, headers["목록반영여부"]).value, "예")
 
+        vat_ws = load_workbook(io.BytesIO(archive.read(f"{root}/08_부가세_자료_요약.xlsx")))["부가세 자료 요약"]
+        vat_headers = {cell.value: idx + 1 for idx, cell in enumerate(vat_ws[1])}
+        self.assertEqual(vat_ws.cell(2, vat_headers["과세 상태"]).value, "과세사업자/부가세 대상이에요")
+        self.assertEqual(vat_ws.cell(2, vat_headers["최근 부가세 신고 여부"]).value, "예")
+        self.assertEqual(vat_ws.cell(2, vat_headers["세금계산서 매출 합계"]).value, 2100000)
+
+        nhis_ws = load_workbook(io.BytesIO(archive.read(f"{root}/09_건보_연금_요약.xlsx")))["건보·연금 요약"]
+        nhis_headers = {cell.value: idx + 1 for idx, cell in enumerate(nhis_ws[1])}
+        self.assertEqual(nhis_ws.cell(2, nhis_headers["건강보험 자료 있음"]).value, "예")
+        self.assertEqual(nhis_ws.cell(2, nhis_headers["국민연금 납부 자료 있음"]).value, "예")
+
         summary_ws = official_wb["공식자료상태요약"]
         self.assertEqual(summary_ws["A2"].value, "홈택스 납부내역")
         self.assertEqual(summary_ws["C2"].value, 1)
@@ -433,10 +558,18 @@ class TaxPackageServiceTest(unittest.TestCase):
 
         attachment_ws = load_workbook(io.BytesIO(archive.read(f"{root}/07_첨부인덱스.xlsx")))["첨부인덱스"]
         attachment_headers = {cell.value: idx + 1 for idx, cell in enumerate(attachment_ws[1])}
-        self.assertEqual(attachment_ws.cell(3, attachment_headers["패키지 포함 상태"]).value, "기본 제외")
-        self.assertEqual(attachment_ws.cell(3, attachment_headers["상대경로"]).value or "", "")
-        self.assertEqual(attachment_ws.cell(4, attachment_headers["패키지 포함 상태"]).value, "기본 제외")
-        self.assertEqual(attachment_ws.cell(4, attachment_headers["자료 유형"]).value, "참고자료 원본")
+        attachment_rows = [
+            {
+                header: attachment_ws.cell(row_idx, col_idx).value
+                for header, col_idx in attachment_headers.items()
+            }
+            for row_idx in range(2, attachment_ws.max_row + 1)
+        ]
+        official_attachment = next(row for row in attachment_rows if row["자료 유형"] == "홈택스 납부내역 원본")
+        reference_attachment = next(row for row in attachment_rows if row["자료 유형"] == "참고자료 원본")
+        self.assertEqual(official_attachment["패키지 포함 상태"], "기본 제외")
+        self.assertEqual(official_attachment["상대경로"] or "", "")
+        self.assertEqual(reference_attachment["패키지 포함 상태"], "기본 제외")
 
     def test_source_labels_support_new_bank_sync_provider_shape(self) -> None:
         self.assertEqual(_source_labels("bank_sync", "popbill"), ("자동연동", "팝빌"))
