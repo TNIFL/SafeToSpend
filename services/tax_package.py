@@ -53,6 +53,275 @@ BAD_FILL = PatternFill("solid", fgColor="FDECEC")
 TOP_ALIGN = Alignment(vertical="top", wrap_text=True)
 PACKAGE_VERSION = "세무사 패키지 v2 4차"
 EVIDENCE_ATTACHMENTS_DIR = "attachments/evidence"
+DEFAULT_TAX_PACKAGE_PROFILE_CODE = "common"
+ALL_WORKBOOK_KEYS = (
+    "summary",
+    "business_status",
+    "transactions",
+    "evidence",
+    "withholding",
+    "review",
+    "attachments",
+    "vat",
+    "nhis_pension",
+    "reference",
+)
+WORKBOOK_FILENAME_MAP = {
+    "summary": "00_패키지요약.xlsx",
+    "business_status": "01_사업_상태_요약.xlsx",
+    "transactions": "03_거래원장.xlsx",
+    "evidence": "04_증빙상태표.xlsx",
+    "withholding": "05_원천징수_기납부세액_요약.xlsx",
+    "review": "06_세무사_확인필요목록.xlsx",
+    "attachments": "07_첨부인덱스.xlsx",
+    "vat": "08_부가세_자료_요약.xlsx",
+    "nhis_pension": "09_건보_연금_요약.xlsx",
+    "reference": "10_참고자료_요약.xlsx",
+}
+
+
+def _build_type_rank(*item_types: str) -> dict[str, int]:
+    return {item_type: idx for idx, item_type in enumerate(item_types)}
+
+
+@dataclass(frozen=True)
+class TaxPackageProfile:
+    code: str
+    display_name: str
+    archive_label: str
+    page_description: str
+    event_summary_note: str
+    included_workbooks: tuple[str, ...]
+    workbook_badge_order: tuple[str, ...]
+    workbook_badge_tones: dict[str, str]
+    summary_row_order: tuple[str, ...]
+    review_flow_lines: tuple[str, ...]
+    page_flow_lines: tuple[str, ...]
+    review_type_rank: dict[str, int]
+    official_keyword_groups: tuple[tuple[str, ...], ...] = ()
+    reference_keyword_groups: tuple[tuple[str, ...], ...] = ()
+
+
+TAX_PACKAGE_PROFILES: dict[str, TaxPackageProfile] = {
+    "common": TaxPackageProfile(
+        code="common",
+        display_name="공통형",
+        archive_label="",
+        page_description="거래·증빙·원천징수·부가세·건보/연금·참고자료를 함께 담는 공통 세무사 전달 패키지",
+        event_summary_note="기본 공통형입니다. 종합 검토를 기준으로 요약과 확인필요목록을 함께 봅니다.",
+        included_workbooks=ALL_WORKBOOK_KEYS,
+        workbook_badge_order=("summary", "review", "business_status", "withholding", "vat", "nhis_pension", "transactions", "evidence", "attachments", "reference"),
+        workbook_badge_tones={"summary": "good", "review": "warn"},
+        summary_row_order=(
+            "user_name",
+            "period",
+            "generated_at",
+            "review_start",
+            "primary_review_flow",
+            "immediate_recheck_count",
+            "evidence_review",
+            "withholding_status",
+            "vat_status",
+            "nhis_pension_status",
+            "reference_review_status",
+            "cross_validation_notice",
+            "cross_validation_match",
+            "cross_validation_partial",
+            "cross_validation_review_needed",
+            "cross_validation_mismatch",
+            "cross_validation_unavailable",
+            "tx_total",
+            "sum_in_total",
+            "sum_out_total",
+            "expense_business_total",
+            "evidence_attached_count",
+            "official_data_total",
+            "reference_count",
+            "official_data_parsed_count",
+            "official_data_review_count",
+            "reference_note",
+        ),
+        review_flow_lines=(
+            "- 1) 00_패키지요약.xlsx : 검토 시작 / 핵심 상태 / 공식자료 교차검증 요약 확인",
+            "- 2) 06_세무사_확인필요목록.xlsx : 우선확인순서 기준으로 먼저 연락할 항목 확인",
+            "- 3) 01_사업_상태_요약.xlsx : 상태값과 출처/확인 수준 확인",
+            "- 4) 05_원천징수_기납부세액_요약.xlsx : 누락 여부와 합계 기준 확인",
+            "- 5) 08_부가세_자료_요약.xlsx / 09_건보_연금_요약.xlsx : 해당 월 추가 요청 포인트 확인",
+            "- 6) 03_거래원장.xlsx / 04_증빙상태표.xlsx / 07_첨부인덱스.xlsx : 거래·증빙·첨부 순서로 상세 확인",
+            "- 7) 10_참고자료_요약.xlsx : 보조 설명과 차이 설명 마지막 확인",
+            "- 8) 00_패키지요약.xlsx 내부 공식자료 시트 : 공식자료 목록/상태/핵심값 최종 확인",
+        ),
+        page_flow_lines=(
+            "1) ZIP을 내려받아 압축 해제",
+            "2) 00_패키지요약.xlsx에서 검토 시작 / 핵심 재확인 상태 확인",
+            "3) 06_세무사_확인필요목록.xlsx → 01_사업_상태_요약.xlsx → 05_원천징수/기납부세액 요약 순서로 확인",
+            "4) 08_부가세 / 09_건보·연금 → 03_거래원장 / 04_증빙상태표 / 07_첨부인덱스 → 10_참고자료 순서로 상세 확인",
+        ),
+        review_type_rank=_build_type_rank(
+            "거래검토",
+            "부가세자료누락",
+            "부가세재확인",
+            "원천징수자료누락",
+            "기납부세액자료누락",
+            "공식자료교차검증재확인",
+            "공식자료재확인",
+            "건보자료누락",
+            "연금자료누락",
+            "증빙누락",
+            "증빙검토",
+            "참고자료검토",
+            "사용자상태확인",
+            "건보연금상태확인",
+        ),
+    ),
+    "comprehensive_income": TaxPackageProfile(
+        code="comprehensive_income",
+        display_name="종합소득세용",
+        archive_label="종합소득세용",
+        page_description="종합소득세 검토 흐름에 맞춰 원천징수·기납부세액, 공식자료 교차검증, 거래·증빙을 앞쪽에 두는 파생 패키지",
+        event_summary_note="종합소득세 검토 보조용입니다. 원천징수·기납부세액과 공식자료 교차검증 재확인을 앞쪽에 배치합니다.",
+        included_workbooks=ALL_WORKBOOK_KEYS,
+        workbook_badge_order=("summary", "review", "business_status", "withholding", "transactions", "evidence", "attachments", "reference", "vat", "nhis_pension"),
+        workbook_badge_tones={"summary": "good", "review": "warn", "business_status": "good", "withholding": "warn"},
+        summary_row_order=(
+            "user_name",
+            "period",
+            "generated_at",
+            "review_start",
+            "primary_review_flow",
+            "immediate_recheck_count",
+            "withholding_status",
+            "cross_validation_overview",
+            "evidence_review",
+            "reference_review_status",
+            "vat_status",
+            "nhis_pension_status",
+            "cross_validation_notice",
+            "cross_validation_match",
+            "cross_validation_partial",
+            "cross_validation_review_needed",
+            "cross_validation_mismatch",
+            "cross_validation_unavailable",
+            "tx_total",
+            "sum_in_total",
+            "sum_out_total",
+            "expense_business_total",
+            "evidence_attached_count",
+            "official_data_total",
+            "reference_count",
+            "official_data_parsed_count",
+            "official_data_review_count",
+            "reference_note",
+        ),
+        review_flow_lines=(
+            "- 1) 00_패키지요약.xlsx : 종합소득세 검토 시작 / 원천징수·기납부세액 / 공식자료 교차검증 상태 확인",
+            "- 2) 06_세무사_확인필요목록.xlsx : 신고 영향이 큰 항목과 교차검증 재확인 항목부터 확인",
+            "- 3) 01_사업_상태_요약.xlsx : 사용자 유형·건보·과세 상태의 출처와 확인 수준 확인",
+            "- 4) 05_원천징수_기납부세액_요약.xlsx : 원천징수·기납부세액 누락 여부와 합계 기준 확인",
+            "- 5) 03_거래원장.xlsx / 04_증빙상태표.xlsx / 07_첨부인덱스.xlsx : 수입·지출·증빙 흐름 상세 확인",
+            "- 6) 10_참고자료_요약.xlsx : 보조 설명과 차이 설명 확인",
+            "- 7) 08_부가세_자료_요약.xlsx / 09_건보_연금_요약.xlsx : 필요 시 보조 확인",
+            "- 8) 00_패키지요약.xlsx 내부 공식자료 시트 : 문서별 교차검증 상태와 사유 최종 확인",
+        ),
+        page_flow_lines=(
+            "1) ZIP을 내려받아 압축 해제",
+            "2) 00_패키지요약.xlsx → 06_세무사_확인필요목록.xlsx 순서로 먼저 확인",
+            "3) 01_사업_상태_요약.xlsx → 05_원천징수/기납부세액 요약에서 종합소득세 검토 축을 먼저 점검",
+            "4) 03_거래원장 / 04_증빙상태표 / 07_첨부인덱스 → 10_참고자료 → 08/09 보조 시트 순서로 상세 확인",
+        ),
+        review_type_rank=_build_type_rank(
+            "거래검토",
+            "원천징수자료누락",
+            "기납부세액자료누락",
+            "공식자료교차검증재확인",
+            "공식자료재확인",
+            "증빙누락",
+            "증빙검토",
+            "참고자료검토",
+            "부가세자료누락",
+            "부가세재확인",
+            "건보자료누락",
+            "연금자료누락",
+            "사용자상태확인",
+            "건보연금상태확인",
+        ),
+        official_keyword_groups=(("홈택스", "원천징수", "납부"), ("건강보험", "연금")),
+        reference_keyword_groups=(("원천징수", "기납부", "세액", "수익", "소득"), ("부가세", "매입", "매출")),
+    ),
+    "vat_review": TaxPackageProfile(
+        code="vat_review",
+        display_name="부가세용",
+        archive_label="부가세용",
+        page_description="부가세 검토 보조용으로 과세 상태, 부가세 자료 요약, 부가세 관련 확인필요항목을 앞쪽에 두는 파생 패키지",
+        event_summary_note="부가세 검토 보조용입니다. 현재 지원 범위 안의 부가세 관련 요약과 재확인 포인트를 앞쪽에 배치합니다.",
+        included_workbooks=ALL_WORKBOOK_KEYS,
+        workbook_badge_order=("summary", "review", "vat", "business_status", "transactions", "evidence", "attachments", "reference", "withholding", "nhis_pension"),
+        workbook_badge_tones={"summary": "good", "review": "warn", "vat": "warn", "business_status": "good"},
+        summary_row_order=(
+            "user_name",
+            "period",
+            "generated_at",
+            "review_start",
+            "primary_review_flow",
+            "vat_status",
+            "vat_recheck_count",
+            "vat_material_status",
+            "immediate_recheck_count",
+            "cross_validation_overview",
+            "evidence_review",
+            "reference_review_status",
+            "withholding_status",
+            "nhis_pension_status",
+            "cross_validation_notice",
+            "cross_validation_match",
+            "cross_validation_partial",
+            "cross_validation_review_needed",
+            "cross_validation_mismatch",
+            "cross_validation_unavailable",
+            "tx_total",
+            "sum_out_total",
+            "expense_business_total",
+            "official_data_total",
+            "official_data_parsed_count",
+            "official_data_review_count",
+            "reference_note",
+        ),
+        review_flow_lines=(
+            "- 1) 00_패키지요약.xlsx : 부가세 검토 시작 / 부가세 상태 / 부가세 재확인 항목 수 확인",
+            "- 2) 06_세무사_확인필요목록.xlsx : 부가세자료누락, 부가세재확인, 공식자료 교차검증 재확인 항목부터 확인",
+            "- 3) 08_부가세_자료_요약.xlsx : 최근 신고 여부와 세금계산서·카드·현금영수증 요약 확인",
+            "- 4) 01_사업_상태_요약.xlsx : 과세 상태와 출처/확인 수준 확인",
+            "- 5) 03_거래원장.xlsx / 04_증빙상태표.xlsx / 07_첨부인덱스.xlsx : 부가세 검토에 필요한 거래·증빙 흐름 상세 확인",
+            "- 6) 10_참고자료_요약.xlsx : 부가세 관련 보조 설명과 차이 설명 확인",
+            "- 7) 05_원천징수_기납부세액_요약.xlsx / 09_건보_연금_요약.xlsx : 후순위 보조 확인",
+            "- 8) 00_패키지요약.xlsx 내부 공식자료 시트 : 홈택스 계열 공식자료 상태 최종 확인",
+        ),
+        page_flow_lines=(
+            "1) ZIP을 내려받아 압축 해제",
+            "2) 00_패키지요약.xlsx → 06_세무사_확인필요목록.xlsx 순서로 부가세 재확인 포인트를 먼저 확인",
+            "3) 08_부가세_자료_요약.xlsx → 01_사업_상태_요약.xlsx에서 과세 상태와 자료 요약을 확인",
+            "4) 03_거래원장 / 04_증빙상태표 / 07_첨부인덱스 → 10_참고자료 → 05/09 보조 시트 순서로 상세 확인",
+        ),
+        review_type_rank=_build_type_rank(
+            "부가세자료누락",
+            "부가세재확인",
+            "거래검토",
+            "공식자료교차검증재확인",
+            "공식자료재확인",
+            "증빙누락",
+            "증빙검토",
+            "참고자료검토",
+            "원천징수자료누락",
+            "기납부세액자료누락",
+            "건보자료누락",
+            "연금자료누락",
+            "사용자상태확인",
+            "건보연금상태확인",
+        ),
+        official_keyword_groups=(("홈택스", "세금", "부가세", "원천징수"), ("건강보험", "연금")),
+        reference_keyword_groups=(("부가세", "세금계산서", "매입", "매출", "현금영수증", "카드"), ("원천징수", "기납부")),
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -108,6 +377,39 @@ class PackageSnapshot:
     vat_summary_rows: list[dict[str, Any]] = field(default_factory=list)
     nhis_pension_summary_rows: list[dict[str, Any]] = field(default_factory=list)
     reference_material_rows: list[dict[str, Any]] = field(default_factory=list)
+
+
+def get_tax_package_profile(profile_code: str | None) -> TaxPackageProfile:
+    code = (profile_code or "").strip() or DEFAULT_TAX_PACKAGE_PROFILE_CODE
+    return TAX_PACKAGE_PROFILES.get(code, TAX_PACKAGE_PROFILES[DEFAULT_TAX_PACKAGE_PROFILE_CODE])
+
+
+def list_tax_package_profiles() -> list[TaxPackageProfile]:
+    return [TAX_PACKAGE_PROFILES[key] for key in ("common", "comprehensive_income", "vat_review")]
+
+
+def _workbook_filename(workbook_key: str) -> str:
+    return WORKBOOK_FILENAME_MAP[workbook_key]
+
+
+def describe_tax_package_profile(profile_code: str | None) -> dict[str, Any]:
+    profile = get_tax_package_profile(profile_code)
+    return {
+        "code": profile.code,
+        "display_name": profile.display_name,
+        "page_description": profile.page_description,
+        "event_summary_note": profile.event_summary_note,
+        "included_workbooks": [
+            {
+                "key": key,
+                "filename": _workbook_filename(key),
+                "tone": profile.workbook_badge_tones.get(key, "default"),
+            }
+            for key in profile.workbook_badge_order
+            if key in profile.included_workbooks
+        ],
+        "page_flow_lines": list(profile.page_flow_lines),
+    }
 
 
 def _month_range_kst_naive(month_key: str) -> tuple[datetime, datetime]:
@@ -276,6 +578,16 @@ def _review_type_sort_order(item_type: str) -> int:
     }.get(item_type, 999)
 
 
+def _profile_keyword_sort_key(text: str, groups: tuple[tuple[str, ...], ...]) -> int:
+    normalized = str(text or "")
+    if not groups:
+        return 9
+    for idx, keywords in enumerate(groups):
+        if any(keyword in normalized for keyword in keywords):
+            return idx
+    return len(groups) + 1
+
+
 def _review_related_no_sort_key(value: Any) -> tuple[int, Any]:
     if value in (None, ""):
         return (1, "")
@@ -285,16 +597,19 @@ def _review_related_no_sort_key(value: Any) -> tuple[int, Any]:
         return (0, str(value))
 
 
-def _review_item_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+def _review_item_sort_key(row: dict[str, Any], profile: TaxPackageProfile | None = None) -> tuple[Any, ...]:
+    type_rank = _review_type_sort_order(str(row.get("항목유형", "")))
+    if profile is not None:
+        type_rank = profile.review_type_rank.get(str(row.get("항목유형", "")), type_rank)
     return (
         int(row.get("우선확인순서") or 99),
-        _review_type_sort_order(str(row.get("항목유형", ""))),
+        type_rank,
         _review_related_no_sort_key(row.get("관련번호")),
         str(row.get("요약설명", "")),
     )
 
 
-def _official_document_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+def _official_document_sort_key(row: dict[str, Any], profile: TaxPackageProfile | None = None) -> tuple[Any, ...]:
     status_order = {
         "불일치": 0,
         "재확인 필요": 1,
@@ -308,10 +623,18 @@ def _official_document_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
         "미지원 형식": 2,
         "반영 가능": 3,
     }
+    focus_text = " ".join(
+        [
+            str(row.get("문서종류") or ""),
+            str(row.get("기관명") or ""),
+            str(row.get("교차검증 상태") or row.get("교차검증상태") or ""),
+        ]
+    )
     return (
         0 if row.get("교차검증 재확인 필요") == "예" or row.get("교차검증재확인필요여부") == "예" else 1,
         status_order.get(str(row.get("교차검증 상태") or row.get("교차검증상태") or ""), 9),
         0 if row.get("재확인필요여부") == "예" else 1,
+        _profile_keyword_sort_key(focus_text, profile.official_keyword_groups if profile is not None else ()),
         read_order.get(str(row.get("읽기상태") or ""), 9),
         str(row.get("문서종류") or ""),
         str(row.get("기준일") or ""),
@@ -319,7 +642,7 @@ def _official_document_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
     )
 
 
-def _reference_material_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+def _reference_material_sort_key(row: dict[str, Any], profile: TaxPackageProfile | None = None) -> tuple[Any, ...]:
     status_order = {
         "official_difference": 0,
         "transaction_difference": 1,
@@ -328,9 +651,18 @@ def _reference_material_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
         "official_match": 4,
         "transaction_match": 5,
     }
+    focus_text = " ".join(
+        [
+            str(row.get("title") or ""),
+            str(row.get("reference_type") or ""),
+            str(row.get("linked_official_doc_type") or ""),
+            str(row.get("comparison_basis") or ""),
+        ]
+    )
     return (
         0 if row.get("needs_review") == "예" else 1,
         status_order.get(str(row.get("link_status_key") or ""), 9),
+        _profile_keyword_sort_key(focus_text, profile.reference_keyword_groups if profile is not None else ()),
         str(row.get("reported_period") or ""),
         _review_related_no_sort_key(row.get("reference_material_id")),
     )
@@ -392,6 +724,56 @@ def _nhis_pension_overview_label(source: dict[str, Any]) -> str:
     if str(source.get("health_insurance_status", "") or "") == "미확인":
         return "건강보험 상태 미확인"
     return "건보·연금 자료 확인 필요"
+
+
+def _cross_validation_overview_label(counts: dict[str, int]) -> str:
+    mismatch = int(counts.get("불일치", 0) or 0)
+    review_needed = int(counts.get("재확인 필요", 0) or 0)
+    partial = int(counts.get("부분 일치", 0) or 0)
+    matched = int(counts.get("일치", 0) or 0)
+    unavailable = int(counts.get("비교 불가", 0) or 0)
+    if mismatch > 0:
+        return f"불일치 {mismatch}건 / 세무사 재확인 필요"
+    if review_needed > 0:
+        return f"재확인 필요 {review_needed}건"
+    if partial > 0:
+        return f"부분 일치 {partial}건"
+    if matched > 0:
+        return f"일치 {matched}건"
+    if unavailable > 0:
+        return f"비교 불가 {unavailable}건"
+    return "비교 가능한 공식자료 없음"
+
+
+def _vat_material_overview_label(source: dict[str, Any]) -> str:
+    parts: list[str] = []
+    sales = source.get("tax_invoice_sales_total_krw")
+    purchase = source.get("tax_invoice_purchase_total_krw")
+    card = source.get("card_purchase_total_krw")
+    cash = source.get("cash_receipt_purchase_total_krw")
+    if sales not in ("", None):
+        parts.append(f"세금계산서 매출 {_krw(int(sales))}")
+    if purchase not in ("", None):
+        parts.append(f"세금계산서 매입 {_krw(int(purchase))}")
+    if card not in ("", None):
+        parts.append(f"카드 매입 {_krw(int(card))}")
+    if cash not in ("", None):
+        parts.append(f"현금영수증 매입 {_krw(int(cash))}")
+    if not parts:
+        return "세금계산서·매입자료 관련 요약 부족"
+    return " / ".join(parts)
+
+
+def _count_review_items_by_type(review_items: list[dict[str, Any]], item_types: set[str]) -> int:
+    return len([row for row in review_items if str(row.get("항목유형") or "") in item_types])
+
+
+def _build_profiled_package_names(snapshot: PackageSnapshot, profile: TaxPackageProfile) -> tuple[str, str]:
+    if profile.code == DEFAULT_TAX_PACKAGE_PROFILE_CODE:
+        return snapshot.root_name, snapshot.download_name
+    package_label = _safe_package_label(snapshot.display_name, "user")
+    root_name = f"세무사전달패키지_{profile.archive_label}_{snapshot.stats.month_key}_{package_label}"
+    return root_name, f"{root_name}.zip"
 
 
 def _label_or_unconfirmed(value: str | None) -> str:
@@ -1938,7 +2320,8 @@ def _workbook_bytes(builder) -> bytes:
     return out.getvalue()
 
 
-def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
+def _build_summary_workbook(snapshot: PackageSnapshot, profile: TaxPackageProfile | None = None) -> bytes:
+    profile = profile or get_tax_package_profile(DEFAULT_TAX_PACKAGE_PROFILE_CODE)
     stats = snapshot.stats
     reference_count = len([row for row in snapshot.reference_material_rows if row.get("reference_material_id")])
     reference_review_count = len([row for row in snapshot.reference_material_rows if row.get("needs_review") == "예"])
@@ -1946,44 +2329,57 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
     withholding_row = (snapshot.withholding_summary_rows or [{}])[0]
     vat_row = (snapshot.vat_summary_rows or [{}])[0]
     nhis_row = (snapshot.nhis_pension_summary_rows or [{}])[0]
+    vat_review_count = _count_review_items_by_type(snapshot.review_items, {"부가세자료누락", "부가세재확인"})
+    summary_row_map = {
+        "user_name": {"항목명": "사용자명", "값": snapshot.display_name},
+        "period": {"항목명": "대상 기간", "값": f"{stats.period_start_kst} ~ {stats.period_end_kst}"},
+        "generated_at": {"항목명": "생성일시", "값": stats.generated_at_kst},
+        "review_start": {"항목명": "검토 시작", "값": f"{_workbook_filename('summary')} → {_workbook_filename('review')}"},
+        "primary_review_flow": {"항목명": "1차 검토 흐름", "값": ""},
+        "immediate_recheck_count": {"항목명": "즉시 재확인 항목 수", "값": stats.review_needed_count},
+        "evidence_review": {"항목명": "증빙 확인 필요", "값": f"필수 {stats.evidence_missing_required_count}건 / 확인 {stats.evidence_missing_maybe_count}건"},
+        "withholding_status": {"항목명": "원천징수·기납부세액 상태", "값": _withholding_overview_label(withholding_row)},
+        "vat_status": {"항목명": "부가세 상태", "값": _vat_overview_label(vat_row)},
+        "nhis_pension_status": {"항목명": "건보·연금 상태", "값": _nhis_pension_overview_label(nhis_row)},
+        "reference_review_status": {"항목명": "참고자료 검토 상태", "값": f"재확인 필요 {reference_review_count}건 / 총 {reference_count}건"},
+        "cross_validation_notice": {"항목명": "교차검증 안내", "값": "교차검증 v1 기준 / 비교 가능한 공식자료만 상세 비교하고 나머지는 비교 불가로 집계했습니다."},
+        "cross_validation_overview": {"항목명": "공식자료 교차검증 상태", "값": _cross_validation_overview_label(cross_validation_counts)},
+        "vat_recheck_count": {"항목명": "부가세 재확인 항목 수", "값": vat_review_count},
+        "vat_material_status": {"항목명": "세금계산서/매입자료 요약", "값": _vat_material_overview_label(vat_row)},
+        "cross_validation_match": {"항목명": "교차검증 일치 문서 수", "값": cross_validation_counts["일치"]},
+        "cross_validation_partial": {"항목명": "교차검증 부분 일치 문서 수", "값": cross_validation_counts["부분 일치"]},
+        "cross_validation_review_needed": {"항목명": "교차검증 재확인 필요 문서 수", "값": cross_validation_counts["재확인 필요"]},
+        "cross_validation_mismatch": {"항목명": "교차검증 불일치 문서 수", "값": cross_validation_counts["불일치"]},
+        "cross_validation_unavailable": {"항목명": "교차검증 비교 불가 문서 수", "값": cross_validation_counts["비교 불가"]},
+        "tx_total": {"항목명": "총 거래 수", "값": stats.tx_total},
+        "sum_in_total": {"항목명": "총 수입", "값": stats.sum_in_total},
+        "sum_out_total": {"항목명": "총 지출", "값": stats.sum_out_total},
+        "expense_business_total": {"항목명": "업무 관련 지출 합계", "값": stats.expense_business_total},
+        "evidence_attached_count": {"항목명": "증빙 첨부 수", "값": stats.evidence_attached_count},
+        "official_data_total": {"항목명": "공식자료 수", "값": stats.official_data_total},
+        "reference_count": {"항목명": "참고자료 수", "값": reference_count},
+        "official_data_parsed_count": {"항목명": "읽기 가능한 공식자료 수", "값": stats.official_data_parsed_count},
+        "official_data_review_count": {"항목명": "검토 필요 공식자료 수", "값": stats.official_data_review_count},
+        "reference_note": {"항목명": "참고", "값": "공식자료/참고자료 원본은 기본 패키지에 포함하지 않고 요약값 중심으로 전달합니다."},
+    }
+    primary_review_flow = [
+        _workbook_filename(key)
+        for key in profile.workbook_badge_order
+        if key in {"business_status", "withholding", "vat", "nhis_pension", "transactions", "evidence", "attachments", "reference"}
+        and key in profile.included_workbooks
+    ]
+    if primary_review_flow:
+        summary_row_map["primary_review_flow"]["값"] = " → ".join(primary_review_flow)
 
     def build() -> Workbook:
         wb = Workbook()
         ws = wb.active
         ws.title = "패키지요약"
-        summary_rows = [
-            {"항목명": "사용자명", "값": snapshot.display_name},
-            {"항목명": "대상 기간", "값": f"{stats.period_start_kst} ~ {stats.period_end_kst}"},
-            {"항목명": "생성일시", "값": stats.generated_at_kst},
-            {"항목명": "검토 시작", "값": "00_패키지요약.xlsx → 06_세무사_확인필요목록.xlsx"},
-            {"항목명": "1차 검토 흐름", "값": "01_사업_상태_요약.xlsx → 05_원천징수_기납부세액_요약.xlsx → 08_부가세_자료_요약.xlsx → 09_건보_연금_요약.xlsx"},
-            {"항목명": "즉시 재확인 항목 수", "값": stats.review_needed_count},
-            {"항목명": "증빙 확인 필요", "값": f"필수 {stats.evidence_missing_required_count}건 / 확인 {stats.evidence_missing_maybe_count}건"},
-            {"항목명": "원천징수·기납부세액 상태", "값": _withholding_overview_label(withholding_row)},
-            {"항목명": "부가세 상태", "값": _vat_overview_label(vat_row)},
-            {"항목명": "건보·연금 상태", "값": _nhis_pension_overview_label(nhis_row)},
-            {"항목명": "참고자료 검토 상태", "값": f"재확인 필요 {reference_review_count}건 / 총 {reference_count}건"},
-            {"항목명": "교차검증 안내", "값": "교차검증 v1 기준 / 비교 가능한 공식자료만 상세 비교하고 나머지는 비교 불가로 집계했습니다."},
-            {"항목명": "교차검증 일치 문서 수", "값": cross_validation_counts["일치"]},
-            {"항목명": "교차검증 부분 일치 문서 수", "값": cross_validation_counts["부분 일치"]},
-            {"항목명": "교차검증 재확인 필요 문서 수", "값": cross_validation_counts["재확인 필요"]},
-            {"항목명": "교차검증 불일치 문서 수", "값": cross_validation_counts["불일치"]},
-            {"항목명": "교차검증 비교 불가 문서 수", "값": cross_validation_counts["비교 불가"]},
-            {"항목명": "총 거래 수", "값": stats.tx_total},
-            {"항목명": "총 수입", "값": stats.sum_in_total},
-            {"항목명": "총 지출", "값": stats.sum_out_total},
-            {"항목명": "업무 관련 지출 합계", "값": stats.expense_business_total},
-            {"항목명": "증빙 첨부 수", "값": stats.evidence_attached_count},
-            {"항목명": "공식자료 수", "값": stats.official_data_total},
-            {"항목명": "참고자료 수", "값": reference_count},
-            {"항목명": "읽기 가능한 공식자료 수", "값": stats.official_data_parsed_count},
-            {"항목명": "검토 필요 공식자료 수", "값": stats.official_data_review_count},
-            {"항목명": "참고", "값": "공식자료/참고자료 원본은 기본 패키지에 포함하지 않고 요약값 중심으로 전달합니다."},
-        ]
+        summary_rows = [summary_row_map[key] for key in profile.summary_row_order if key in summary_row_map]
         _write_table_sheet(ws, ["항목명", "값"], summary_rows)
 
         ws_guide = wb.create_sheet("패키지안내")
-        guide_rows = [{"안내": line} for line in _render_package_guide(snapshot).splitlines() if line.strip()]
+        guide_rows = [{"안내": line} for line in _render_package_guide(snapshot, profile).splitlines() if line.strip()]
         _write_table_sheet(ws_guide, ["안내"], guide_rows)
 
         ws2 = wb.create_sheet("신뢰구분")
@@ -2038,7 +2434,7 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
             [
                 {"항목명": "패키지 버전", "값": PACKAGE_VERSION},
                 {"항목명": "생성 기준 월", "값": stats.month_key},
-                {"항목명": "포함 파일 수", "값": 10 + len(snapshot.evidences)},
+                {"항목명": "포함 파일 수", "값": len(profile.included_workbooks) + len(snapshot.evidences)},
                 {"항목명": "포함 증빙 수", "값": len(snapshot.evidences)},
                 {"항목명": "목록 반영 공식자료 수", "값": stats.official_data_total},
                 {"항목명": "요약 반영 참고자료 수", "값": reference_count},
@@ -2046,7 +2442,7 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
             ],
         )
 
-        _append_official_data_sheets(wb, snapshot)
+        _append_official_data_sheets(wb, snapshot, profile)
         return wb
 
     return _workbook_bytes(build)
@@ -2253,7 +2649,9 @@ def _build_evidence_workbook(snapshot: PackageSnapshot) -> bytes:
     return _workbook_bytes(build)
 
 
-def _build_review_workbook(snapshot: PackageSnapshot) -> bytes:
+def _build_review_workbook(snapshot: PackageSnapshot, profile: TaxPackageProfile | None = None) -> bytes:
+    profile = profile or get_tax_package_profile(DEFAULT_TAX_PACKAGE_PROFILE_CODE)
+
     def build() -> Workbook:
         wb = Workbook()
         ws = wb.active
@@ -2277,7 +2675,7 @@ def _build_review_workbook(snapshot: PackageSnapshot) -> bytes:
                     "메모": row.get("메모", ""),
                 }
             )
-        prioritized_rows.sort(key=_review_item_sort_key)
+        prioritized_rows.sort(key=lambda row: _review_item_sort_key(row, profile))
         _write_table_sheet(
             ws,
             ["항목번호", "우선확인순서", "우선순위", "요약설명", "현재상태", "필요한확인내용", "항목유형", "관련자료구분", "관련번호", "우선순위 기준", "메모"],
@@ -2473,14 +2871,16 @@ def _build_nhis_pension_summary_workbook(snapshot: PackageSnapshot) -> bytes:
     return _workbook_bytes(build)
 
 
-def _build_reference_material_workbook(snapshot: PackageSnapshot) -> bytes:
+def _build_reference_material_workbook(snapshot: PackageSnapshot, profile: TaxPackageProfile | None = None) -> bytes:
+    profile = profile or get_tax_package_profile(DEFAULT_TAX_PACKAGE_PROFILE_CODE)
+
     def build() -> Workbook:
         wb = Workbook()
         ws = wb.active
         ws.title = "참고자료 요약"
         rows = []
         if snapshot.reference_material_rows:
-            sorted_rows = sorted(snapshot.reference_material_rows, key=_reference_material_sort_key)
+            sorted_rows = sorted(snapshot.reference_material_rows, key=lambda row: _reference_material_sort_key(row, profile))
             for row in sorted_rows:
                 rows.append(
                     {
@@ -2527,12 +2927,13 @@ def _build_reference_material_workbook(snapshot: PackageSnapshot) -> bytes:
     return _workbook_bytes(build)
 
 
-def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot) -> None:
+def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot, profile: TaxPackageProfile | None = None) -> None:
+    profile = profile or get_tax_package_profile(DEFAULT_TAX_PACKAGE_PROFILE_CODE)
     ws = wb.create_sheet("공식자료목록")
 
     official_rows = []
     if snapshot.official_documents:
-        for row in sorted(snapshot.official_documents, key=_official_document_sort_key):
+        for row in sorted(snapshot.official_documents, key=lambda item: _official_document_sort_key(item, profile)):
             official_rows.append(
                 {
                     "자료번호": row.get("자료번호", ""),
@@ -2775,37 +3176,36 @@ def _build_attachment_index_workbook(snapshot: PackageSnapshot) -> bytes:
     return _workbook_bytes(build)
 
 
-def _render_package_guide(snapshot: PackageSnapshot) -> str:
+def _render_package_guide(snapshot: PackageSnapshot, profile: TaxPackageProfile | None = None) -> str:
+    profile = profile or get_tax_package_profile(DEFAULT_TAX_PACKAGE_PROFILE_CODE)
     stats = snapshot.stats
+    included_file_lines = {
+        "summary": "- 00_패키지요약.xlsx : 전체 요약, 패키지안내, 공식자료 목록/상태/핵심값, 교차검증 v1 요약",
+        "business_status": "- 01_사업_상태_요약.xlsx : 사용자 유형/건보/과세 상태와 각 값의 출처/확인 수준 요약",
+        "transactions": "- 03_거래원장.xlsx : 거래 목록, 원본 메타, 분류/증빙 연결",
+        "evidence": "- 04_증빙상태표.xlsx : 첨부된 증빙 목록과 거래별 대표 첨부 연결",
+        "withholding": "- 05_원천징수_기납부세액_요약.xlsx : 원천징수/기납부세액 존재 여부, 합계, 기준 자료 요약",
+        "review": "- 06_세무사_확인필요목록.xlsx : 우선확인순서 기준 재확인 목록",
+        "attachments": "- 07_첨부인덱스.xlsx : 패키지 첨부 전체 인덱스와 상대경로 링크",
+        "vat": "- 08_부가세_자료_요약.xlsx : 과세 상태, 부가세 신고 여부, 매입/매출 관련 요약",
+        "nhis_pension": "- 09_건보_연금_요약.xlsx : 건강보험 상태, 건보/연금 자료 존재 여부와 합계 요약",
+        "reference": "- 10_참고자료_요약.xlsx : 공식자료 우선, 거래 합계 보조 기준으로 참고자료 비교/차이 설명 요약",
+    }
     lines = [
         "[쓸수있어(SafeToSpend) 세무사 패키지 v2 4차]",
         f"- 패키지 버전: {PACKAGE_VERSION}",
         f"- 대상 기간: {stats.period_start_kst} ~ {stats.period_end_kst}",
         f"- 생성 시각(KST): {stats.generated_at_kst}",
         f"- 사용자명: {snapshot.display_name}",
+        f"- 패키지 유형: {profile.display_name}",
+        f"- 검토 관점: {profile.event_summary_note}",
         "",
         "[포함 파일]",
-        "- 00_패키지요약.xlsx : 전체 요약, 패키지안내, 공식자료 목록/상태/핵심값, 교차검증 v1 요약",
-        "- 01_사업_상태_요약.xlsx : 사용자 유형/건보/과세 상태와 각 값의 출처/확인 수준 요약",
-        "- 03_거래원장.xlsx : 거래 목록, 원본 메타, 분류/증빙 연결",
-        "- 04_증빙상태표.xlsx : 첨부된 증빙 목록과 거래별 대표 첨부 연결",
-        "- 05_원천징수_기납부세액_요약.xlsx : 원천징수/기납부세액 존재 여부, 합계, 기준 자료 요약",
-        "- 06_세무사_확인필요목록.xlsx : 우선확인순서 기준 재확인 목록",
-        "- 07_첨부인덱스.xlsx : 패키지 첨부 전체 인덱스와 상대경로 링크",
-        "- 08_부가세_자료_요약.xlsx : 과세 상태, 부가세 신고 여부, 매입/매출 관련 요약",
-        "- 09_건보_연금_요약.xlsx : 건강보험 상태, 건보/연금 자료 존재 여부와 합계 요약",
-        "- 10_참고자료_요약.xlsx : 공식자료 우선, 거래 합계 보조 기준으로 참고자료 비교/차이 설명 요약",
+        *[included_file_lines[key] for key in profile.workbook_badge_order if key in profile.included_workbooks],
         "- attachments/evidence/ : 현재 연결된 대표 증빙 파일",
         "",
         "[권장 읽는 순서]",
-        "- 1) 00_패키지요약.xlsx : 검토 시작 / 핵심 상태 / 공식자료 교차검증 요약 확인",
-        "- 2) 06_세무사_확인필요목록.xlsx : 우선확인순서 기준으로 먼저 연락할 항목 확인",
-        "- 3) 01_사업_상태_요약.xlsx : 상태값과 출처/확인 수준 확인",
-        "- 4) 05_원천징수_기납부세액_요약.xlsx : 누락 여부와 합계 기준 확인",
-        "- 5) 08_부가세_자료_요약.xlsx / 09_건보_연금_요약.xlsx : 해당 월 추가 요청 포인트 확인",
-        "- 6) 03_거래원장.xlsx / 04_증빙상태표.xlsx / 07_첨부인덱스.xlsx : 거래·증빙·첨부 순서로 상세 확인",
-        "- 7) 10_참고자료_요약.xlsx : 보조 설명과 차이 설명 마지막 확인",
-        "- 8) 00_패키지요약.xlsx 내부 공식자료 시트 : 공식자료 목록/상태/핵심값 최종 확인",
+        *profile.review_flow_lines,
         "",
         "[현재 포함되는 자료 범위]",
         "- 수동입력 거래",
@@ -2842,20 +3242,35 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
     return "\n".join(lines) + "\n"
 
 
-def build_tax_package_zip_from_snapshot(snapshot: PackageSnapshot) -> tuple[io.BytesIO, str]:
+def _build_workbook_bytes_by_key(snapshot: PackageSnapshot, profile: TaxPackageProfile) -> dict[str, bytes]:
+    return {
+        "summary": _build_summary_workbook(snapshot, profile),
+        "business_status": _build_business_status_workbook(snapshot),
+        "transactions": _build_transactions_workbook(snapshot),
+        "evidence": _build_evidence_workbook(snapshot),
+        "withholding": _build_withholding_summary_workbook(snapshot),
+        "review": _build_review_workbook(snapshot, profile),
+        "attachments": _build_attachment_index_workbook(snapshot),
+        "vat": _build_vat_summary_workbook(snapshot),
+        "nhis_pension": _build_nhis_pension_summary_workbook(snapshot),
+        "reference": _build_reference_material_workbook(snapshot, profile),
+    }
+
+
+def build_tax_package_zip_from_snapshot(
+    snapshot: PackageSnapshot,
+    profile_code: str | None = None,
+) -> tuple[io.BytesIO, str]:
+    profile = get_tax_package_profile(profile_code)
+    root_name, download_name = _build_profiled_package_names(snapshot, profile)
+    workbook_bytes = _build_workbook_bytes_by_key(snapshot, profile)
     out = io.BytesIO()
     with zipfile.ZipFile(out, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-        root = snapshot.root_name
-        zf.writestr(f"{root}/00_패키지요약.xlsx", _build_summary_workbook(snapshot))
-        zf.writestr(f"{root}/01_사업_상태_요약.xlsx", _build_business_status_workbook(snapshot))
-        zf.writestr(f"{root}/03_거래원장.xlsx", _build_transactions_workbook(snapshot))
-        zf.writestr(f"{root}/04_증빙상태표.xlsx", _build_evidence_workbook(snapshot))
-        zf.writestr(f"{root}/05_원천징수_기납부세액_요약.xlsx", _build_withholding_summary_workbook(snapshot))
-        zf.writestr(f"{root}/06_세무사_확인필요목록.xlsx", _build_review_workbook(snapshot))
-        zf.writestr(f"{root}/07_첨부인덱스.xlsx", _build_attachment_index_workbook(snapshot))
-        zf.writestr(f"{root}/08_부가세_자료_요약.xlsx", _build_vat_summary_workbook(snapshot))
-        zf.writestr(f"{root}/09_건보_연금_요약.xlsx", _build_nhis_pension_summary_workbook(snapshot))
-        zf.writestr(f"{root}/10_참고자료_요약.xlsx", _build_reference_material_workbook(snapshot))
+        root = root_name
+        for workbook_key in ALL_WORKBOOK_KEYS:
+            if workbook_key not in profile.included_workbooks:
+                continue
+            zf.writestr(f"{root}/{_workbook_filename(workbook_key)}", workbook_bytes[workbook_key])
         zf.writestr(f"{root}/attachments/", b"")
         zf.writestr(f"{root}/{EVIDENCE_ATTACHMENTS_DIR}/", b"")
 
@@ -2871,9 +3286,9 @@ def build_tax_package_zip_from_snapshot(snapshot: PackageSnapshot) -> tuple[io.B
                 continue
 
     out.seek(0)
-    return out, snapshot.download_name
+    return out, download_name
 
 
-def build_tax_package_zip(user_pk: int, month_key: str) -> tuple[io.BytesIO, str]:
+def build_tax_package_zip(user_pk: int, month_key: str, profile_code: str | None = None) -> tuple[io.BytesIO, str]:
     snapshot = _collect_package_snapshot(user_pk=user_pk, month_key=month_key)
-    return build_tax_package_zip_from_snapshot(snapshot)
+    return build_tax_package_zip_from_snapshot(snapshot, profile_code=profile_code)

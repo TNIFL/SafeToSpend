@@ -9,7 +9,7 @@ from core.auth import login_required
 from core.extensions import db
 from domain.models import EvidenceItem, Transaction
 from routes.web.vault import _ensure_month_evidence_rows, _month_dt_range, _month_key, _parse_month
-from services.tax_package import build_tax_package_zip
+from services.tax_package import build_tax_package_zip, describe_tax_package_profile, list_tax_package_profiles
 
 
 web_package_bp = Blueprint("web_package", __name__, url_prefix="/dashboard")
@@ -19,6 +19,9 @@ web_package_bp = Blueprint("web_package", __name__, url_prefix="/dashboard")
 @login_required
 def page():
     user_pk = int(session["user_id"])
+    requested_profile = request.args.get("profile")
+    selected_profile = describe_tax_package_profile(requested_profile)
+    profile_options = [describe_tax_package_profile(profile.code) for profile in list_tax_package_profiles()]
 
     month_first = _parse_month(request.args.get("month"))
     month_key = _month_key(month_first)
@@ -79,6 +82,9 @@ def page():
         month_first=month_first,
         prev_month=prev_month,
         next_month=next_month,
+        profile_code=selected_profile["code"],
+        selected_profile=selected_profile,
+        profile_options=profile_options,
         gross_income=int(gross_income),
         total_out=int(total_out),
         missing_total=int(missing_total),
@@ -95,7 +101,8 @@ def page():
 def download():
     user_pk = int(session["user_id"])
     month_key = _month_key(_parse_month(request.args.get("month")))
-    zip_io, filename = build_tax_package_zip(user_pk=user_pk, month_key=month_key)
+    profile_code = request.args.get("profile")
+    zip_io, filename = build_tax_package_zip(user_pk=user_pk, month_key=month_key, profile_code=profile_code)
     try:
         zip_io.seek(0)
     except Exception:

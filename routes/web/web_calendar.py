@@ -153,7 +153,11 @@ def _tax_buffer_profile_guidance(user_pk: int) -> dict[str, object]:
 @web_calendar_bp.get("/tax-package")
 def tax_package():
     month_key = (request.args.get("month") or "").strip()
-    return redirect(url_for("web_package.download", month=month_key))
+    profile_code = (request.args.get("profile") or "").strip()
+    values = {"month": month_key}
+    if profile_code:
+        values["profile"] = profile_code
+    return redirect(url_for("web_package.download", **values))
 
 
 def _day_expr_assuming_kst_naive():

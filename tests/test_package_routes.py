@@ -41,7 +41,17 @@ class PackageRouteTest(unittest.TestCase):
         self.assertEqual(response.mimetype, "application/zip")
         self.assertIn("attachment;", response.headers["Content-Disposition"])
         self.assertIn("2026-03", response.headers["Content-Disposition"])
-        build_zip.assert_called_once_with(user_pk=7, month_key="2026-03")
+        build_zip.assert_called_once_with(user_pk=7, month_key="2026-03", profile_code=None)
+
+    @patch("routes.web.package.build_tax_package_zip")
+    def test_package_download_route_passes_profile_code(self, build_zip) -> None:
+        build_zip.return_value = (io.BytesIO(b"zip-bytes"), "세무사전달패키지_부가세용_2026-03_테스터.zip")
+        self._login()
+
+        response = self.client.get("/dashboard/package/download?month=2026-03&profile=vat_review")
+
+        self.assertEqual(response.status_code, 200)
+        build_zip.assert_called_once_with(user_pk=7, month_key="2026-03", profile_code="vat_review")
 
     def test_tax_package_route_redirects_to_package_download(self) -> None:
         self._login()
@@ -50,3 +60,13 @@ class PackageRouteTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.headers["Location"].endswith("/dashboard/package/download?month=2026-03"))
+
+    def test_tax_package_route_keeps_profile_query_when_present(self) -> None:
+        self._login()
+
+        response = self.client.get("/dashboard/tax-package?month=2026-03&profile=comprehensive_income", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            response.headers["Location"].endswith("/dashboard/package/download?month=2026-03&profile=comprehensive_income")
+        )
