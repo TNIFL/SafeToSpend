@@ -6,6 +6,7 @@ import unittest
 import zipfile
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from openpyxl import load_workbook
 
@@ -13,6 +14,7 @@ from services.tax_package import (
     PackageSnapshot,
     PackageStats,
     _classify_reference_material_type,
+    _collect_withholding_summary_rows,
     _extend_review_items,
     _reference_transaction_comparison,
     _resolve_reference_material_comparison,
@@ -181,12 +183,18 @@ class TaxPackageServiceTest(unittest.TestCase):
             ],
             withholding_summary_rows=[
                 {
+                    "document_scope": "미확인",
+                    "withholding_period_basis": "미확인",
+                    "paid_tax_period_basis": "미확인",
                     "has_withholding_data": "아니오",
+                    "gross_pay_total_krw": "",
                     "withholding_tax_total_krw": "",
                     "has_paid_tax_data": "아니오",
                     "paid_tax_total_krw": "",
+                    "payer_reference": "미확인",
                     "other_income_flag": "예(입력값 기준)",
                     "source_basis": "온보딩 입력값",
+                    "needs_review": "예",
                     "note": "대상 월에 포함된 원천징수/기납부세액 공식자료가 없습니다",
                 }
             ],
@@ -351,12 +359,18 @@ class TaxPackageServiceTest(unittest.TestCase):
             business_status_rows=self.snapshot.business_status_rows,
             withholding_summary_rows=[
                 {
+                    "document_scope": "지급명세서 계열 / 홈택스 납부내역",
+                    "withholding_period_basis": "2026-03-01 ~ 2026-03-31",
+                    "paid_tax_period_basis": "2026-03",
                     "has_withholding_data": "예",
+                    "gross_pay_total_krw": 3200000,
                     "withholding_tax_total_krw": 330000,
                     "has_paid_tax_data": "예",
                     "paid_tax_total_krw": 150000,
+                    "payer_reference": "샘플지급처",
                     "other_income_flag": "예(입력값 기준)",
                     "source_basis": "공식자료 요약값 / 온보딩 입력값",
+                    "needs_review": "아니오",
                     "note": "",
                 }
             ],
@@ -542,9 +556,12 @@ class TaxPackageServiceTest(unittest.TestCase):
         withholding_wb = load_workbook(io.BytesIO(archive.read(f"{root}/05_원천징수_기납부세액_요약.xlsx")))
         withholding_ws = withholding_wb["원천징수·기납부세액 요약"]
         withholding_headers = {cell.value: idx + 1 for idx, cell in enumerate(withholding_ws[1])}
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["자료 종류"]).value, "미확인")
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["원천징수 기준 기간"]).value, "미확인")
         self.assertEqual(withholding_ws.cell(2, withholding_headers["원천징수 자료 있음"]).value, "아니오")
         self.assertEqual(withholding_ws.cell(2, withholding_headers["다른 소득 있음"]).value, "예(입력값 기준)")
         self.assertEqual(withholding_ws.cell(2, withholding_headers["기준 자료"]).value, "온보딩 입력값")
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["재확인 필요"]).value, "예")
 
         vat_wb = load_workbook(io.BytesIO(archive.read(f"{root}/08_부가세_자료_요약.xlsx")))
         vat_ws = vat_wb["부가세 자료 요약"]
@@ -645,6 +662,15 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertEqual(official_ws.cell(2, headers["원본첨부여부"]).value, "아니오")
         self.assertEqual(official_ws.cell(2, headers["목록반영여부"]).value, "예")
 
+        withholding_ws = load_workbook(io.BytesIO(archive.read(f"{root}/05_원천징수_기납부세액_요약.xlsx")))["원천징수·기납부세액 요약"]
+        withholding_headers = {cell.value: idx + 1 for idx, cell in enumerate(withholding_ws[1])}
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["자료 종류"]).value, "지급명세서 계열 / 홈택스 납부내역")
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["원천징수 기준 기간"]).value, "2026-03-01 ~ 2026-03-31")
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["기납부세액 기준 기간"]).value, "2026-03")
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["총지급액 합계"]).value, 3200000)
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["지급처 참조"]).value, "샘플지급처")
+        self.assertEqual(withholding_ws.cell(2, withholding_headers["재확인 필요"]).value, "아니오")
+
         vat_ws = load_workbook(io.BytesIO(archive.read(f"{root}/08_부가세_자료_요약.xlsx")))["부가세 자료 요약"]
         vat_headers = {cell.value: idx + 1 for idx, cell in enumerate(vat_ws[1])}
         self.assertEqual(vat_ws.cell(2, vat_headers["과세 상태"]).value, "과세사업자/부가세 대상이에요")
@@ -723,6 +749,105 @@ class TaxPackageServiceTest(unittest.TestCase):
         attachment_headers = {cell.value: idx + 1 for idx, cell in enumerate(attachment_ws[1])}
         self.assertEqual(attachment_ws.cell(2, attachment_headers["패키지 포함 상태"]).value, "포함")
         self.assertEqual(attachment_ws.cell(3, attachment_headers["패키지 포함 상태"]).value, "기본 제외")
+
+    def test_collect_withholding_summary_rows_extracts_period_scope_and_payer_reference(self) -> None:
+        documents = [
+            {
+                "문서종류": "홈택스 원천징수 관련 문서",
+                "기준일": "2026-03-31",
+                "_period_basis": "2026-03-31",
+                "_summary_items": [
+                    {"label": "원천징수세액 합계", "value": "330,000원"},
+                    {"label": "총지급액 합계", "value": "3,200,000원"},
+                ],
+                "_summary_values": {
+                    "withholding_material_kind": "지급명세서 계열",
+                    "period_start": "2026-03-01",
+                    "period_end": "2026-03-31",
+                    "payer_reference": "샘플지급처",
+                    "gross_pay_total_krw": 3200000,
+                    "withheld_tax_total_krw": 330000,
+                },
+            },
+            {
+                "문서종류": "홈택스 납부내역",
+                "기준일": "2026-03-10",
+                "_period_basis": "2026-03",
+                "_summary_items": [
+                    {"label": "납부세액 합계", "value": "150,000원"},
+                ],
+                "_summary_values": {
+                    "paid_tax_total_krw": 150000,
+                    "period_summary": "2026-03",
+                },
+            },
+        ]
+
+        with patch(
+            "services.tax_package.build_onboarding_reflection",
+            return_value={
+                "is_freelancer": True,
+                "is_employee_sidejob": False,
+                "has_specific_user_type": True,
+            },
+        ):
+            rows = _collect_withholding_summary_rows(7, documents)
+
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["document_scope"], "지급명세서 계열 / 홈택스 납부내역")
+        self.assertEqual(row["withholding_period_basis"], "2026-03-01 ~ 2026-03-31")
+        self.assertEqual(row["paid_tax_period_basis"], "2026-03")
+        self.assertEqual(row["gross_pay_total_krw"], 3200000)
+        self.assertEqual(row["withholding_tax_total_krw"], 330000)
+        self.assertEqual(row["paid_tax_total_krw"], 150000)
+        self.assertEqual(row["payer_reference"], "샘플지급처")
+        self.assertEqual(row["needs_review"], "아니오")
+
+    def test_extend_review_items_adds_granular_withholding_reasons(self) -> None:
+        rows = _extend_review_items(
+            review_items=[],
+            official_documents=[],
+            business_status_rows=[
+                {
+                    "user_type": "프리랜서(3.3)",
+                    "health_insurance_status": "지역가입자",
+                    "vat_status": "과세사업자/부가세 대상이에요",
+                    "note": "",
+                }
+            ],
+            withholding_summary_rows=[
+                {
+                    "has_withholding_data": "예",
+                    "has_paid_tax_data": "예",
+                    "other_income_flag": "예(입력값 기준)",
+                    "document_scope": "지급명세서 계열 / 홈택스 납부내역",
+                    "withholding_period_basis": "미확인",
+                    "paid_tax_period_basis": "2026-03 외 1건",
+                    "gross_pay_total_krw": "",
+                    "withholding_tax_total_krw": "",
+                    "paid_tax_total_krw": "",
+                    "payer_reference": "미확인",
+                    "source_basis": "공식자료 요약값 / 온보딩 입력값",
+                    "note": "총지급액 합계가 현재 구조화되지 않아 합계를 확정하지 못했습니다",
+                }
+            ],
+            vat_summary_rows=[],
+            nhis_pension_summary_rows=[],
+            reference_material_rows=[],
+        )
+        rows_by_type = {row["항목유형"]: row for row in rows}
+
+        self.assertIn("원천징수기준기간확인", rows_by_type)
+        self.assertIn("원천징수지급처참조미확인", rows_by_type)
+        self.assertIn("총지급액추출불가", rows_by_type)
+        self.assertIn("원천징수세액추출불가", rows_by_type)
+        self.assertIn("기납부세액추출불가", rows_by_type)
+        self.assertEqual(rows_by_type["원천징수기준기간확인"]["현재상태"], "원천징수: 미확인 / 기납부세액: 2026-03 외 1건")
+        self.assertEqual(rows_by_type["원천징수지급처참조미확인"]["현재상태"], "미확인")
+        self.assertEqual(rows_by_type["총지급액추출불가"]["현재상태"], "총지급액 추출 불가")
+        self.assertEqual(rows_by_type["원천징수세액추출불가"]["현재상태"], "원천징수세액 추출 불가")
+        self.assertEqual(rows_by_type["기납부세액추출불가"]["현재상태"], "기납부세액 추출 불가")
 
     def test_official_and_evidence_sheets_apply_review_friendly_sorting(self) -> None:
         reordered_snapshot = replace(

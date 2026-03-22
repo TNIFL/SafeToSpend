@@ -102,6 +102,17 @@ def _row_text(rows: list[list[str]], index: int) -> str:
     return " ".join((cell or "").strip() for cell in rows[index] if (cell or "").strip())
 
 
+def _detect_withholding_material_kind(rows: list[list[str]]) -> str:
+    normalized = " ".join(_normalize(_row_text(rows, idx)) for idx in range(min(len(rows), 6)))
+    if "원천징수이행상황신고서" in normalized:
+        return "원천징수이행상황신고서 계열"
+    if "지급명세서" in normalized:
+        return "지급명세서 계열"
+    if "원천징수영수증" in normalized:
+        return "원천징수영수증 계열"
+    return "원천징수 관련 자료"
+
+
 def _find_header_index(rows: list[list[str]], aliases: dict[str, tuple[str, ...]], required_fields: tuple[str, ...]) -> tuple[int | None, dict[str, int]]:
     for idx, row in enumerate(rows[:6]):
         header_map: dict[str, int] = {}
@@ -151,6 +162,7 @@ def _summary_payload(*, document_title: str, reference_date: date | None, items:
 
 
 def parse_hometax_withholding_statement(rows: list[list[str]]) -> dict[str, Any]:
+    material_kind = _detect_withholding_material_kind(rows)
     line_item_aliases = {
         "payment_date": ("지급일", "지급일자", "지급일시"),
         "withheld_tax": ("원천징수세액", "원천징수 세액", "징수세액"),
@@ -195,12 +207,14 @@ def parse_hometax_withholding_statement(rows: list[list[str]]) -> dict[str, Any]
                     document_title="홈택스 원천징수 관련 문서",
                     reference_date=latest_date,
                     items=[
+                        ("자료 구분", material_kind),
                         ("기준일", latest_date.isoformat()),
                         ("원천징수세액 합계", f"{withheld_total:,}원"),
                         ("총지급액 합계", f"{gross_total:,}원" if gross_total else ""),
                         ("소득구분", ", ".join(sorted(income_types)) if income_types else ""),
                     ],
                     values={
+                        "withholding_material_kind": material_kind,
                         "withheld_tax_total_krw": withheld_total,
                         "gross_pay_total_krw": gross_total or None,
                         "income_type_summary": ", ".join(sorted(income_types)) if income_types else None,
@@ -232,12 +246,14 @@ def parse_hometax_withholding_statement(rows: list[list[str]]) -> dict[str, Any]
                     document_title="홈택스 원천징수 관련 문서",
                     reference_date=reference_date,
                     items=[
+                        ("자료 구분", material_kind),
                         ("기준일", reference_date.isoformat()),
                         ("귀속기간", f"{period_start.isoformat()} ~ {period_end.isoformat()}"),
                         ("원천징수세액 합계", f"{withheld_total:,}원"),
                         ("지급처 참조", payer_key),
                     ],
                     values={
+                        "withholding_material_kind": material_kind,
                         "withheld_tax_total_krw": withheld_total,
                         "period_start": period_start.isoformat(),
                         "period_end": period_end.isoformat(),

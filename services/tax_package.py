@@ -654,6 +654,11 @@ def _review_type_sort_order(item_type: str) -> int:
         "부가세재확인": 21,
         "원천징수자료누락": 30,
         "기납부세액자료누락": 31,
+        "원천징수기준기간확인": 32,
+        "원천징수지급처참조미확인": 33,
+        "총지급액추출불가": 34,
+        "원천징수세액추출불가": 35,
+        "기납부세액추출불가": 36,
         "공식자료교차검증재확인": 40,
         "공식자료재확인": 41,
         "건보자료누락": 50,
@@ -785,6 +790,8 @@ def _withholding_overview_label(source: dict[str, Any]) -> str:
     has_withholding = str(source.get("has_withholding_data", "") or "")
     has_paid = str(source.get("has_paid_tax_data", "") or "")
     other_income = str(source.get("other_income_flag", "") or "")
+    if str(source.get("needs_review", "") or "") == "예":
+        return "원천징수·기납부세액 재확인 필요"
     if has_withholding == "예" and has_paid == "예":
         return "원천징수·기납부세액 자료 있음"
     if other_income.startswith("예"):
@@ -905,6 +912,22 @@ def _sum_official_amounts(
     return found, total
 
 
+def _summary_values(row: dict[str, Any]) -> dict[str, Any]:
+    values = row.get("_summary_values")
+    return values if isinstance(values, dict) else {}
+
+
+def _summary_amount(row: dict[str, Any], *keys: str) -> int | None:
+    values = _summary_values(row)
+    for key in keys:
+        if key not in values:
+            continue
+        amount = _parse_krw_text(values.get(key))
+        if amount is not None:
+            return amount
+    return None
+
+
 def _has_official_document(documents: list[dict[str, Any]], keywords: tuple[str, ...]) -> bool:
     for row in documents:
         document_type = str(row.get("문서종류", ""))
@@ -927,6 +950,45 @@ def _collect_period_basis(documents: list[dict[str, Any]], keywords: tuple[str, 
     if len(period_values) == 1:
         return period_values[0]
     return f"{period_values[0]} 외 {len(period_values) - 1}건"
+
+
+def _matching_official_documents(documents: list[dict[str, Any]], keywords: tuple[str, ...]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for row in documents:
+        document_type = str(row.get("문서종류", ""))
+        if any(keyword in document_type for keyword in keywords):
+            rows.append(row)
+    return rows
+
+
+def _collapse_distinct_texts(values: list[str], *, empty: str = "미확인", multi_suffix: str = "건") -> str:
+    compact = [value for value in dict.fromkeys(str(value or "").strip() for value in values) if value]
+    if not compact:
+        return empty
+    if len(compact) == 1:
+        return compact[0]
+    return f"{compact[0]} 외 {len(compact) - 1}{multi_suffix}"
+
+
+def _collapse_payer_reference(values: list[str]) -> str:
+    compact = [value for value in dict.fromkeys(str(value or "").strip() for value in values) if value]
+    if not compact:
+        return "미확인"
+    if len(compact) == 1:
+        return compact[0]
+    return "복수 지급처 참조"
+
+
+def _withholding_period_basis(row: dict[str, Any]) -> str:
+    values = _summary_values(row)
+    period_start = str(values.get("period_start") or "").strip()
+    period_end = str(values.get("period_end") or "").strip()
+    if period_start and period_end:
+        return f"{period_start} ~ {period_end}"
+    period_summary = str(values.get("period_summary") or "").strip()
+    if period_summary:
+        return period_summary
+    return str(row.get("_period_basis") or row.get("기준일") or "").strip() or "미확인"
 
 
 def _sum_transactions_by_direction(transactions: list[dict[str, Any]], direction: str) -> tuple[bool, int]:
@@ -1220,8 +1282,11 @@ def _collect_business_status_rows(user_pk: int) -> list[dict[str, Any]]:
 
 def _collect_withholding_summary_rows(user_pk: int, documents: list[dict[str, Any]]) -> list[dict[str, Any]]:
     reflection = build_onboarding_reflection(user_pk)
-    has_withholding_data = any("원천징수" in str(row.get("문서종류", "")) for row in documents)
-    has_paid_tax_data = any("홈택스 납부" in str(row.get("문서종류", "")) for row in documents)
+    withholding_documents = _matching_official_documents(documents, ("원천징수",))
+    paid_tax_documents = _matching_official_documents(documents, ("홈택스 납부",))
+
+    has_withholding_data = bool(withholding_documents)
+    has_paid_tax_data = bool(paid_tax_documents)
     withholding_found, withholding_total = _sum_official_amounts(
         documents,
         document_keywords=("원천징수",),
@@ -1232,6 +1297,14 @@ def _collect_withholding_summary_rows(user_pk: int, documents: list[dict[str, An
         document_keywords=("홈택스 납부",),
         item_keywords=("납부세액",),
     )
+    gross_found = False
+    gross_total = 0
+    for row in withholding_documents:
+        gross_amount = _summary_amount(row, "gross_pay_total_krw")
+        if gross_amount is None:
+            continue
+        gross_total += gross_amount
+        gross_found = True
 
     if reflection["is_freelancer"] or reflection["is_employee_sidejob"]:
         other_income_flag = "예(입력값 기준)"
@@ -1244,22 +1317,80 @@ def _collect_withholding_summary_rows(user_pk: int, documents: list[dict[str, An
     if reflection["has_specific_user_type"]:
         basis_parts.append("온보딩 입력값")
 
+    material_kinds = [
+        str(_summary_values(row).get("withholding_material_kind") or "").strip() or "원천징수 관련 자료"
+        for row in withholding_documents
+    ]
+    material_scope = " / ".join(
+        part
+        for part in (
+            _collapse_distinct_texts(material_kinds, multi_suffix="종") if material_kinds else "",
+            "홈택스 납부내역" if has_paid_tax_data else "",
+        )
+        if part
+    ) or "미확인"
+    withholding_period_basis = _collapse_distinct_texts(
+        [_withholding_period_basis(row) for row in withholding_documents],
+        multi_suffix="건",
+    )
+    paid_tax_period_basis = _collapse_distinct_texts(
+        [_withholding_period_basis(row) for row in paid_tax_documents],
+        multi_suffix="건",
+    )
+    payer_reference = _collapse_payer_reference(
+        [str(_summary_values(row).get("payer_reference") or "").strip() for row in withholding_documents]
+    )
+
     note_parts: list[str] = []
     if has_withholding_data and not withholding_found:
         note_parts.append("원천징수세액 합계가 현재 구조화되지 않아 합계를 확정하지 못했습니다")
+    if has_withholding_data and not gross_found:
+        note_parts.append("총지급액 합계가 현재 구조화되지 않아 합계를 확정하지 못했습니다")
     if has_paid_tax_data and not paid_found:
         note_parts.append("납부세액 합계가 현재 구조화되지 않아 합계를 확정하지 못했습니다")
+    if has_withholding_data and withholding_period_basis == "미확인":
+        note_parts.append("원천징수 자료의 기준 기간을 확인하지 못했습니다")
+    elif has_withholding_data and " 외 " in withholding_period_basis:
+        note_parts.append("원천징수 자료가 복수 기간에 걸쳐 있어 대상 기간 재확인이 필요합니다")
+    if has_paid_tax_data and paid_tax_period_basis == "미확인":
+        note_parts.append("기납부세액 자료의 기준 기간을 확인하지 못했습니다")
+    elif has_paid_tax_data and " 외 " in paid_tax_period_basis:
+        note_parts.append("기납부세액 자료가 복수 기간에 걸쳐 있어 대상 기간 재확인이 필요합니다")
+    if has_withholding_data and payer_reference == "미확인":
+        note_parts.append("지급처 참조를 확인하지 못했습니다")
+    elif payer_reference == "복수 지급처 참조":
+        note_parts.append("복수 지급처 참조가 있어 단일 지급처로 요약하지 않았습니다")
     if not has_withholding_data and not has_paid_tax_data:
         note_parts.append("대상 월에 포함된 원천징수/기납부세액 공식자료가 없습니다")
 
+    needs_review = False
+    if other_income_flag.startswith("예") and (not has_withholding_data or not has_paid_tax_data):
+        needs_review = True
+    if has_withholding_data and (
+        not withholding_found
+        or not gross_found
+        or withholding_period_basis == "미확인"
+        or " 외 " in withholding_period_basis
+        or payer_reference in {"미확인", "복수 지급처 참조"}
+    ):
+        needs_review = True
+    if has_paid_tax_data and (not paid_found or paid_tax_period_basis == "미확인" or " 외 " in paid_tax_period_basis):
+        needs_review = True
+
     return [
         {
+            "document_scope": material_scope,
+            "withholding_period_basis": withholding_period_basis,
+            "paid_tax_period_basis": paid_tax_period_basis,
             "has_withholding_data": "예" if has_withholding_data else "아니오",
+            "gross_pay_total_krw": gross_total if gross_found else "",
             "withholding_tax_total_krw": withholding_total if withholding_found else "",
             "has_paid_tax_data": "예" if has_paid_tax_data else "아니오",
             "paid_tax_total_krw": paid_total if paid_found else "",
+            "payer_reference": payer_reference,
             "other_income_flag": other_income_flag,
             "source_basis": " / ".join(basis_parts) or "미확인",
+            "needs_review": "예" if needs_review else "아니오",
             "note": " / ".join(note_parts),
         }
     ]
@@ -1537,8 +1668,16 @@ def _cross_validation_review_profile(row: dict[str, Any]) -> tuple[str, str, str
 def _review_priority_profile(item_type: str) -> tuple[int, str, str]:
     if item_type in {"거래검토", "부가세자료누락", "부가세재확인"}:
         return 1, "높음", "신고 누락 또는 세액 영향이 큰 항목"
-    if item_type in {"원천징수자료누락", "기납부세액자료누락"}:
-        return 2, "높음", "원천징수·기납부세액 자료 누락"
+    if item_type in {
+        "원천징수자료누락",
+        "기납부세액자료누락",
+        "원천징수기준기간확인",
+        "원천징수지급처참조미확인",
+        "총지급액추출불가",
+        "원천징수세액추출불가",
+        "기납부세액추출불가",
+    }:
+        return 2, "높음", "원천징수·기납부세액 자료 누락 또는 구조 재확인"
     if item_type in {"공식자료재확인", "공식자료교차검증재확인", "건보자료누락", "연금자료누락"}:
         return 3, "중간", "공식자료 재확인 또는 건보·연금 자료 확인 필요"
     if item_type in {"증빙누락", "증빙검토"}:
@@ -1649,6 +1788,15 @@ def _extend_review_items(
 
     withholding_row = withholding_summary_rows[0] if withholding_summary_rows else {}
     other_income_flag = str(withholding_row.get("other_income_flag", ""))
+    has_withholding_data = str(withholding_row.get("has_withholding_data", ""))
+    has_paid_tax_data = str(withholding_row.get("has_paid_tax_data", ""))
+    withholding_period_basis = str(withholding_row.get("withholding_period_basis", "") or "")
+    paid_tax_period_basis = str(withholding_row.get("paid_tax_period_basis", "") or "")
+    payer_reference = str(withholding_row.get("payer_reference", "") or "")
+    document_scope = str(withholding_row.get("document_scope", "") or "")
+    gross_pay_total = withholding_row.get("gross_pay_total_krw")
+    withholding_tax_total = withholding_row.get("withholding_tax_total_krw")
+    paid_tax_total = withholding_row.get("paid_tax_total_krw")
     if other_income_flag.startswith("예") and withholding_row.get("has_withholding_data") != "예":
         _append_review_item(
             rows,
@@ -1672,6 +1820,74 @@ def _extend_review_items(
             needed="홈택스 납부내역 등 기납부세액 자료가 있으면 함께 확인해 주세요",
             priority="보통",
             note=str(withholding_row.get("source_basis", "")),
+        )
+    if (
+        (has_withholding_data == "예" and (withholding_period_basis == "미확인" or " 외 " in withholding_period_basis))
+        or (has_paid_tax_data == "예" and (paid_tax_period_basis == "미확인" or " 외 " in paid_tax_period_basis))
+    ):
+        period_parts = []
+        if has_withholding_data == "예":
+            period_parts.append(f"원천징수: {withholding_period_basis or '미확인'}")
+        if has_paid_tax_data == "예":
+            period_parts.append(f"기납부세액: {paid_tax_period_basis or '미확인'}")
+        _append_review_item(
+            rows,
+            item_type="원천징수기준기간확인",
+            related_kind="공식자료",
+            related_no="",
+            summary="원천징수·기납부세액 기준 기간 재확인 필요",
+            status=" / ".join(period_parts) or "미확인",
+            needed="귀속기간 또는 문서 기준일이 대상 월과 맞는지 다시 확인해 주세요",
+            priority="높음",
+            note=" / ".join(part for part in [document_scope, str(withholding_row.get("source_basis", ""))] if part),
+        )
+    if has_withholding_data == "예" and payer_reference in {"미확인", "복수 지급처 참조"}:
+        _append_review_item(
+            rows,
+            item_type="원천징수지급처참조미확인",
+            related_kind="공식자료",
+            related_no="",
+            summary="원천징수 자료 지급처 참조 확인 필요",
+            status=payer_reference,
+            needed="지급처 참조 정보가 있으면 함께 확인해 주세요",
+            priority="높음",
+            note=" / ".join(part for part in [document_scope, str(withholding_row.get("source_basis", ""))] if part),
+        )
+    if has_withholding_data == "예" and gross_pay_total in ("", None):
+        _append_review_item(
+            rows,
+            item_type="총지급액추출불가",
+            related_kind="공식자료",
+            related_no="",
+            summary="원천징수 자료 총지급액 재확인 필요",
+            status="총지급액 추출 불가",
+            needed="총지급액을 구조화하지 못해 문서 기준으로 다시 확인해 주세요",
+            priority="보통",
+            note=" / ".join(part for part in [document_scope, str(withholding_row.get("note", ""))] if part),
+        )
+    if has_withholding_data == "예" and withholding_tax_total in ("", None):
+        _append_review_item(
+            rows,
+            item_type="원천징수세액추출불가",
+            related_kind="공식자료",
+            related_no="",
+            summary="원천징수세액 재확인 필요",
+            status="원천징수세액 추출 불가",
+            needed="원천징수세액 합계를 구조화하지 못해 문서 기준으로 다시 확인해 주세요",
+            priority="보통",
+            note=" / ".join(part for part in [document_scope, str(withholding_row.get("note", ""))] if part),
+        )
+    if has_paid_tax_data == "예" and paid_tax_total in ("", None):
+        _append_review_item(
+            rows,
+            item_type="기납부세액추출불가",
+            related_kind="공식자료",
+            related_no="",
+            summary="기납부세액 재확인 필요",
+            status="기납부세액 추출 불가",
+            needed="기납부세액 합계를 구조화하지 못해 납부내역 기준으로 다시 확인해 주세요",
+            priority="보통",
+            note=str(withholding_row.get("note", "")),
         )
 
     vat_row = vat_summary_rows[0] if vat_summary_rows else {}
@@ -2231,6 +2447,7 @@ def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
                 "재확인필요여부": _official_recheck_label(document),
                 "메모": _official_note(view, document),
                 "_summary_items": view.get("summary_items") or [],
+                "_summary_values": dict(document.extracted_key_summary_json or {}),
                 "_document_type_label": view.get("document_type_label", "문서 판별 전"),
                 "_parse_status": document.parse_status,
                 "_cross_validation_status_key": cross_validation_status_key,
@@ -2894,18 +3111,38 @@ def _build_withholding_summary_workbook(snapshot: PackageSnapshot) -> bytes:
         source = (snapshot.withholding_summary_rows or [{}])[0]
         rows = [
             {
+                "자료 종류": source.get("document_scope", "미확인"),
+                "원천징수 기준 기간": source.get("withholding_period_basis", "미확인"),
+                "기납부세액 기준 기간": source.get("paid_tax_period_basis", "미확인"),
                 "원천징수 자료 있음": source.get("has_withholding_data", "아니오"),
+                "총지급액 합계": source.get("gross_pay_total_krw", ""),
                 "원천징수세액 합계": source.get("withholding_tax_total_krw", ""),
                 "기납부세액 자료 있음": source.get("has_paid_tax_data", "아니오"),
                 "기납부세액 합계": source.get("paid_tax_total_krw", ""),
+                "지급처 참조": source.get("payer_reference", "미확인"),
                 "다른 소득 있음": source.get("other_income_flag", "미확인"),
                 "기준 자료": source.get("source_basis", "미확인"),
+                "재확인 필요": source.get("needs_review", "아니오"),
                 "비고": source.get("note", ""),
             }
         ]
         _write_table_sheet(
             ws,
-            ["원천징수 자료 있음", "원천징수세액 합계", "기납부세액 자료 있음", "기납부세액 합계", "다른 소득 있음", "기준 자료", "비고"],
+            [
+                "자료 종류",
+                "원천징수 기준 기간",
+                "기납부세액 기준 기간",
+                "원천징수 자료 있음",
+                "총지급액 합계",
+                "원천징수세액 합계",
+                "기납부세액 자료 있음",
+                "기납부세액 합계",
+                "지급처 참조",
+                "다른 소득 있음",
+                "기준 자료",
+                "재확인 필요",
+                "비고",
+            ],
             rows,
         )
         return wb
@@ -3284,7 +3521,7 @@ def _render_package_guide(snapshot: PackageSnapshot, profile: TaxPackageProfile 
         "business_status": "- 01_사업_상태_요약.xlsx : 사용자 유형/건보/과세 상태와 각 값의 출처/확인 수준 요약",
         "transactions": "- 03_거래원장.xlsx : 거래 목록, 원본 메타, 분류/증빙 연결",
         "evidence": "- 04_증빙상태표.xlsx : 첨부된 증빙 목록과 거래별 대표 첨부 연결",
-        "withholding": "- 05_원천징수_기납부세액_요약.xlsx : 원천징수/기납부세액 존재 여부, 합계, 기준 자료 요약",
+        "withholding": "- 05_원천징수_기납부세액_요약.xlsx : 원천징수 자료 구분, 기준 기간, 지급처 참조, 주요 합계와 재확인 포인트 요약",
         "review": "- 06_세무사_확인필요목록.xlsx : 우선확인순서 기준 재확인 목록",
         "attachments": "- 07_첨부인덱스.xlsx : 패키지 첨부 전체 인덱스와 상대경로 링크",
         "vat": "- 08_부가세_자료_요약.xlsx : 과세 상태, 부가세 신고 여부, 매입/매출 관련 요약",
