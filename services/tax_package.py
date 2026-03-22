@@ -90,6 +90,7 @@ class TaxPackageProfile:
     display_name: str
     archive_label: str
     page_description: str
+    selection_description: str
     event_summary_note: str
     included_workbooks: tuple[str, ...]
     workbook_badge_order: tuple[str, ...]
@@ -109,6 +110,7 @@ TAX_PACKAGE_PROFILES: dict[str, TaxPackageProfile] = {
         display_name="공통형",
         archive_label="",
         page_description="거래·증빙·원천징수·부가세·건보/연금·참고자료를 함께 담는 공통 세무사 전달 패키지",
+        selection_description="전체 자료를 종합적으로 점검하는 기본 패키지",
         event_summary_note="기본 공통형입니다. 종합 검토를 기준으로 요약과 확인필요목록을 함께 봅니다.",
         included_workbooks=ALL_WORKBOOK_KEYS,
         workbook_badge_order=("summary", "review", "business_status", "withholding", "vat", "nhis_pension", "transactions", "evidence", "attachments", "reference"),
@@ -180,6 +182,7 @@ TAX_PACKAGE_PROFILES: dict[str, TaxPackageProfile] = {
         display_name="종합소득세용",
         archive_label="종합소득세용",
         page_description="종합소득세 검토 흐름에 맞춰 원천징수·기납부세액, 공식자료 교차검증, 거래·증빙을 앞쪽에 두는 파생 패키지",
+        selection_description="원천징수·기납부세액·거래/증빙 검토를 우선 보는 패키지",
         event_summary_note="종합소득세 검토 보조용입니다. 원천징수·기납부세액과 공식자료 교차검증 재확인을 앞쪽에 배치합니다.",
         included_workbooks=ALL_WORKBOOK_KEYS,
         workbook_badge_order=("summary", "review", "business_status", "withholding", "transactions", "evidence", "attachments", "reference", "vat", "nhis_pension"),
@@ -254,6 +257,7 @@ TAX_PACKAGE_PROFILES: dict[str, TaxPackageProfile] = {
         display_name="부가세용",
         archive_label="부가세용",
         page_description="부가세 검토 보조용으로 과세 상태, 부가세 자료 요약, 부가세 관련 확인필요항목을 앞쪽에 두는 파생 패키지",
+        selection_description="부가세 관련 자료와 재확인 항목을 우선 보는 패키지",
         event_summary_note="부가세 검토 보조용입니다. 현재 지원 범위 안의 부가세 관련 요약과 재확인 포인트를 앞쪽에 배치합니다.",
         included_workbooks=tuple(key for key in ALL_WORKBOOK_KEYS if key != "nhis_pension"),
         workbook_badge_order=("summary", "review", "vat", "business_status", "transactions", "evidence", "attachments", "reference", "withholding", "nhis_pension"),
@@ -327,6 +331,7 @@ TAX_PACKAGE_PROFILES: dict[str, TaxPackageProfile] = {
         display_name="건보·연금 점검용",
         archive_label="건보연금점검용",
         page_description="건강보험·국민연금 관련 상태, 자료 존재 여부, 재확인 포인트를 먼저 점검하는 파생 패키지",
+        selection_description="건강보험·국민연금 관련 자료와 재확인 포인트를 먼저 보는 패키지",
         event_summary_note="건강보험·국민연금 관련 자료와 재확인 포인트를 먼저 점검하는 패키지입니다. 현재 구조상 국민연금은 보조 수준일 수 있습니다.",
         included_workbooks=tuple(key for key in ALL_WORKBOOK_KEYS if key not in {"withholding", "vat"}),
         workbook_badge_order=("summary", "review", "nhis_pension", "business_status", "transactions", "evidence", "attachments", "reference", "withholding", "vat"),
@@ -485,6 +490,7 @@ def describe_tax_package_profile(profile_code: str | None) -> dict[str, Any]:
         "code": profile.code,
         "display_name": profile.display_name,
         "page_description": profile.page_description,
+        "selection_description": profile.selection_description,
         "event_summary_note": profile.event_summary_note,
         "included_workbooks": [
             {

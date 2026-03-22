@@ -1,5 +1,70 @@
 {% extends "base.html" %}
 {% block title %}세무사 전달 패키지 | 쓸수있어{% endblock %}
+{% block head_extra %}
+  <style>
+    .package-profile-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .package-profile-card {
+      display: block;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      border-radius: 18px;
+      padding: 14px 16px;
+      text-decoration: none;
+      color: inherit;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+      transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+    }
+
+    .package-profile-card:hover {
+      border-color: rgba(25, 118, 210, 0.35);
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .package-profile-card.is-selected {
+      border-color: rgba(25, 118, 210, 0.55);
+      box-shadow: 0 18px 34px rgba(25, 118, 210, 0.14);
+      background: linear-gradient(180deg, rgba(232, 240, 255, 0.9), #fff);
+    }
+
+    .package-profile-card__head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .package-profile-card__title {
+      font-weight: 950;
+      font-size: 17px;
+      line-height: 1.35;
+    }
+
+    .package-profile-card__badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .package-profile-card__desc {
+      margin-top: 10px;
+      line-height: 1.55;
+    }
+
+    .package-selected-summary {
+      margin-top: 12px;
+      border-top: 1px dashed rgba(15, 23, 42, 0.12);
+      padding-top: 12px;
+    }
+  </style>
+{% endblock %}
 
 
 {% block content %}
@@ -13,34 +78,57 @@
 
     <div class="page-actions">
       <div class="month-switch">
-        <a class="btn small ghost" href="{{ url_for('web_package.page', month=prev_month, profile=profile_code) }}">◀</a>
+        <a class="btn small ghost" data-month-nav="prev" href="{{ url_for('web_package.page', month=prev_month, profile=profile_code) }}">◀</a>
         <span class="badge primary">{{ month_key }}</span>
-        <a class="btn small ghost" href="{{ url_for('web_package.page', month=next_month, profile=profile_code) }}">▶</a>
+        <a class="btn small ghost" data-month-nav="next" href="{{ url_for('web_package.page', month=next_month, profile=profile_code) }}">▶</a>
       </div>
 
       <a class="btn ghost" href="{{ url_for('web_official_data.index') }}">공식자료 업로드</a>
       <a class="btn ghost" href="{{ url_for('web_reference_material.index') }}">참고자료 업로드</a>
       <a class="btn ghost" href="{{ url_for('web_vault.index', month=month_key) }}">증빙 보관함</a>
-      <a class="btn primary" href="{{ url_for('web_package.download', month=month_key, profile=profile_code) }}">ZIP 다운로드</a>
+      <a class="btn primary" data-package-download="{{ profile_code }}" href="{{ url_for('web_package.download', month=month_key, profile=profile_code) }}">{{ selected_profile.display_name }} 다운로드</a>
     </div>
   </div>
 
-  <div class="card pad vault-flat" style="margin-bottom:12px;">
+  <div class="card pad vault-flat" style="margin-bottom:12px;" data-selected-profile="{{ profile_code }}">
     <div class="cardTitle">
       <span>패키지 유형 선택</span>
       <span class="badge primary">{{ selected_profile.display_name }}</span>
     </div>
-    <div class="vmeta" style="margin-top:10px;">
+    <div class="small-note muted2" style="margin-top:10px;">
+      어떤 검토 관점으로 ZIP을 만들지 먼저 고르세요. 월 이동과 다운로드에도 현재 선택이 그대로 유지됩니다.
+    </div>
+    <div class="package-profile-grid">
       {% for profile in profile_options %}
+        {% set is_selected = profile.code == profile_code %}
         <a
-          class="tag {% if profile.code == profile_code %}good{% endif %}"
+          class="package-profile-card {% if is_selected %}is-selected{% endif %}"
+          data-profile-option="{{ profile.code }}"
+          data-selected="{{ 'true' if is_selected else 'false' }}"
           href="{{ url_for('web_package.page', month=month_key, profile=profile.code) }}"
-          style="text-decoration:none;"
-        >{{ profile.display_name }}</a>
+          aria-current="{{ 'page' if is_selected else 'false' }}"
+        >
+          <div class="package-profile-card__head">
+            <div class="package-profile-card__title">{{ profile.display_name }}</div>
+            <div class="package-profile-card__badges">
+              {% if profile.code == 'common' %}
+                <span class="badge">기본값</span>
+              {% endif %}
+              {% if is_selected %}
+                <span class="badge primary">현재 선택</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="small-note muted2 package-profile-card__desc">{{ profile.selection_description }}</div>
+        </a>
       {% endfor %}
     </div>
-    <div class="small-note muted2" style="margin-top:10px;">
-      {{ selected_profile.event_summary_note }}
+    <div class="package-selected-summary">
+      <div class="panel-title">현재 선택한 패키지</div>
+      <div class="panel-text">
+        <b>{{ selected_profile.display_name }}</b> · {{ selected_profile.selection_description }}<br>
+        {{ selected_profile.event_summary_note }}
+      </div>
     </div>
   </div>
 
