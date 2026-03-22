@@ -255,7 +255,7 @@ TAX_PACKAGE_PROFILES: dict[str, TaxPackageProfile] = {
         archive_label="부가세용",
         page_description="부가세 검토 보조용으로 과세 상태, 부가세 자료 요약, 부가세 관련 확인필요항목을 앞쪽에 두는 파생 패키지",
         event_summary_note="부가세 검토 보조용입니다. 현재 지원 범위 안의 부가세 관련 요약과 재확인 포인트를 앞쪽에 배치합니다.",
-        included_workbooks=ALL_WORKBOOK_KEYS,
+        included_workbooks=tuple(key for key in ALL_WORKBOOK_KEYS if key != "nhis_pension"),
         workbook_badge_order=("summary", "review", "vat", "business_status", "transactions", "evidence", "attachments", "reference", "withholding", "nhis_pension"),
         workbook_badge_tones={"summary": "good", "review": "warn", "vat": "warn", "business_status": "good"},
         summary_row_order=(
@@ -294,14 +294,14 @@ TAX_PACKAGE_PROFILES: dict[str, TaxPackageProfile] = {
             "- 4) 01_사업_상태_요약.xlsx : 과세 상태와 출처/확인 수준 확인",
             "- 5) 03_거래원장.xlsx / 04_증빙상태표.xlsx / 07_첨부인덱스.xlsx : 부가세 검토에 필요한 거래·증빙 흐름 상세 확인",
             "- 6) 10_참고자료_요약.xlsx : 부가세 관련 보조 설명과 차이 설명 확인",
-            "- 7) 05_원천징수_기납부세액_요약.xlsx / 09_건보_연금_요약.xlsx : 후순위 보조 확인",
+            "- 7) 05_원천징수_기납부세액_요약.xlsx : 후순위 보조 확인",
             "- 8) 00_패키지요약.xlsx 내부 공식자료 시트 : 홈택스 계열 공식자료 상태 최종 확인",
         ),
         page_flow_lines=(
             "1) ZIP을 내려받아 압축 해제",
             "2) 00_패키지요약.xlsx → 06_세무사_확인필요목록.xlsx 순서로 부가세 재확인 포인트를 먼저 확인",
             "3) 08_부가세_자료_요약.xlsx → 01_사업_상태_요약.xlsx에서 과세 상태와 자료 요약을 확인",
-            "4) 03_거래원장 / 04_증빙상태표 / 07_첨부인덱스 → 10_참고자료 → 05/09 보조 시트 순서로 상세 확인",
+            "4) 03_거래원장 / 04_증빙상태표 / 07_첨부인덱스 → 10_참고자료 → 05 보조 시트 순서로 상세 확인",
         ),
         review_type_rank=_build_type_rank(
             "부가세자료누락",
@@ -328,7 +328,7 @@ TAX_PACKAGE_PROFILES: dict[str, TaxPackageProfile] = {
         archive_label="건보연금점검용",
         page_description="건강보험·국민연금 관련 상태, 자료 존재 여부, 재확인 포인트를 먼저 점검하는 파생 패키지",
         event_summary_note="건강보험·국민연금 관련 자료와 재확인 포인트를 먼저 점검하는 패키지입니다. 현재 구조상 국민연금은 보조 수준일 수 있습니다.",
-        included_workbooks=ALL_WORKBOOK_KEYS,
+        included_workbooks=tuple(key for key in ALL_WORKBOOK_KEYS if key not in {"withholding", "vat"}),
         workbook_badge_order=("summary", "review", "nhis_pension", "business_status", "transactions", "evidence", "attachments", "reference", "withholding", "vat"),
         workbook_badge_tones={"summary": "good", "review": "warn", "nhis_pension": "warn", "business_status": "good"},
         summary_row_order=(
@@ -366,7 +366,6 @@ TAX_PACKAGE_PROFILES: dict[str, TaxPackageProfile] = {
             "- 5) 00_패키지요약.xlsx 내부 공식자료 시트 : 건보 관련 공식자료 상태와 교차검증 사유 확인",
             "- 6) 03_거래원장.xlsx / 04_증빙상태표.xlsx / 07_첨부인덱스.xlsx : 필요 시 거래·증빙·첨부 흐름 상세 확인",
             "- 7) 10_참고자료_요약.xlsx : 건보·연금 관련 보조 설명과 차이 설명 확인",
-            "- 8) 05_원천징수_기납부세액_요약.xlsx / 08_부가세_자료_요약.xlsx : 후순위 보조 확인",
         ),
         page_flow_lines=(
             "1) ZIP을 내려받아 압축 해제",

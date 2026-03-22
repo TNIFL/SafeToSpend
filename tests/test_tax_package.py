@@ -884,6 +884,9 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertEqual(income["included_workbooks"][3]["filename"], "05_원천징수_기납부세액_요약.xlsx")
         self.assertEqual(vat["included_workbooks"][2]["filename"], "08_부가세_자료_요약.xlsx")
         self.assertEqual(nhis["included_workbooks"][2]["filename"], "09_건보_연금_요약.xlsx")
+        self.assertNotIn("09_건보_연금_요약.xlsx", [item["filename"] for item in vat["included_workbooks"]])
+        self.assertNotIn("05_원천징수_기납부세액_요약.xlsx", [item["filename"] for item in nhis["included_workbooks"]])
+        self.assertNotIn("08_부가세_자료_요약.xlsx", [item["filename"] for item in nhis["included_workbooks"]])
 
     def test_comprehensive_income_profile_changes_filename_and_summary_focus(self) -> None:
         _, archive, filename = self._build_zip(self.snapshot_with_official, profile_code="comprehensive_income")
@@ -925,6 +928,7 @@ class TaxPackageServiceTest(unittest.TestCase):
         root = "세무사전달패키지_부가세용_2026-03_테스터"
 
         self.assertEqual(filename, f"{root}.zip")
+        self.assertNotIn(f"{root}/09_건보_연금_요약.xlsx", set(archive.namelist()))
         summary_wb = load_workbook(io.BytesIO(archive.read(f"{root}/00_패키지요약.xlsx")))
         summary_ws = summary_wb["패키지요약"]
         top_labels = [summary_ws.cell(row_idx, 1).value for row_idx in range(2, 11)]
@@ -988,6 +992,9 @@ class TaxPackageServiceTest(unittest.TestCase):
         root = "세무사전달패키지_건보연금점검용_2026-03_테스터"
 
         self.assertEqual(filename, f"{root}.zip")
+        names = set(archive.namelist())
+        self.assertNotIn(f"{root}/05_원천징수_기납부세액_요약.xlsx", names)
+        self.assertNotIn(f"{root}/08_부가세_자료_요약.xlsx", names)
         summary_wb = load_workbook(io.BytesIO(archive.read(f"{root}/00_패키지요약.xlsx")))
         summary_ws = summary_wb["패키지요약"]
         top_labels = [summary_ws.cell(row_idx, 1).value for row_idx in range(2, 11)]
