@@ -98,6 +98,7 @@ class TaxPackageProfile:
     review_flow_lines: tuple[str, ...]
     page_flow_lines: tuple[str, ...]
     review_type_rank: dict[str, int]
+    review_priority_overrides: dict[str, tuple[int, str, str]] = field(default_factory=dict)
     official_keyword_groups: tuple[tuple[str, ...], ...] = ()
     reference_keyword_groups: tuple[tuple[str, ...], ...] = ()
 
@@ -321,6 +322,93 @@ TAX_PACKAGE_PROFILES: dict[str, TaxPackageProfile] = {
         official_keyword_groups=(("홈택스", "세금", "부가세", "원천징수"), ("건강보험", "연금")),
         reference_keyword_groups=(("부가세", "세금계산서", "매입", "매출", "현금영수증", "카드"), ("원천징수", "기납부")),
     ),
+    "nhis_pension_check": TaxPackageProfile(
+        code="nhis_pension_check",
+        display_name="건보·연금 점검용",
+        archive_label="건보연금점검용",
+        page_description="건강보험·국민연금 관련 상태, 자료 존재 여부, 재확인 포인트를 먼저 점검하는 파생 패키지",
+        event_summary_note="건강보험·국민연금 관련 자료와 재확인 포인트를 먼저 점검하는 패키지입니다. 현재 구조상 국민연금은 보조 수준일 수 있습니다.",
+        included_workbooks=ALL_WORKBOOK_KEYS,
+        workbook_badge_order=("summary", "review", "nhis_pension", "business_status", "transactions", "evidence", "attachments", "reference", "withholding", "vat"),
+        workbook_badge_tones={"summary": "good", "review": "warn", "nhis_pension": "warn", "business_status": "good"},
+        summary_row_order=(
+            "user_name",
+            "period",
+            "generated_at",
+            "review_start",
+            "primary_review_flow",
+            "nhis_pension_status",
+            "immediate_recheck_count",
+            "cross_validation_overview",
+            "evidence_review",
+            "reference_review_status",
+            "withholding_status",
+            "vat_status",
+            "cross_validation_notice",
+            "cross_validation_match",
+            "cross_validation_partial",
+            "cross_validation_review_needed",
+            "cross_validation_mismatch",
+            "cross_validation_unavailable",
+            "tx_total",
+            "sum_out_total",
+            "expense_business_total",
+            "official_data_total",
+            "official_data_parsed_count",
+            "official_data_review_count",
+            "reference_note",
+        ),
+        review_flow_lines=(
+            "- 1) 00_패키지요약.xlsx : 건보·연금 점검 시작 / 건보·연금 상태 / 공식자료 교차검증 보조 상태 확인",
+            "- 2) 06_세무사_확인필요목록.xlsx : 건보자료누락, 연금자료누락, 건보연금상태확인 항목부터 확인",
+            "- 3) 09_건보_연금_요약.xlsx : 건보·연금 자료 존재 여부와 기준 자료를 먼저 확인",
+            "- 4) 01_사업_상태_요약.xlsx : 건강보험 상태와 값 출처·확인 수준 확인",
+            "- 5) 00_패키지요약.xlsx 내부 공식자료 시트 : 건보 관련 공식자료 상태와 교차검증 사유 확인",
+            "- 6) 03_거래원장.xlsx / 04_증빙상태표.xlsx / 07_첨부인덱스.xlsx : 필요 시 거래·증빙·첨부 흐름 상세 확인",
+            "- 7) 10_참고자료_요약.xlsx : 건보·연금 관련 보조 설명과 차이 설명 확인",
+            "- 8) 05_원천징수_기납부세액_요약.xlsx / 08_부가세_자료_요약.xlsx : 후순위 보조 확인",
+        ),
+        page_flow_lines=(
+            "1) ZIP을 내려받아 압축 해제",
+            "2) 00_패키지요약.xlsx → 06_세무사_확인필요목록.xlsx 순서로 건보·연금 재확인 포인트를 먼저 확인",
+            "3) 09_건보_연금_요약.xlsx → 01_사업_상태_요약.xlsx에서 건강보험 상태와 기준 자료를 확인",
+            "4) 00 내부 공식자료 시트 → 03_거래원장 / 04_증빙상태표 / 07_첨부인덱스 → 10_참고자료 순서로 상세 확인",
+        ),
+        review_type_rank=_build_type_rank(
+            "건보자료누락",
+            "연금자료누락",
+            "건보연금상태확인",
+            "공식자료교차검증재확인",
+            "공식자료재확인",
+            "거래검토",
+            "증빙누락",
+            "증빙검토",
+            "참고자료검토",
+            "원천징수자료누락",
+            "기납부세액자료누락",
+            "부가세자료누락",
+            "부가세재확인",
+            "사용자상태확인",
+        ),
+        review_priority_overrides={
+            "건보자료누락": (1, "높음", "건강보험 자료 누락 또는 납부 상태 확인 필요"),
+            "연금자료누락": (1, "높음", "국민연금 자료 누락 또는 납부 상태 확인 필요"),
+            "건보연금상태확인": (2, "중간", "건강보험·국민연금 상태 재확인 필요"),
+            "공식자료교차검증재확인": (3, "중간", "건보·연금 관련 공식자료 교차검증 재확인 필요"),
+            "공식자료재확인": (4, "중간", "건보·연금 관련 공식자료 상태 재확인 필요"),
+            "거래검토": (5, "중간", "관련 거래나 지출 흐름 보조 확인"),
+            "증빙누락": (6, "중간", "증빙 누락 또는 증빙 불충분 검토"),
+            "증빙검토": (6, "중간", "증빙 누락 또는 증빙 불충분 검토"),
+            "참고자료검토": (7, "낮음", "보조 설명 자료 검토"),
+            "원천징수자료누락": (8, "낮음", "후순위 보조 자료 확인"),
+            "기납부세액자료누락": (8, "낮음", "후순위 보조 자료 확인"),
+            "부가세자료누락": (9, "낮음", "후순위 보조 자료 확인"),
+            "부가세재확인": (9, "낮음", "후순위 보조 자료 확인"),
+            "사용자상태확인": (10, "낮음", "기타 사용자 상태 재확인"),
+        },
+        official_keyword_groups=(("건강보험", "건보", "국민연금", "연금", "자격", "납부"), ("홈택스", "원천징수", "세금")),
+        reference_keyword_groups=(("건강보험", "건보", "국민연금", "연금"), ("원천징수", "기납부", "부가세")),
+    ),
 }
 
 
@@ -385,7 +473,7 @@ def get_tax_package_profile(profile_code: str | None) -> TaxPackageProfile:
 
 
 def list_tax_package_profiles() -> list[TaxPackageProfile]:
-    return [TAX_PACKAGE_PROFILES[key] for key in ("common", "comprehensive_income", "vat_review")]
+    return [TAX_PACKAGE_PROFILES[key] for key in ("common", "comprehensive_income", "vat_review", "nhis_pension_check")]
 
 
 def _workbook_filename(workbook_key: str) -> str:
@@ -1460,6 +1548,15 @@ def _review_priority_profile(item_type: str) -> tuple[int, str, str]:
     if item_type in {"사용자상태확인", "건보연금상태확인"}:
         return 6, "낮음", "사용자 상태값 미확인"
     return 9, "낮음", "기타 확인 필요 항목"
+
+
+def _review_priority_profile_for_package(
+    item_type: str,
+    profile: TaxPackageProfile | None = None,
+) -> tuple[int, str, str]:
+    if profile is not None and item_type in profile.review_priority_overrides:
+        return profile.review_priority_overrides[item_type]
+    return _review_priority_profile(item_type)
 
 
 def _finalize_review_items(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -2658,7 +2755,10 @@ def _build_review_workbook(snapshot: PackageSnapshot, profile: TaxPackageProfile
         ws.title = "세무사_확인필요목록"
         prioritized_rows = []
         for row in snapshot.review_items:
-            priority_order, priority_label, priority_reason = _review_priority_profile(str(row.get("항목유형", "")))
+            priority_order, priority_label, priority_reason = _review_priority_profile_for_package(
+                str(row.get("항목유형", "")),
+                profile,
+            )
             has_explicit_priority = row.get("우선확인순서") not in (None, "")
             prioritized_rows.append(
                 {

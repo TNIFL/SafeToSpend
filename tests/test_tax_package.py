@@ -745,17 +745,20 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertEqual(linked_ws.cell(2, linked_headers["거래번호"]).value, 102)
         self.assertEqual(linked_ws.cell(2, linked_headers["증빙상태"]).value, "확인 필요")
 
-    def test_profile_description_exposes_common_income_and_vat_variants(self) -> None:
+    def test_profile_description_exposes_common_income_vat_and_nhis_variants(self) -> None:
         common = describe_tax_package_profile("common")
         income = describe_tax_package_profile("comprehensive_income")
         vat = describe_tax_package_profile("vat_review")
+        nhis = describe_tax_package_profile("nhis_pension_check")
 
         self.assertEqual(common["display_name"], "공통형")
         self.assertEqual(income["display_name"], "종합소득세용")
         self.assertEqual(vat["display_name"], "부가세용")
+        self.assertEqual(nhis["display_name"], "건보·연금 점검용")
         self.assertEqual(common["included_workbooks"][0]["filename"], "00_패키지요약.xlsx")
         self.assertEqual(income["included_workbooks"][3]["filename"], "05_원천징수_기납부세액_요약.xlsx")
         self.assertEqual(vat["included_workbooks"][2]["filename"], "08_부가세_자료_요약.xlsx")
+        self.assertEqual(nhis["included_workbooks"][2]["filename"], "09_건보_연금_요약.xlsx")
 
     def test_comprehensive_income_profile_changes_filename_and_summary_focus(self) -> None:
         _, archive, filename = self._build_zip(self.snapshot_with_official, profile_code="comprehensive_income")
@@ -826,6 +829,72 @@ class TaxPackageServiceTest(unittest.TestCase):
         review_headers = {cell.value: idx + 1 for idx, cell in enumerate(review_ws[1])}
         ordered_types = [review_ws.cell(row_idx, review_headers["항목유형"]).value for row_idx in range(2, 6)]
         self.assertEqual(ordered_types[:4], ["부가세자료누락", "거래검토", "공식자료교차검증재확인", "공식자료재확인"])
+
+    def test_nhis_pension_check_profile_changes_filename_summary_focus_and_review_order(self) -> None:
+        nhis_snapshot = replace(
+            self.snapshot_with_official,
+            review_items=[
+                *self.snapshot_with_official.review_items,
+                {
+                    "항목번호": 7,
+                    "항목유형": "연금자료누락",
+                    "관련자료구분": "공식자료",
+                    "관련번호": "",
+                    "요약설명": "국민연금 자료 추가 확인 필요",
+                    "현재상태": "자료 미첨부",
+                    "필요한확인내용": "국민연금 납부 자료 또는 안전한 요약 자료가 있으면 추가 확인해 주세요",
+                    "우선순위": "보통",
+                    "메모": "공식자료 요약값 / 사용자 입력",
+                },
+                {
+                    "항목번호": 8,
+                    "항목유형": "건보연금상태확인",
+                    "관련자료구분": "사용자 상태",
+                    "관련번호": "",
+                    "요약설명": "건강보험·국민연금 상태 추가 확인 필요",
+                    "현재상태": "미확인",
+                    "필요한확인내용": "현재 건강보험 상태와 국민연금 납부 여부를 다시 확인해 주세요",
+                    "우선순위": "보통",
+                    "메모": "사용자 입력 / 공식자료 요약",
+                },
+            ],
+        )
+        _, archive, filename = self._build_zip(nhis_snapshot, profile_code="nhis_pension_check")
+        root = "세무사전달패키지_건보연금점검용_2026-03_테스터"
+
+        self.assertEqual(filename, f"{root}.zip")
+        summary_wb = load_workbook(io.BytesIO(archive.read(f"{root}/00_패키지요약.xlsx")))
+        summary_ws = summary_wb["패키지요약"]
+        top_labels = [summary_ws.cell(row_idx, 1).value for row_idx in range(2, 11)]
+        rows = {
+            summary_ws.cell(row_idx, 1).value: summary_ws.cell(row_idx, 2).value
+            for row_idx in range(2, summary_ws.max_row + 1)
+        }
+
+        self.assertEqual(
+            top_labels[:9],
+            [
+                "사용자명",
+                "대상 기간",
+                "생성일시",
+                "검토 시작",
+                "1차 검토 흐름",
+                "건보·연금 상태",
+                "즉시 재확인 항목 수",
+                "공식자료 교차검증 상태",
+                "증빙 확인 필요",
+            ],
+        )
+        self.assertIn("09_건보_연금_요약.xlsx", str(rows["1차 검토 흐름"]))
+        self.assertIn("01_사업_상태_요약.xlsx", str(rows["1차 검토 흐름"]))
+
+        review_ws = load_workbook(io.BytesIO(archive.read(f"{root}/06_세무사_확인필요목록.xlsx")))["세무사_확인필요목록"]
+        review_headers = {cell.value: idx + 1 for idx, cell in enumerate(review_ws[1])}
+        ordered_types = [review_ws.cell(row_idx, review_headers["항목유형"]).value for row_idx in range(2, 7)]
+        self.assertEqual(
+            ordered_types[:5],
+            ["건보자료누락", "연금자료누락", "건보연금상태확인", "공식자료교차검증재확인", "공식자료재확인"],
+        )
 
     def test_source_labels_support_new_bank_sync_provider_shape(self) -> None:
         self.assertEqual(_source_labels("bank_sync", "popbill"), ("자동연동", "팝빌"))
