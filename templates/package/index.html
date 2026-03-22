@@ -82,14 +82,14 @@
 
       <div class="vmeta" style="margin-top:10px;">
         <span class="tag good">00_패키지요약.xlsx</span>
-        <span class="tag">01_사업_상태_요약.xlsx</span>
-        <span class="tag">03_거래원장.xlsx</span>
-        <span class="tag">04_증빙상태표.xlsx</span>
-        <span class="tag">05_원천징수_기납부세액_요약.xlsx</span>
         <span class="tag warn">06_세무사_확인필요목록.xlsx</span>
-        <span class="tag">07_첨부인덱스.xlsx</span>
+        <span class="tag">01_사업_상태_요약.xlsx</span>
+        <span class="tag">05_원천징수_기납부세액_요약.xlsx</span>
         <span class="tag">08_부가세_자료_요약.xlsx</span>
         <span class="tag">09_건보_연금_요약.xlsx</span>
+        <span class="tag">03_거래원장.xlsx</span>
+        <span class="tag">04_증빙상태표.xlsx</span>
+        <span class="tag">07_첨부인덱스.xlsx</span>
         <span class="tag">10_참고자료_요약.xlsx</span>
         <span class="tag">attachments/</span>
         <span class="tag">attachments/evidence/</span>
@@ -98,14 +98,15 @@
       <div class="panel" style="margin-top:12px;">
         <div class="panel-title">권장 흐름</div>
         <div class="panel-text">
-          1) 누락(필수)부터 1~3건만 처리<br>
-          2) ZIP을 내려받아 압축 해제<br>
-          3) 세무사 확인필요목록 → 패키지요약의 교차검증 v1 요약 → 사업 상태 요약 → 원천징수/기납부세액 → 부가세/건보·연금 요약 순서로 먼저 확인
+          1) ZIP을 내려받아 압축 해제<br>
+          2) 00_패키지요약.xlsx에서 검토 시작 / 핵심 재확인 상태 확인<br>
+          3) 06_세무사_확인필요목록.xlsx → 01_사업_상태_요약.xlsx → 05_원천징수/기납부세액 요약 순서로 확인<br>
+          4) 08_부가세 / 09_건보·연금 → 03_거래원장 / 04_증빙상태표 / 07_첨부인덱스 → 10_참고자료 순서로 상세 확인
         </div>
       </div>
 
       <div class="small-note muted2" style="margin-top:10px;">
-        공식자료와 참고자료는 원본 대신 목록/상태/요약값 중심으로 전달합니다. 교차검증 v1 결과는 비교 가능한 공식자료만 집계한 보조 정보이며, 자동 확정값이 아닙니다.
+        공식자료와 참고자료는 원본 대신 목록/상태/요약값 중심으로 전달합니다. 교차검증 v1 결과는 비교 가능한 공식자료만 집계한 보조 정보이며 자동 확정값이 아닙니다. ZIP을 푼 뒤 엑셀을 열면 상대경로 링크가 가장 안정적으로 동작합니다.
       </div>
 
       <div class="panel" style="margin-top:12px;">

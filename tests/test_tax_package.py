@@ -487,11 +487,33 @@ class TaxPackageServiceTest(unittest.TestCase):
         root = "세무사전달패키지_2026-03_테스터"
         summary_wb = load_workbook(io.BytesIO(archive.read(f"{root}/00_패키지요약.xlsx")))
         summary_ws = summary_wb["패키지요약"]
+        top_labels = [summary_ws.cell(row_idx, 1).value for row_idx in range(2, 12)]
         rows = {
             summary_ws.cell(row_idx, 1).value: summary_ws.cell(row_idx, 2).value
             for row_idx in range(2, summary_ws.max_row + 1)
         }
 
+        self.assertEqual(
+            top_labels[:8],
+            [
+                "사용자명",
+                "대상 기간",
+                "생성일시",
+                "검토 시작",
+                "1차 검토 흐름",
+                "즉시 재확인 항목 수",
+                "증빙 확인 필요",
+                "원천징수·기납부세액 상태",
+            ],
+        )
+        self.assertEqual(rows["검토 시작"], "00_패키지요약.xlsx → 06_세무사_확인필요목록.xlsx")
+        self.assertIn("05_원천징수_기납부세액_요약.xlsx", str(rows["1차 검토 흐름"]))
+        self.assertEqual(rows["즉시 재확인 항목 수"], 6)
+        self.assertEqual(rows["증빙 확인 필요"], "필수 0건 / 확인 1건")
+        self.assertEqual(rows["원천징수·기납부세액 상태"], "원천징수·기납부세액 자료 있음")
+        self.assertEqual(rows["부가세 상태"], "부가세 신고 자료 확인됨")
+        self.assertEqual(rows["건보·연금 상태"], "건보·연금 자료 있음")
+        self.assertEqual(rows["참고자료 검토 상태"], "재확인 필요 1건 / 총 2건")
         self.assertEqual(rows["교차검증 일치 문서 수"], 0)
         self.assertEqual(rows["교차검증 부분 일치 문서 수"], 0)
         self.assertEqual(rows["교차검증 재확인 필요 문서 수"], 0)
@@ -550,6 +572,10 @@ class TaxPackageServiceTest(unittest.TestCase):
         review_wb = load_workbook(io.BytesIO(archive.read(f"{root}/06_세무사_확인필요목록.xlsx")))
         review_ws = review_wb["세무사_확인필요목록"]
         review_headers = {cell.value: idx + 1 for idx, cell in enumerate(review_ws[1])}
+        self.assertEqual(
+            [cell.value for cell in review_ws[1][:7]],
+            ["항목번호", "우선확인순서", "우선순위", "요약설명", "현재상태", "필요한확인내용", "항목유형"],
+        )
         review_types = [review_ws.cell(row_idx, review_headers["항목유형"]).value for row_idx in range(2, review_ws.max_row + 1)]
         self.assertIn("공식자료재확인", review_types)
         self.assertIn("공식자료교차검증재확인", review_types)
@@ -558,6 +584,9 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertIn("건보자료누락", review_types)
         self.assertEqual(review_ws.cell(2, review_headers["우선확인순서"]).value, 1)
         self.assertEqual(review_ws.cell(2, review_headers["우선순위"]).value, "높음")
+        self.assertEqual(review_ws.cell(2, review_headers["항목유형"]).value, "거래검토")
+        self.assertEqual(review_ws.cell(3, review_headers["항목유형"]).value, "부가세자료누락")
+        self.assertEqual(review_ws.cell(4, review_headers["항목유형"]).value, "공식자료교차검증재확인")
         self.assertIn("세액 영향", str(review_ws.cell(2, review_headers["우선순위 기준"]).value))
         cross_validation_rows = [
             row_idx
@@ -669,6 +698,47 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertEqual(official_ws.cell(3, headers["교차검증 상태"]).value, "비교 불가")
         self.assertIn("비교 가능한 공식자료 범위가 아니어서", str(official_ws.cell(3, headers["교차검증 사유"]).value))
         self.assertEqual(official_ws.cell(3, headers["교차검증 재확인 필요"]).value, "아니오")
+
+    def test_reference_and_attachment_sheets_follow_review_friendly_order(self) -> None:
+        reordered_snapshot = replace(
+            self.snapshot_with_official,
+            reference_material_rows=list(reversed(self.snapshot_with_official.reference_material_rows)),
+        )
+        _, archive = self._build_zip(reordered_snapshot)
+        root = "세무사전달패키지_2026-03_테스터"
+
+        reference_wb = load_workbook(io.BytesIO(archive.read(f"{root}/10_참고자료_요약.xlsx")))
+        reference_ws = reference_wb["참고자료 요약"]
+        reference_headers = {cell.value: idx + 1 for idx, cell in enumerate(reference_ws[1])}
+        self.assertEqual(reference_ws.cell(2, reference_headers["연결 상태"]).value, "공식자료 요약과 차이 있음")
+        self.assertEqual(reference_ws.cell(3, reference_headers["연결 상태"]).value, "거래 합계와 대체로 일치")
+
+        attachment_wb = load_workbook(io.BytesIO(archive.read(f"{root}/07_첨부인덱스.xlsx")))
+        attachment_ws = attachment_wb["첨부인덱스"]
+        attachment_headers = {cell.value: idx + 1 for idx, cell in enumerate(attachment_ws[1])}
+        self.assertEqual(attachment_ws.cell(2, attachment_headers["패키지 포함 상태"]).value, "포함")
+        self.assertEqual(attachment_ws.cell(3, attachment_headers["패키지 포함 상태"]).value, "기본 제외")
+
+    def test_official_and_evidence_sheets_apply_review_friendly_sorting(self) -> None:
+        reordered_snapshot = replace(
+            self.snapshot_with_official,
+            official_documents=list(reversed(self.snapshot_with_official.official_documents)),
+            transactions=list(reversed(self.snapshot_with_official.transactions)),
+        )
+        _, archive = self._build_zip(reordered_snapshot)
+        root = "세무사전달패키지_2026-03_테스터"
+
+        summary_wb = load_workbook(io.BytesIO(archive.read(f"{root}/00_패키지요약.xlsx")))
+        official_ws = summary_wb["공식자료목록"]
+        official_headers = {cell.value: idx + 1 for idx, cell in enumerate(official_ws[1])}
+        self.assertEqual(official_ws.cell(2, official_headers["교차검증 상태"]).value, "불일치")
+        self.assertEqual(official_ws.cell(3, official_headers["교차검증 상태"]).value, "비교 불가")
+
+        evidence_wb = load_workbook(io.BytesIO(archive.read(f"{root}/04_증빙상태표.xlsx")))
+        linked_ws = evidence_wb["거래별대표첨부"]
+        linked_headers = {cell.value: idx + 1 for idx, cell in enumerate(linked_ws[1])}
+        self.assertEqual(linked_ws.cell(2, linked_headers["거래번호"]).value, 102)
+        self.assertEqual(linked_ws.cell(2, linked_headers["증빙상태"]).value, "확인 필요")
 
     def test_source_labels_support_new_bank_sync_provider_shape(self) -> None:
         self.assertEqual(_source_labels("bank_sync", "popbill"), ("자동연동", "팝빌"))

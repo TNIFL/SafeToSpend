@@ -257,6 +257,143 @@ def _official_cross_validation_counts(rows: list[dict[str, Any]]) -> dict[str, i
     return counts
 
 
+def _review_type_sort_order(item_type: str) -> int:
+    return {
+        "거래검토": 10,
+        "부가세자료누락": 20,
+        "부가세재확인": 21,
+        "원천징수자료누락": 30,
+        "기납부세액자료누락": 31,
+        "공식자료교차검증재확인": 40,
+        "공식자료재확인": 41,
+        "건보자료누락": 50,
+        "연금자료누락": 51,
+        "증빙누락": 60,
+        "증빙검토": 61,
+        "참고자료검토": 70,
+        "사용자상태확인": 80,
+        "건보연금상태확인": 81,
+    }.get(item_type, 999)
+
+
+def _review_related_no_sort_key(value: Any) -> tuple[int, Any]:
+    if value in (None, ""):
+        return (1, "")
+    try:
+        return (0, int(value))
+    except Exception:
+        return (0, str(value))
+
+
+def _review_item_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        int(row.get("우선확인순서") or 99),
+        _review_type_sort_order(str(row.get("항목유형", ""))),
+        _review_related_no_sort_key(row.get("관련번호")),
+        str(row.get("요약설명", "")),
+    )
+
+
+def _official_document_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    status_order = {
+        "불일치": 0,
+        "재확인 필요": 1,
+        "부분 일치": 2,
+        "비교 불가": 3,
+        "일치": 4,
+    }
+    read_order = {
+        "검토 필요": 0,
+        "읽기 실패": 1,
+        "미지원 형식": 2,
+        "반영 가능": 3,
+    }
+    return (
+        0 if row.get("교차검증 재확인 필요") == "예" or row.get("교차검증재확인필요여부") == "예" else 1,
+        status_order.get(str(row.get("교차검증 상태") or row.get("교차검증상태") or ""), 9),
+        0 if row.get("재확인필요여부") == "예" else 1,
+        read_order.get(str(row.get("읽기상태") or ""), 9),
+        str(row.get("문서종류") or ""),
+        str(row.get("기준일") or ""),
+        _review_related_no_sort_key(row.get("자료번호")),
+    )
+
+
+def _reference_material_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    status_order = {
+        "official_difference": 0,
+        "transaction_difference": 1,
+        "no_comparison": 2,
+        "reference_only": 3,
+        "official_match": 4,
+        "transaction_match": 5,
+    }
+    return (
+        0 if row.get("needs_review") == "예" else 1,
+        status_order.get(str(row.get("link_status_key") or ""), 9),
+        str(row.get("reported_period") or ""),
+        _review_related_no_sort_key(row.get("reference_material_id")),
+    )
+
+
+def _attachment_index_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    package_order = {"포함": 0, "기본 제외": 1}
+    sensitive_order = {"낮음": 0, "중간": 1, "높음": 2}
+    return (
+        package_order.get(str(row.get("package_status") or ""), 9),
+        sensitive_order.get(str(row.get("contains_sensitive_info") or ""), 9),
+        str(row.get("document_type") or ""),
+        _review_related_no_sort_key(row.get("related_transaction_id")),
+        str(row.get("display_file_name") or ""),
+    )
+
+
+def _evidence_linked_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    status_order = {
+        "필수 누락": 0,
+        "확인 필요": 1,
+        "첨부됨": 2,
+        "불필요": 3,
+    }
+    return (
+        status_order.get(str(row.get("증빙상태") or ""), 9),
+        _review_related_no_sort_key(row.get("거래번호")),
+    )
+
+
+def _withholding_overview_label(source: dict[str, Any]) -> str:
+    has_withholding = str(source.get("has_withholding_data", "") or "")
+    has_paid = str(source.get("has_paid_tax_data", "") or "")
+    other_income = str(source.get("other_income_flag", "") or "")
+    if has_withholding == "예" and has_paid == "예":
+        return "원천징수·기납부세액 자료 있음"
+    if other_income.startswith("예"):
+        return "원천징수·기납부세액 재확인 필요"
+    if has_withholding == "예" or has_paid == "예":
+        return "일부 자료 있음"
+    return "자료 미확인"
+
+
+def _vat_overview_label(source: dict[str, Any]) -> str:
+    if str(source.get("needs_review", "") or "") == "예":
+        return "부가세 재확인 필요"
+    if str(source.get("recent_vat_filing_status", "") or "") == "예":
+        return "부가세 신고 자료 확인됨"
+    if str(source.get("vat_status", "") or "") == "미확인":
+        return "과세 상태 미확인"
+    return "부가세 자료 확인 필요"
+
+
+def _nhis_pension_overview_label(source: dict[str, Any]) -> str:
+    if str(source.get("needs_review", "") or "") == "예":
+        return "건보·연금 재확인 필요"
+    if str(source.get("has_nhis_data", "") or "") == "예" and str(source.get("has_pension_data", "") or "") == "예":
+        return "건보·연금 자료 있음"
+    if str(source.get("health_insurance_status", "") or "") == "미확인":
+        return "건강보험 상태 미확인"
+    return "건보·연금 자료 확인 필요"
+
+
 def _label_or_unconfirmed(value: str | None) -> str:
     return (value or "").strip() or "미확인"
 
@@ -954,7 +1091,7 @@ def _finalize_review_items(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         enriched["우선순위기준"] = priority_reason
         normalized.append(enriched)
 
-    normalized.sort(key=lambda item: (item.get("우선확인순서", 99), item.get("_original_order", 0)))
+    normalized.sort(key=lambda item: (_review_item_sort_key(item), item.get("_original_order", 0)))
     for idx, row in enumerate(normalized, start=1):
         row["항목번호"] = idx
         row.pop("_original_order", None)
@@ -1804,7 +1941,11 @@ def _workbook_bytes(builder) -> bytes:
 def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
     stats = snapshot.stats
     reference_count = len([row for row in snapshot.reference_material_rows if row.get("reference_material_id")])
+    reference_review_count = len([row for row in snapshot.reference_material_rows if row.get("needs_review") == "예"])
     cross_validation_counts = _official_cross_validation_counts(snapshot.official_documents)
+    withholding_row = (snapshot.withholding_summary_rows or [{}])[0]
+    vat_row = (snapshot.vat_summary_rows or [{}])[0]
+    nhis_row = (snapshot.nhis_pension_summary_rows or [{}])[0]
 
     def build() -> Workbook:
         wb = Workbook()
@@ -1814,6 +1955,20 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
             {"항목명": "사용자명", "값": snapshot.display_name},
             {"항목명": "대상 기간", "값": f"{stats.period_start_kst} ~ {stats.period_end_kst}"},
             {"항목명": "생성일시", "값": stats.generated_at_kst},
+            {"항목명": "검토 시작", "값": "00_패키지요약.xlsx → 06_세무사_확인필요목록.xlsx"},
+            {"항목명": "1차 검토 흐름", "값": "01_사업_상태_요약.xlsx → 05_원천징수_기납부세액_요약.xlsx → 08_부가세_자료_요약.xlsx → 09_건보_연금_요약.xlsx"},
+            {"항목명": "즉시 재확인 항목 수", "값": stats.review_needed_count},
+            {"항목명": "증빙 확인 필요", "값": f"필수 {stats.evidence_missing_required_count}건 / 확인 {stats.evidence_missing_maybe_count}건"},
+            {"항목명": "원천징수·기납부세액 상태", "값": _withholding_overview_label(withholding_row)},
+            {"항목명": "부가세 상태", "값": _vat_overview_label(vat_row)},
+            {"항목명": "건보·연금 상태", "값": _nhis_pension_overview_label(nhis_row)},
+            {"항목명": "참고자료 검토 상태", "값": f"재확인 필요 {reference_review_count}건 / 총 {reference_count}건"},
+            {"항목명": "교차검증 안내", "값": "교차검증 v1 기준 / 비교 가능한 공식자료만 상세 비교하고 나머지는 비교 불가로 집계했습니다."},
+            {"항목명": "교차검증 일치 문서 수", "값": cross_validation_counts["일치"]},
+            {"항목명": "교차검증 부분 일치 문서 수", "값": cross_validation_counts["부분 일치"]},
+            {"항목명": "교차검증 재확인 필요 문서 수", "값": cross_validation_counts["재확인 필요"]},
+            {"항목명": "교차검증 불일치 문서 수", "값": cross_validation_counts["불일치"]},
+            {"항목명": "교차검증 비교 불가 문서 수", "값": cross_validation_counts["비교 불가"]},
             {"항목명": "총 거래 수", "값": stats.tx_total},
             {"항목명": "총 수입", "값": stats.sum_in_total},
             {"항목명": "총 지출", "값": stats.sum_out_total},
@@ -1823,13 +1978,6 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
             {"항목명": "참고자료 수", "값": reference_count},
             {"항목명": "읽기 가능한 공식자료 수", "값": stats.official_data_parsed_count},
             {"항목명": "검토 필요 공식자료 수", "값": stats.official_data_review_count},
-            {"항목명": "교차검증 일치 문서 수", "값": cross_validation_counts["일치"]},
-            {"항목명": "교차검증 부분 일치 문서 수", "값": cross_validation_counts["부분 일치"]},
-            {"항목명": "교차검증 재확인 필요 문서 수", "값": cross_validation_counts["재확인 필요"]},
-            {"항목명": "교차검증 불일치 문서 수", "값": cross_validation_counts["불일치"]},
-            {"항목명": "교차검증 비교 불가 문서 수", "값": cross_validation_counts["비교 불가"]},
-            {"항목명": "확인 필요 항목 수", "값": stats.review_needed_count},
-            {"항목명": "교차검증 안내", "값": "교차검증 v1 기준 / 비교 가능한 공식자료만 상세 비교하고 나머지는 비교 불가로 집계했습니다."},
             {"항목명": "참고", "값": "공식자료/참고자료 원본은 기본 패키지에 포함하지 않고 요약값 중심으로 전달합니다."},
         ]
         _write_table_sheet(ws, ["항목명", "값"], summary_rows)
@@ -2053,6 +2201,13 @@ def _build_evidence_workbook(snapshot: PackageSnapshot) -> bytes:
                     "메모": evidence.get("메모", ""),
                 }
             )
+        evidence_rows.sort(
+            key=lambda row: (
+                0 if row.get("재확인필요여부") == "예" else 1,
+                0 if row.get("신뢰구분") == "재확인필요" else 1,
+                _review_related_no_sort_key(row.get("연결거래번호")),
+            )
+        )
         _write_table_sheet(
             ws,
             ["증빙번호", "연결거래번호", "증빙종류", "파일명", "첨부열기", "저장위치", "업로드일시", "신뢰구분", "계산반영여부", "재확인필요여부", "메모"],
@@ -2074,6 +2229,7 @@ def _build_evidence_workbook(snapshot: PackageSnapshot) -> bytes:
                     "첨부열기": ("열기", tx.get("evidence_zip_path")) if tx.get("evidence_zip_path") else "",
                 }
             )
+        linked_rows.sort(key=_evidence_linked_sort_key)
         _write_table_sheet(
             ws2,
             ["거래번호", "거래일시", "거래처", "금액", "증빙상태", "대표증빙종류", "증빙개수", "첨부열기"],
@@ -2121,9 +2277,10 @@ def _build_review_workbook(snapshot: PackageSnapshot) -> bytes:
                     "메모": row.get("메모", ""),
                 }
             )
+        prioritized_rows.sort(key=_review_item_sort_key)
         _write_table_sheet(
             ws,
-            ["항목번호", "우선확인순서", "우선순위", "우선순위 기준", "항목유형", "관련자료구분", "관련번호", "요약설명", "현재상태", "필요한확인내용", "메모"],
+            ["항목번호", "우선확인순서", "우선순위", "요약설명", "현재상태", "필요한확인내용", "항목유형", "관련자료구분", "관련번호", "우선순위 기준", "메모"],
             prioritized_rows,
         )
 
@@ -2323,7 +2480,8 @@ def _build_reference_material_workbook(snapshot: PackageSnapshot) -> bytes:
         ws.title = "참고자료 요약"
         rows = []
         if snapshot.reference_material_rows:
-            for row in snapshot.reference_material_rows:
+            sorted_rows = sorted(snapshot.reference_material_rows, key=_reference_material_sort_key)
+            for row in sorted_rows:
                 rows.append(
                     {
                         "참고자료 번호": row.get("reference_material_id", ""),
@@ -2374,7 +2532,7 @@ def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot) -> Non
 
     official_rows = []
     if snapshot.official_documents:
-        for row in snapshot.official_documents:
+        for row in sorted(snapshot.official_documents, key=_official_document_sort_key):
             official_rows.append(
                 {
                     "자료번호": row.get("자료번호", ""),
@@ -2470,6 +2628,14 @@ def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot) -> Non
                 bucket["교차검증 비교 불가 건수"] += 1
         for key, bucket in sorted(buckets.items()):
             summary_rows.append({"문서종류": key, **bucket})
+        summary_rows.sort(
+            key=lambda row: (
+                -int(row.get("교차검증 불일치 건수", 0) or 0),
+                -int(row.get("교차검증 재확인 필요 건수", 0) or 0),
+                -int(row.get("검토 필요 건수", 0) or 0),
+                str(row.get("문서종류", "")),
+            )
+        )
     else:
         summary_rows.append(
             {
@@ -2584,7 +2750,7 @@ def _build_attachment_index_workbook(snapshot: PackageSnapshot) -> bytes:
         ws = wb.active
         ws.title = "첨부인덱스"
         rows = []
-        for row in _build_attachment_index_rows(snapshot):
+        for row in sorted(_build_attachment_index_rows(snapshot), key=_attachment_index_sort_key):
             rows.append(
                 {
                     "첨부 인덱스 키": row.get("attachment_index_key", ""),
@@ -2632,12 +2798,14 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "- attachments/evidence/ : 현재 연결된 대표 증빙 파일",
         "",
         "[권장 읽는 순서]",
-        "- 1) 06_세무사_확인필요목록.xlsx",
-        "- 2) 01_사업_상태_요약.xlsx",
-        "- 3) 05_원천징수_기납부세액_요약.xlsx",
-        "- 4) 08_부가세_자료_요약.xlsx / 09_건보_연금_요약.xlsx",
-        "- 5) 03_거래원장.xlsx / 04_증빙상태표.xlsx",
-        "- 6) 10_참고자료_요약.xlsx",
+        "- 1) 00_패키지요약.xlsx : 검토 시작 / 핵심 상태 / 공식자료 교차검증 요약 확인",
+        "- 2) 06_세무사_확인필요목록.xlsx : 우선확인순서 기준으로 먼저 연락할 항목 확인",
+        "- 3) 01_사업_상태_요약.xlsx : 상태값과 출처/확인 수준 확인",
+        "- 4) 05_원천징수_기납부세액_요약.xlsx : 누락 여부와 합계 기준 확인",
+        "- 5) 08_부가세_자료_요약.xlsx / 09_건보_연금_요약.xlsx : 해당 월 추가 요청 포인트 확인",
+        "- 6) 03_거래원장.xlsx / 04_증빙상태표.xlsx / 07_첨부인덱스.xlsx : 거래·증빙·첨부 순서로 상세 확인",
+        "- 7) 10_참고자료_요약.xlsx : 보조 설명과 차이 설명 마지막 확인",
+        "- 8) 00_패키지요약.xlsx 내부 공식자료 시트 : 공식자료 목록/상태/핵심값 최종 확인",
         "",
         "[현재 포함되는 자료 범위]",
         "- 수동입력 거래",
@@ -2669,6 +2837,7 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "- 사업 상태 요약의 사용자 입력값은 세무사 확인 전까지 참고용으로 봐 주세요.",
         "- 공식자료의 검증상태가 '검증 미실시'이면 세무사 확인이 필요합니다.",
         "- ZIP 내부 링크는 압축을 푼 뒤 여는 방식이 가장 안정적입니다.",
+        "- 엑셀 링크가 열리지 않으면 07_첨부인덱스.xlsx의 상대경로를 기준으로 파일 위치를 먼저 확인해 주세요.",
     ]
     return "\n".join(lines) + "\n"
 
