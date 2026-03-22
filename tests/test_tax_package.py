@@ -219,9 +219,9 @@ class TaxPackageServiceTest(unittest.TestCase):
 
         official_stats = replace(
             stats,
-            review_needed_count=3,
-            official_data_total=1,
-            official_data_parsed_count=1,
+            review_needed_count=6,
+            official_data_total=2,
+            official_data_parsed_count=2,
             official_data_review_count=0,
             official_data_unsupported_count=0,
             official_data_failed_count=0,
@@ -251,6 +251,17 @@ class TaxPackageServiceTest(unittest.TestCase):
                 },
                 {
                     "항목번호": 3,
+                    "항목유형": "공식자료교차검증재확인",
+                    "관련자료구분": "공식자료",
+                    "관련번호": 7001,
+                    "요약설명": "공식자료 교차검증 차이 확인 필요",
+                    "현재상태": "비교 가능한 거래와 차이 있음",
+                    "필요한확인내용": "공식자료 요약과 비교 가능한 거래 사이에 차이가 있어 세무사 재확인이 필요합니다.",
+                    "우선순위": "보통",
+                    "메모": "홈택스 납부내역 / 같은 성격의 거래 1건이 있지만 금액 또는 날짜가 다릅니다.",
+                },
+                {
+                    "항목번호": 4,
                     "항목유형": "참고자료검토",
                     "관련자료구분": "참고자료",
                     "관련번호": 8101,
@@ -261,7 +272,7 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "메모": "수입 구조 메모",
                 },
                 {
-                    "항목번호": 4,
+                    "항목번호": 5,
                     "항목유형": "부가세자료누락",
                     "관련자료구분": "공식자료",
                     "관련번호": "",
@@ -272,7 +283,7 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "메모": "공식자료 요약값 / 사용자 입력",
                 },
                 {
-                    "항목번호": 5,
+                    "항목번호": 6,
                     "항목유형": "건보자료누락",
                     "관련자료구분": "공식자료",
                     "관련번호": "",
@@ -295,15 +306,44 @@ class TaxPackageServiceTest(unittest.TestCase):
                     "구조확인": "구조 확인됨",
                     "신뢰등급": "구조 확인됨 (B)",
                     "핵심값요약": "기준일: 2026-03-10 / 납부세액 합계: 150,000원",
+                    "교차검증상태": "불일치",
+                    "교차검증사유": "같은 성격의 거래 1건이 있지만 금액 또는 날짜가 다릅니다.",
+                    "교차검증재확인필요여부": "예",
                     "목록반영여부": "예",
                     "원본첨부여부": "아니오",
                     "재확인필요여부": "예",
                     "메모": "검증 미실시 / 원본 파일은 기본 패키지에 포함하지 않습니다",
+                    "_cross_validation_status_key": "mismatch",
                     "_attachment_index_key": "official-7001",
                     "_period_basis": "2026-03-10",
                     "_summary_items": [
                         {"label": "기준일", "value": "2026-03-10"},
                         {"label": "납부세액 합계", "value": "150,000원"},
+                    ],
+                },
+                {
+                    "자료번호": 7002,
+                    "기관명": "국민건강보험공단",
+                    "문서종류": "건강보험 자격 관련 문서",
+                    "기준일": "2026-03-11",
+                    "원본파일명": "nhis_eligibility.pdf",
+                    "읽기상태": "반영 가능",
+                    "검증상태": "검증 미실시",
+                    "구조확인": "구조 확인됨",
+                    "신뢰등급": "구조 확인됨 (B)",
+                    "핵심값요약": "기준일: 2026-03-11",
+                    "교차검증상태": "비교 불가",
+                    "교차검증사유": "비교 가능한 공식자료 범위가 아니어서 교차검증 v1 비교를 하지 않았습니다.",
+                    "교차검증재확인필요여부": "아니오",
+                    "목록반영여부": "예",
+                    "원본첨부여부": "아니오",
+                    "재확인필요여부": "아니오",
+                    "메모": "원본 파일은 기본 패키지에 포함하지 않습니다",
+                    "_cross_validation_status_key": "reference_only",
+                    "_attachment_index_key": "official-7002",
+                    "_period_basis": "2026-03-11",
+                    "_summary_items": [
+                        {"label": "기준일", "value": "2026-03-11"},
                     ],
                 }
             ],
@@ -439,6 +479,26 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertIn("attachments/evidence/", guide)
         self.assertIn("거래당 대표 증빙 1개 기준", guide)
         self.assertIn("검증상태가 '검증 미실시'", guide)
+        self.assertIn("교차검증 v1", guide)
+        self.assertIn("비교 가능한 공식자료만", guide)
+
+    def test_summary_workbook_includes_cross_validation_counts_and_note(self) -> None:
+        _, archive = self._build_zip(self.snapshot_with_official)
+        root = "세무사전달패키지_2026-03_테스터"
+        summary_wb = load_workbook(io.BytesIO(archive.read(f"{root}/00_패키지요약.xlsx")))
+        summary_ws = summary_wb["패키지요약"]
+        rows = {
+            summary_ws.cell(row_idx, 1).value: summary_ws.cell(row_idx, 2).value
+            for row_idx in range(2, summary_ws.max_row + 1)
+        }
+
+        self.assertEqual(rows["교차검증 일치 문서 수"], 0)
+        self.assertEqual(rows["교차검증 부분 일치 문서 수"], 0)
+        self.assertEqual(rows["교차검증 재확인 필요 문서 수"], 0)
+        self.assertEqual(rows["교차검증 불일치 문서 수"], 1)
+        self.assertEqual(rows["교차검증 비교 불가 문서 수"], 1)
+        self.assertIn("교차검증 v1 기준", str(rows["교차검증 안내"]))
+        self.assertIn("비교 가능한 공식자료만", str(rows["교차검증 안내"]))
 
     def test_business_status_and_withholding_workbooks_are_added(self) -> None:
         _, archive = self._build_zip()
@@ -492,12 +552,22 @@ class TaxPackageServiceTest(unittest.TestCase):
         review_headers = {cell.value: idx + 1 for idx, cell in enumerate(review_ws[1])}
         review_types = [review_ws.cell(row_idx, review_headers["항목유형"]).value for row_idx in range(2, review_ws.max_row + 1)]
         self.assertIn("공식자료재확인", review_types)
+        self.assertIn("공식자료교차검증재확인", review_types)
         self.assertIn("참고자료검토", review_types)
         self.assertIn("부가세자료누락", review_types)
         self.assertIn("건보자료누락", review_types)
         self.assertEqual(review_ws.cell(2, review_headers["우선확인순서"]).value, 1)
         self.assertEqual(review_ws.cell(2, review_headers["우선순위"]).value, "높음")
         self.assertIn("세액 영향", str(review_ws.cell(2, review_headers["우선순위 기준"]).value))
+        cross_validation_rows = [
+            row_idx
+            for row_idx in range(2, review_ws.max_row + 1)
+            if review_ws.cell(row_idx, review_headers["항목유형"]).value == "공식자료교차검증재확인"
+        ]
+        self.assertEqual(len(cross_validation_rows), 1)
+        cross_validation_row = cross_validation_rows[0]
+        self.assertEqual(review_ws.cell(cross_validation_row, review_headers["관련번호"]).value, 7001)
+        self.assertEqual(review_ws.cell(cross_validation_row, review_headers["현재상태"]).value, "비교 가능한 거래와 차이 있음")
 
     def test_workbooks_include_relative_evidence_hyperlinks(self) -> None:
         _, archive = self._build_zip()
@@ -553,8 +623,17 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertEqual(nhis_ws.cell(2, nhis_headers["국민연금 납부 자료 있음"]).value, "예")
 
         summary_ws = official_wb["공식자료상태요약"]
-        self.assertEqual(summary_ws["A2"].value, "홈택스 납부내역")
-        self.assertEqual(summary_ws["C2"].value, 1)
+        summary_headers = {cell.value: idx + 1 for idx, cell in enumerate(summary_ws[1])}
+        summary_rows = {
+            summary_ws.cell(row_idx, summary_headers["문서종류"]).value: {
+                header: summary_ws.cell(row_idx, col_idx).value
+                for header, col_idx in summary_headers.items()
+            }
+            for row_idx in range(2, summary_ws.max_row + 1)
+        }
+        self.assertEqual(summary_rows["홈택스 납부내역"]["읽기 가능 건수"], 1)
+        self.assertEqual(summary_rows["홈택스 납부내역"]["교차검증 불일치 건수"], 1)
+        self.assertEqual(summary_rows["건강보험 자격 관련 문서"]["교차검증 비교 불가 건수"], 1)
 
         key_ws = official_wb["공식자료핵심값"]
         self.assertEqual(key_ws["A2"].value, 7001)
@@ -574,6 +653,22 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertEqual(official_attachment["패키지 포함 상태"], "기본 제외")
         self.assertEqual(official_attachment["상대경로"] or "", "")
         self.assertEqual(reference_attachment["패키지 포함 상태"], "기본 제외")
+
+    def test_official_data_sheet_includes_cross_validation_status_reason_and_non_comparable_handling(self) -> None:
+        _, archive = self._build_zip(self.snapshot_with_official)
+        root = "세무사전달패키지_2026-03_테스터"
+
+        official_wb = load_workbook(io.BytesIO(archive.read(f"{root}/00_패키지요약.xlsx")))
+        official_ws = official_wb["공식자료목록"]
+        headers = {cell.value: idx + 1 for idx, cell in enumerate(official_ws[1])}
+
+        self.assertEqual(official_ws.cell(2, headers["교차검증 상태"]).value, "불일치")
+        self.assertIn("같은 성격의 거래", str(official_ws.cell(2, headers["교차검증 사유"]).value))
+        self.assertEqual(official_ws.cell(2, headers["교차검증 재확인 필요"]).value, "예")
+
+        self.assertEqual(official_ws.cell(3, headers["교차검증 상태"]).value, "비교 불가")
+        self.assertIn("비교 가능한 공식자료 범위가 아니어서", str(official_ws.cell(3, headers["교차검증 사유"]).value))
+        self.assertEqual(official_ws.cell(3, headers["교차검증 재확인 필요"]).value, "아니오")
 
     def test_source_labels_support_new_bank_sync_provider_shape(self) -> None:
         self.assertEqual(_source_labels("bank_sync", "popbill"), ("자동연동", "팝빌"))
@@ -708,3 +803,52 @@ class TaxPackageServiceTest(unittest.TestCase):
         self.assertEqual(by_id[8102]["요약설명"], "참고자료 비교 기준 확인 필요")
         self.assertEqual(by_id[8102]["현재상태"], "비교 기준 없음")
         self.assertIn("연간 기준 참고자료", str(by_id[8102]["메모"]))
+
+    def test_extend_review_items_adds_official_cross_validation_review_rows_conservatively(self) -> None:
+        review_items = _extend_review_items(
+            review_items=[],
+            official_documents=[
+                {
+                    "자료번호": 7001,
+                    "문서종류": "홈택스 납부내역",
+                    "교차검증재확인필요여부": "예",
+                    "교차검증사유": "같은 성격의 거래 1건이 있지만 금액 또는 날짜가 다릅니다.",
+                    "_cross_validation_status_key": "mismatch",
+                    "재확인필요여부": "아니오",
+                },
+                {
+                    "자료번호": 7002,
+                    "문서종류": "건강보험 납부확인서",
+                    "교차검증재확인필요여부": "예",
+                    "교차검증사유": "비교 가능한 거래나 참고자료가 부족해 재확인이 필요합니다.",
+                    "_cross_validation_status_key": "review_needed",
+                    "재확인필요여부": "아니오",
+                },
+                {
+                    "자료번호": 7003,
+                    "문서종류": "건강보험 자격 관련 문서",
+                    "교차검증재확인필요여부": "아니오",
+                    "교차검증사유": "비교 가능한 공식자료 범위가 아니어서 교차검증 v1 비교를 하지 않았습니다.",
+                    "_cross_validation_status_key": "reference_only",
+                    "재확인필요여부": "아니오",
+                },
+            ],
+            business_status_rows=[
+                {
+                    "user_type": "프리랜서(3.3)",
+                    "health_insurance_status": "지역가입자",
+                    "vat_status": "과세사업자/부가세 대상이에요",
+                }
+            ],
+            withholding_summary_rows=[],
+            vat_summary_rows=[],
+            nhis_pension_summary_rows=[],
+            reference_material_rows=[],
+        )
+        cross_validation_rows = [row for row in review_items if row["항목유형"] == "공식자료교차검증재확인"]
+        self.assertEqual(len(cross_validation_rows), 2)
+        by_id = {row["관련번호"]: row for row in cross_validation_rows}
+        self.assertEqual(by_id[7001]["현재상태"], "비교 가능한 거래와 차이 있음")
+        self.assertEqual(by_id[7001]["우선확인순서"], 3)
+        self.assertEqual(by_id[7002]["현재상태"], "비교 가능한 거래 없음")
+        self.assertNotIn(7003, by_id)

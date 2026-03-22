@@ -33,6 +33,10 @@ from services.onboarding import build_onboarding_reflection
 from services.official_data_upload import official_data_document_to_view_model
 from services.evidence_vault import resolve_file_path
 from services.reference_material_upload import reference_material_to_view_model
+from services.cross_validation import (
+    build_cross_validation_context,
+    build_official_document_cross_validation,
+)
 from services.transaction_origin import (
     get_transaction_provider_label,
     get_transaction_source_label,
@@ -47,7 +51,7 @@ GOOD_FILL = PatternFill("solid", fgColor="E7F5EA")
 WARN_FILL = PatternFill("solid", fgColor="FFF4E5")
 BAD_FILL = PatternFill("solid", fgColor="FDECEC")
 TOP_ALIGN = Alignment(vertical="top", wrap_text=True)
-PACKAGE_VERSION = "세무사 패키지 v2 3차"
+PACKAGE_VERSION = "세무사 패키지 v2 4차"
 EVIDENCE_ATTACHMENTS_DIR = "attachments/evidence"
 
 
@@ -204,6 +208,53 @@ def _official_summary_text(view: dict[str, Any]) -> str:
         if label and value:
             parts.append(f"{label}: {value}")
     return " / ".join(parts)
+
+
+def _package_cross_validation_status_label(status: str | None) -> str:
+    normalized = (status or "").strip()
+    return {
+        "match": "일치",
+        "partial_match": "부분 일치",
+        "review_needed": "재확인 필요",
+        "mismatch": "불일치",
+        "reference_only": "비교 불가",
+    }.get(normalized, "비교 불가")
+
+
+def _package_cross_validation_reason(status: str | None, reason: str | None) -> str:
+    normalized = (status or "").strip()
+    text = (reason or "").strip()
+    if normalized == "reference_only":
+        return "비교 가능한 공식자료 범위가 아니어서 교차검증 v1 비교를 하지 않았습니다."
+    if normalized == "mismatch":
+        return text or "비교 가능한 거래와 차이가 있어 세무사 재확인이 필요합니다."
+    if normalized == "review_needed":
+        return text or "비교 기준이 부족해 세무사 재확인이 필요합니다."
+    if normalized == "partial_match":
+        return text or "일부 기준만 맞아 보조 확인이 필요할 수 있습니다."
+    if normalized == "match":
+        return text or "비교 가능한 거래 기준에서 대체로 일치했습니다."
+    return text or "비교 기준이 부족해 세무사 재확인이 필요합니다."
+
+
+def _package_cross_validation_recheck_label(status: str | None) -> str:
+    return "예" if (status or "").strip() in {"review_needed", "mismatch"} else "아니오"
+
+
+def _official_cross_validation_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {
+        "일치": 0,
+        "부분 일치": 0,
+        "재확인 필요": 0,
+        "불일치": 0,
+        "비교 불가": 0,
+    }
+    for row in rows:
+        label = str(row.get("교차검증상태") or "비교 불가").strip() or "비교 불가"
+        if label not in counts:
+            label = "비교 불가"
+        counts[label] += 1
+    return counts
 
 
 def _label_or_unconfirmed(value: str | None) -> str:
@@ -841,12 +892,47 @@ def _append_review_item(rows: list[dict[str, Any]], *, item_type: str, related_k
     )
 
 
+def _cross_validation_review_profile(row: dict[str, Any]) -> tuple[str, str, str, str] | None:
+    status_key = str(row.get("_cross_validation_status_key", "") or "").strip()
+    reason = str(row.get("교차검증사유", "") or "").strip()
+    if status_key == "mismatch":
+        return (
+            "공식자료 교차검증 차이 확인 필요",
+            "비교 가능한 거래와 차이 있음",
+            "공식자료 요약과 비교 가능한 거래 사이에 차이가 있어 세무사 재확인이 필요합니다.",
+            reason,
+        )
+    if status_key != "review_needed":
+        return None
+
+    if "비교 가능한 거래나 참고자료가 부족" in reason:
+        return (
+            "공식자료 교차검증 대상 확인 필요",
+            "비교 가능한 거래 없음",
+            "비교 가능한 거래가 부족해 교차검증 v1 기준으로는 세무사 재확인이 필요합니다.",
+            reason,
+        )
+    if "금액 또는 날짜가 부족" in reason:
+        return (
+            "공식자료 교차검증 기준 확인 필요",
+            "비교 기준 부족",
+            "비교에 필요한 금액 또는 날짜가 부족해 교차검증 v1 기준으로는 세무사 재확인이 필요합니다.",
+            reason,
+        )
+    return (
+        "공식자료 교차검증 재확인 필요",
+        "재확인 필요",
+        "교차검증 v1 기준으로 세무사 재확인이 필요합니다.",
+        reason,
+    )
+
+
 def _review_priority_profile(item_type: str) -> tuple[int, str, str]:
     if item_type in {"거래검토", "부가세자료누락", "부가세재확인"}:
         return 1, "높음", "신고 누락 또는 세액 영향이 큰 항목"
     if item_type in {"원천징수자료누락", "기납부세액자료누락"}:
         return 2, "높음", "원천징수·기납부세액 자료 누락"
-    if item_type in {"공식자료재확인", "건보자료누락", "연금자료누락"}:
+    if item_type in {"공식자료재확인", "공식자료교차검증재확인", "건보자료누락", "연금자료누락"}:
         return 3, "중간", "공식자료 재확인 또는 건보·연금 자료 확인 필요"
     if item_type in {"증빙누락", "증빙검토"}:
         return 4, "중간", "증빙 누락 또는 증빙 불충분 검토"
@@ -901,6 +987,25 @@ def _extend_review_items(
             needed="공식자료 요약값과 원본 기준이 맞는지 다시 확인해 주세요",
             priority=priority,
             note=row.get("메모", ""),
+        )
+
+    for row in official_documents:
+        if row.get("교차검증재확인필요여부") != "예":
+            continue
+        review_profile = _cross_validation_review_profile(row)
+        if not review_profile:
+            continue
+        summary, status, needed, note = review_profile
+        _append_review_item(
+            rows,
+            item_type="공식자료교차검증재확인",
+            related_kind="공식자료",
+            related_no=row.get("자료번호", ""),
+            summary=summary,
+            status=status,
+            needed=needed,
+            priority="보통",
+            note=f"{row.get('문서종류', '')} / {note}".strip(" /"),
         )
 
     business_row = business_status_rows[0] if business_status_rows else {}
@@ -1466,9 +1571,20 @@ def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
     official_review_count = 0
     official_unsupported_count = 0
     official_failed_count = 0
+    cross_validation_context = build_cross_validation_context(user_pk=user_pk)
 
     for document in official_docs:
         view = official_data_document_to_view_model(document)
+        cross_validation = build_official_document_cross_validation(
+            document=document,
+            context=cross_validation_context,
+        )
+        cross_validation_status_key = str(cross_validation.get("status") or "").strip()
+        cross_validation_status_label = _package_cross_validation_status_label(cross_validation_status_key)
+        cross_validation_reason = _package_cross_validation_reason(
+            cross_validation_status_key,
+            str(cross_validation.get("reason") or ""),
+        )
 
         if document.parse_status == "parsed":
             official_parsed_count += 1
@@ -1492,12 +1608,16 @@ def _collect_package_snapshot(user_pk: int, month_key: str) -> PackageSnapshot:
                 "구조확인": view.get("structure_validation_label", "구조 미확인"),
                 "신뢰등급": _official_trust_label(view, document),
                 "핵심값요약": _official_summary_text(view),
+                "교차검증상태": cross_validation_status_label,
+                "교차검증사유": cross_validation_reason,
+                "교차검증재확인필요여부": _package_cross_validation_recheck_label(cross_validation_status_key),
                 "목록반영여부": "예",
                 "재확인필요여부": _official_recheck_label(document),
                 "메모": _official_note(view, document),
                 "_summary_items": view.get("summary_items") or [],
                 "_document_type_label": view.get("document_type_label", "문서 판별 전"),
                 "_parse_status": document.parse_status,
+                "_cross_validation_status_key": cross_validation_status_key,
                 "_attachment_index_key": f"official-{int(document.id)}",
                 "_period_basis": view.get("reference_date", "확인 전"),
             }
@@ -1640,10 +1760,11 @@ def _style_table_sheet(ws, headers: list[str], rows: list[dict[str, Any]]) -> No
         if any(keyword in header for keyword in status_keywords):
             for cell in ws[column][1:]:
                 value = str(cell.value or "")
-                if value in {"반영됨", "첨부됨", "예", "반영 가능", "포함", "확인됨", "공식자료 요약과 대체로 일치", "거래 합계와 대체로 일치", "자료 있음"}:
+                if value in {"반영됨", "첨부됨", "예", "반영 가능", "포함", "확인됨", "일치", "공식자료 요약과 대체로 일치", "거래 합계와 대체로 일치", "자료 있음"}:
                     cell.fill = GOOD_FILL
                 elif value in {
                     "재확인필요",
+                    "재확인 필요",
                     "검토 필요",
                     "보류",
                     "확인 필요",
@@ -1651,6 +1772,8 @@ def _style_table_sheet(ws, headers: list[str], rows: list[dict[str, Any]]) -> No
                     "자료 없음",
                     "미확인",
                     "참고용",
+                    "부분 일치",
+                    "비교 불가",
                     "비교 기준 없음",
                     "공식자료 요약과 차이 있음",
                     "거래 합계와 차이 있음",
@@ -1658,7 +1781,7 @@ def _style_table_sheet(ws, headers: list[str], rows: list[dict[str, Any]]) -> No
                     "낮음",
                 }:
                     cell.fill = WARN_FILL
-                elif value in {"필수 누락", "아니오", "미지원 형식", "읽기 실패", "높음"}:
+                elif value in {"필수 누락", "아니오", "미지원 형식", "읽기 실패", "불일치", "높음"}:
                     cell.fill = BAD_FILL
 
     ws.sheet_view.showGridLines = True
@@ -1681,6 +1804,7 @@ def _workbook_bytes(builder) -> bytes:
 def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
     stats = snapshot.stats
     reference_count = len([row for row in snapshot.reference_material_rows if row.get("reference_material_id")])
+    cross_validation_counts = _official_cross_validation_counts(snapshot.official_documents)
 
     def build() -> Workbook:
         wb = Workbook()
@@ -1699,7 +1823,13 @@ def _build_summary_workbook(snapshot: PackageSnapshot) -> bytes:
             {"항목명": "참고자료 수", "값": reference_count},
             {"항목명": "읽기 가능한 공식자료 수", "값": stats.official_data_parsed_count},
             {"항목명": "검토 필요 공식자료 수", "값": stats.official_data_review_count},
+            {"항목명": "교차검증 일치 문서 수", "값": cross_validation_counts["일치"]},
+            {"항목명": "교차검증 부분 일치 문서 수", "값": cross_validation_counts["부분 일치"]},
+            {"항목명": "교차검증 재확인 필요 문서 수", "값": cross_validation_counts["재확인 필요"]},
+            {"항목명": "교차검증 불일치 문서 수", "값": cross_validation_counts["불일치"]},
+            {"항목명": "교차검증 비교 불가 문서 수", "값": cross_validation_counts["비교 불가"]},
             {"항목명": "확인 필요 항목 수", "값": stats.review_needed_count},
+            {"항목명": "교차검증 안내", "값": "교차검증 v1 기준 / 비교 가능한 공식자료만 상세 비교하고 나머지는 비교 불가로 집계했습니다."},
             {"항목명": "참고", "값": "공식자료/참고자료 원본은 기본 패키지에 포함하지 않고 요약값 중심으로 전달합니다."},
         ]
         _write_table_sheet(ws, ["항목명", "값"], summary_rows)
@@ -2258,6 +2388,9 @@ def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot) -> Non
                     "구조확인": row.get("구조확인", ""),
                     "신뢰등급": row.get("신뢰등급", ""),
                     "핵심값요약": row.get("핵심값요약", ""),
+                    "교차검증 상태": row.get("교차검증상태", "비교 불가"),
+                    "교차검증 사유": row.get("교차검증사유", "비교 가능한 공식자료 범위가 아닙니다."),
+                    "교차검증 재확인 필요": row.get("교차검증재확인필요여부", "아니오"),
                     "목록반영여부": row.get("목록반영여부", "예"),
                     "재확인필요여부": row.get("재확인필요여부", "예"),
                     "메모": row.get("메모", ""),
@@ -2277,6 +2410,9 @@ def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot) -> Non
                 "구조확인": "구조 미확인",
                 "신뢰등급": "반영 보류",
                 "핵심값요약": "",
+                "교차검증 상태": "비교 불가",
+                "교차검증 사유": "대상 월 기준으로 포함할 공식자료가 없습니다.",
+                "교차검증 재확인 필요": "아니오",
                 "목록반영여부": "아니오",
                 "재확인필요여부": "아니오",
                 "메모": "대상 월 기준으로 포함할 공식자료가 없습니다.",
@@ -2285,7 +2421,7 @@ def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot) -> Non
 
     _write_table_sheet(
         ws,
-        ["자료번호", "기관명", "문서종류", "기준일", "원본파일명", "원본첨부여부", "읽기상태", "검증상태", "구조확인", "신뢰등급", "핵심값요약", "목록반영여부", "재확인필요여부", "메모"],
+        ["자료번호", "기관명", "문서종류", "기준일", "원본파일명", "원본첨부여부", "읽기상태", "검증상태", "구조확인", "신뢰등급", "핵심값요약", "교차검증 상태", "교차검증 사유", "교차검증 재확인 필요", "목록반영여부", "재확인필요여부", "메모"],
         official_rows,
     )
 
@@ -2297,7 +2433,18 @@ def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot) -> Non
             key = row.get("문서종류", "문서 판별 전")
             bucket = buckets.setdefault(
                 key,
-                {"개수": 0, "읽기 가능 건수": 0, "검토 필요 건수": 0, "미지원 건수": 0, "읽기 실패 건수": 0},
+                {
+                    "개수": 0,
+                    "읽기 가능 건수": 0,
+                    "검토 필요 건수": 0,
+                    "미지원 건수": 0,
+                    "읽기 실패 건수": 0,
+                    "교차검증 일치 건수": 0,
+                    "교차검증 부분 일치 건수": 0,
+                    "교차검증 재확인 필요 건수": 0,
+                    "교차검증 불일치 건수": 0,
+                    "교차검증 비교 불가 건수": 0,
+                },
             )
             bucket["개수"] += 1
             status = row.get("읽기상태")
@@ -2309,6 +2456,18 @@ def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot) -> Non
                 bucket["미지원 건수"] += 1
             else:
                 bucket["읽기 실패 건수"] += 1
+
+            cross_validation_status = row.get("교차검증상태")
+            if cross_validation_status == "일치":
+                bucket["교차검증 일치 건수"] += 1
+            elif cross_validation_status == "부분 일치":
+                bucket["교차검증 부분 일치 건수"] += 1
+            elif cross_validation_status == "재확인 필요":
+                bucket["교차검증 재확인 필요 건수"] += 1
+            elif cross_validation_status == "불일치":
+                bucket["교차검증 불일치 건수"] += 1
+            else:
+                bucket["교차검증 비교 불가 건수"] += 1
         for key, bucket in sorted(buckets.items()):
             summary_rows.append({"문서종류": key, **bucket})
     else:
@@ -2320,11 +2479,16 @@ def _append_official_data_sheets(wb: Workbook, snapshot: PackageSnapshot) -> Non
                 "검토 필요 건수": 0,
                 "미지원 건수": 0,
                 "읽기 실패 건수": 0,
+                "교차검증 일치 건수": 0,
+                "교차검증 부분 일치 건수": 0,
+                "교차검증 재확인 필요 건수": 0,
+                "교차검증 불일치 건수": 0,
+                "교차검증 비교 불가 건수": 0,
             }
         )
     _write_table_sheet(
         ws2,
-        ["문서종류", "개수", "읽기 가능 건수", "검토 필요 건수", "미지원 건수", "읽기 실패 건수"],
+        ["문서종류", "개수", "읽기 가능 건수", "검토 필요 건수", "미지원 건수", "읽기 실패 건수", "교차검증 일치 건수", "교차검증 부분 일치 건수", "교차검증 재확인 필요 건수", "교차검증 불일치 건수", "교차검증 비교 불가 건수"],
         summary_rows,
     )
 
@@ -2448,14 +2612,14 @@ def _build_attachment_index_workbook(snapshot: PackageSnapshot) -> bytes:
 def _render_package_guide(snapshot: PackageSnapshot) -> str:
     stats = snapshot.stats
     lines = [
-        "[쓸수있어(SafeToSpend) 세무사 패키지 v2 3차]",
+        "[쓸수있어(SafeToSpend) 세무사 패키지 v2 4차]",
         f"- 패키지 버전: {PACKAGE_VERSION}",
         f"- 대상 기간: {stats.period_start_kst} ~ {stats.period_end_kst}",
         f"- 생성 시각(KST): {stats.generated_at_kst}",
         f"- 사용자명: {snapshot.display_name}",
         "",
         "[포함 파일]",
-        "- 00_패키지요약.xlsx : 전체 요약, 패키지안내, 공식자료 목록/상태/핵심값",
+        "- 00_패키지요약.xlsx : 전체 요약, 패키지안내, 공식자료 목록/상태/핵심값, 교차검증 v1 요약",
         "- 01_사업_상태_요약.xlsx : 사용자 유형/건보/과세 상태와 각 값의 출처/확인 수준 요약",
         "- 03_거래원장.xlsx : 거래 목록, 원본 메타, 분류/증빙 연결",
         "- 04_증빙상태표.xlsx : 첨부된 증빙 목록과 거래별 대표 첨부 연결",
@@ -2481,6 +2645,7 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "- 자동연동 거래",
         "- 거래에 연결된 대표 증빙 1개",
         "- 기준일 또는 업로드 시각 기준으로 대상 월에 포함된 공식자료 목록/상태/핵심 추출값",
+        "- 교차검증 v1 기준의 공식자료 요약 수치와 재확인 포인트",
         "- 기준 기간에 업로드된 참고자료의 제목/유형/보조 설명 요약",
         "- 누락/검토 필요 상태",
         "",
@@ -2495,10 +2660,11 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "- 참고용: 수동입력처럼 구조화 근거가 상대적으로 약한 항목",
         "- 재확인필요: 분류 미확정, 필수 증빙 누락, 혼합 판단 등 추가 확인이 필요한 항목",
         "- 공식자료의 검증상태/신뢰등급은 현재 main 저장 메타를 그대로 보수적으로 전달합니다.",
+        "- 교차검증 상태는 비교 가능한 공식자료만 대상으로 한 교차검증 v1 결과이며 자동 확정값이 아닙니다.",
         "",
         "[현재 한계]",
         "- 거래당 대표 증빙 1개 기준으로 정리됩니다. 전체 첨부 접근은 07_첨부인덱스.xlsx를 기준으로 봐 주세요.",
-        f"- 공식자료는 {stats.official_data_total}건이 목록에 반영될 수 있지만, 현재는 교차검증 없이 목록/상태/핵심값만 제공합니다.",
+        f"- 공식자료는 {stats.official_data_total}건이 목록에 반영될 수 있지만, 교차검증은 v1 기준으로 비교 가능한 공식자료만 집계합니다.",
         "- 참고자료는 공식자료를 대체하지 않고, 공식자료 우선·거래 합계 보조 기준의 비교 설명 자료로만 요약합니다.",
         "- 사업 상태 요약의 사용자 입력값은 세무사 확인 전까지 참고용으로 봐 주세요.",
         "- 공식자료의 검증상태가 '검증 미실시'이면 세무사 확인이 필요합니다.",
