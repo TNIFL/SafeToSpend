@@ -12,6 +12,10 @@ from openpyxl import load_workbook
 from services.tax_package import (
     PackageSnapshot,
     PackageStats,
+    _classify_reference_material_type,
+    _extend_review_items,
+    _reference_transaction_comparison,
+    _resolve_reference_material_comparison,
     _source_labels,
     build_tax_package_zip_from_snapshot,
 )
@@ -576,3 +580,131 @@ class TaxPackageServiceTest(unittest.TestCase):
 
     def test_source_labels_keep_legacy_popbill_rows_compatible(self) -> None:
         self.assertEqual(_source_labels("popbill", None), ("자동연동", "팝빌"))
+
+    def test_reference_material_type_rules_classify_known_patterns(self) -> None:
+        self.assertEqual(_classify_reference_material_type("2025년 연 수익 정리", "", ""), "연 수익표")
+        self.assertEqual(_classify_reference_material_type("3월 월 수익표", "", ""), "월 수익표")
+        self.assertEqual(_classify_reference_material_type("비용 정리 메모", "", ""), "비용 정리표")
+        self.assertEqual(_classify_reference_material_type("추가 설명", "비고 메모", "추가설명"), "설명 메모")
+        self.assertEqual(_classify_reference_material_type("기타 전달자료", "", ""), "기타")
+
+    def test_reference_transaction_comparison_supports_income_keywords(self) -> None:
+        basis, target, total = _reference_transaction_comparison(
+            "3월 월 수익표",
+            [
+                {"direction": "in", "amount_krw": 3200000},
+                {"direction": "out", "amount_krw": 180000},
+            ],
+        )
+        self.assertEqual(basis, "거래 합계 대비")
+        self.assertEqual(target, "월간 수입 합계")
+        self.assertEqual(total, 3200000)
+
+    def test_reference_material_comparison_prefers_official_summary_over_transaction_total(self) -> None:
+        result = _resolve_reference_material_comparison(
+            reference_type="설명 메모",
+            reported_period="2026-03",
+            reported_amount=152000,
+            linked_official_doc_type="홈택스 납부내역",
+            official_documents=self.snapshot_with_official.official_documents,
+            transaction_basis="거래 합계 대비",
+            transaction_target="월간 수입 합계",
+            transaction_total=152000,
+            package_month_key="2026-03",
+        )
+        self.assertEqual(result["comparison_basis"], "공식자료 요약 대비")
+        self.assertEqual(result["comparison_target"], "홈택스 납부내역")
+        self.assertEqual(result["link_status"], "공식자료 요약과 대체로 일치")
+        self.assertEqual(result["needs_review"], "아니오")
+
+    def test_reference_material_comparison_uses_transaction_total_as_secondary_basis(self) -> None:
+        result = _resolve_reference_material_comparison(
+            reference_type="월 수익표",
+            reported_period="2026-03",
+            reported_amount=3200000,
+            linked_official_doc_type="",
+            official_documents=self.snapshot_with_official.official_documents,
+            transaction_basis="거래 합계 대비",
+            transaction_target="월간 수입 합계",
+            transaction_total=3180000,
+            package_month_key="2026-03",
+        )
+        self.assertEqual(result["comparison_basis"], "거래 합계 대비")
+        self.assertEqual(result["comparison_target"], "월간 수입 합계")
+        self.assertEqual(result["link_status"], "거래 합계와 대체로 일치")
+        self.assertEqual(result["needs_review"], "아니오")
+
+    def test_reference_material_comparison_keeps_annual_or_weak_links_conservative(self) -> None:
+        annual_result = _resolve_reference_material_comparison(
+            reference_type="연 수익표",
+            reported_period="2026",
+            reported_amount=12000000,
+            linked_official_doc_type="",
+            official_documents=[],
+            transaction_basis="거래 합계 대비",
+            transaction_target="월간 수입 합계",
+            transaction_total=3200000,
+            package_month_key="2026-03",
+        )
+        self.assertEqual(annual_result["link_status"], "비교 기준 없음")
+        self.assertEqual(annual_result["comparison_basis"], "비교 기준 없음")
+        self.assertEqual(annual_result["needs_review"], "예")
+        self.assertIn("연간 기준 참고자료", str(annual_result["difference_description"]))
+
+        weak_result = _resolve_reference_material_comparison(
+            reference_type="설명 메모",
+            reported_period="2026-03",
+            reported_amount="",
+            linked_official_doc_type="홈택스 납부내역",
+            official_documents=self.snapshot_with_official.official_documents,
+            transaction_basis="거래 합계 대비",
+            transaction_target="월간 수입 합계",
+            transaction_total=3200000,
+            package_month_key="2026-03",
+        )
+        self.assertEqual(weak_result["link_status"], "참고용")
+        self.assertEqual(weak_result["comparison_basis"], "공식자료 요약 대비")
+        self.assertEqual(weak_result["needs_review"], "예")
+
+    def test_reference_material_review_items_expand_for_difference_and_missing_basis(self) -> None:
+        review_items = _extend_review_items(
+            review_items=[],
+            official_documents=[],
+            business_status_rows=[
+                {
+                    "user_type": "프리랜서(3.3)",
+                    "health_insurance_status": "지역가입자",
+                    "vat_status": "과세사업자/부가세 대상이에요",
+                }
+            ],
+            withholding_summary_rows=[],
+            vat_summary_rows=[],
+            nhis_pension_summary_rows=[],
+            reference_material_rows=[
+                {
+                    "reference_material_id": 8101,
+                    "reference_type": "월 수익표",
+                    "needs_review": "예",
+                    "link_status_key": "official_difference",
+                    "link_status": "공식자료 요약과 차이 있음",
+                    "comparison_target": "홈택스 납부내역",
+                    "difference_description": "기재 금액과 연결된 공식자료 요약값 차이를 확인해 주세요",
+                },
+                {
+                    "reference_material_id": 8102,
+                    "reference_type": "연 수익표",
+                    "needs_review": "예",
+                    "link_status_key": "no_comparison",
+                    "link_status": "비교 기준 없음",
+                    "difference_description": "연간 기준 참고자료라 대상 월 패키지와 직접 비교하지 않았습니다",
+                },
+            ],
+        )
+        by_id = {row["관련번호"]: row for row in review_items if row["항목유형"] == "참고자료검토"}
+        self.assertEqual(by_id[8101]["요약설명"], "참고자료와 공식자료 금액 차이 확인 필요")
+        self.assertEqual(by_id[8101]["우선확인순서"], 5)
+        self.assertEqual(by_id[8101]["우선순위"], "낮음")
+        self.assertIn("공식자료", str(by_id[8101]["메모"]))
+        self.assertEqual(by_id[8102]["요약설명"], "참고자료 비교 기준 확인 필요")
+        self.assertEqual(by_id[8102]["현재상태"], "비교 기준 없음")
+        self.assertIn("연간 기준 참고자료", str(by_id[8102]["메모"]))

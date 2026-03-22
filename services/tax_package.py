@@ -304,6 +304,19 @@ def _extract_single_amount_token(*texts: str) -> int | str:
     return ""
 
 
+def _classify_reference_material_type(title: str, note: str, material_kind_label: str) -> str:
+    text = f"{title} {note}".lower()
+    if any(keyword in text for keyword in ("연 수익", "연수익", "연간 수익", "연 매출", "연매출", "연간 매출")):
+        return "연 수익표"
+    if any(keyword in text for keyword in ("월 수익", "월수익", "월 매출", "월매출", "매출표", "수익표")):
+        return "월 수익표"
+    if any(keyword in text for keyword in ("비용 정리", "지출 정리", "경비 정리", "비용표", "매입 정리")):
+        return "비용 정리표"
+    if material_kind_label == "추가설명" or any(keyword in text for keyword in ("메모", "설명", "사유", "비고")):
+        return "설명 메모"
+    return "기타"
+
+
 def _link_official_document_type(text: str, documents: list[dict[str, Any]]) -> str:
     lowered = (text or "").lower()
     keyword_groups = (
@@ -385,13 +398,103 @@ def _reference_transaction_comparison(
     transactions: list[dict[str, Any]],
 ) -> tuple[str, str, int | None]:
     lowered = (text or "").lower()
-    if any(keyword in lowered for keyword in ("매출", "수입", "입금", "용역", "매출액")):
+    if any(keyword in lowered for keyword in ("매출", "수입", "수익", "입금", "용역", "매출액")):
         found, total = _sum_transactions_by_direction(transactions, "in")
         return "거래 합계 대비", "월간 수입 합계", total if found else None
     if any(keyword in lowered for keyword in ("매입", "지출", "경비", "비용", "카드", "현금영수증")):
         found, total = _sum_transactions_by_direction(transactions, "out")
         return "거래 합계 대비", "월간 지출 합계", total if found else None
     return "", "", None
+
+
+def _is_reference_difference_small(reported_amount: int, comparison_amount: int) -> bool:
+    tolerance = max(10_000, int(abs(comparison_amount) * 0.05))
+    return abs(reported_amount - comparison_amount) <= tolerance
+
+
+def _resolve_reference_material_comparison(
+    *,
+    reference_type: str,
+    reported_period: str,
+    reported_amount: int | str,
+    linked_official_doc_type: str,
+    official_documents: list[dict[str, Any]],
+    transaction_basis: str,
+    transaction_target: str,
+    transaction_total: int | None,
+    package_month_key: str,
+) -> dict[str, Any]:
+    official_amount = _official_document_total_for_link(linked_official_doc_type, official_documents) if linked_official_doc_type else None
+    result = {
+        "link_status_key": "no_comparison",
+        "link_status": "비교 기준 없음",
+        "comparison_basis": "비교 기준 없음",
+        "comparison_target": "연결 가능한 공식자료 또는 거래 합계 없음",
+        "difference_krw": "",
+        "difference_description": "구조화된 비교 기준이 없어 참고용으로만 전달합니다",
+        "needs_review": "예",
+    }
+
+    if reference_type == "연 수익표":
+        result["difference_description"] = "연간 기준 참고자료라 대상 월 패키지와 직접 비교하지 않았습니다"
+        return result
+
+    is_month_scoped = reference_type in {"월 수익표", "비용 정리표"}
+    if is_month_scoped and reported_period not in {"", "미확인", package_month_key}:
+        result["comparison_target"] = package_month_key
+        result["difference_description"] = "참고자료 기준 기간이 패키지 대상 월과 달라 직접 비교하지 않았습니다"
+        return result
+
+    if linked_official_doc_type and reported_amount != "" and official_amount is not None:
+        difference = int(reported_amount) - int(official_amount)
+        result.update(
+            {
+                "link_status_key": "official_match" if _is_reference_difference_small(int(reported_amount), int(official_amount)) else "official_difference",
+                "link_status": "공식자료 요약과 대체로 일치" if _is_reference_difference_small(int(reported_amount), int(official_amount)) else "공식자료 요약과 차이 있음",
+                "comparison_basis": "공식자료 요약 대비",
+                "comparison_target": linked_official_doc_type,
+                "difference_krw": difference,
+                "difference_description": "기재 금액과 연결된 공식자료 요약값이 대체로 일치합니다" if _is_reference_difference_small(int(reported_amount), int(official_amount)) else "기재 금액과 연결된 공식자료 요약값 차이를 확인해 주세요",
+                "needs_review": "아니오" if _is_reference_difference_small(int(reported_amount), int(official_amount)) else "예",
+            }
+        )
+        return result
+
+    transaction_allowed = reference_type in {"월 수익표", "비용 정리표", "설명 메모", "기타"}
+    if transaction_allowed and reported_amount != "" and transaction_basis and transaction_total is not None:
+        difference = int(reported_amount) - int(transaction_total)
+        result.update(
+            {
+                "link_status_key": "transaction_match" if _is_reference_difference_small(int(reported_amount), int(transaction_total)) else "transaction_difference",
+                "link_status": "거래 합계와 대체로 일치" if _is_reference_difference_small(int(reported_amount), int(transaction_total)) else "거래 합계와 차이 있음",
+                "comparison_basis": transaction_basis,
+                "comparison_target": transaction_target,
+                "difference_krw": difference,
+                "difference_description": "기재 금액과 대상 월 거래 합계가 대체로 일치합니다" if _is_reference_difference_small(int(reported_amount), int(transaction_total)) else "기재 금액과 대상 월 거래 합계 차이를 확인해 주세요",
+                "needs_review": "아니오" if _is_reference_difference_small(int(reported_amount), int(transaction_total)) else "예",
+            }
+        )
+        return result
+
+    if linked_official_doc_type or transaction_basis:
+        result.update(
+            {
+                "link_status_key": "reference_only",
+                "link_status": "참고용",
+                "comparison_basis": "공식자료 요약 대비" if linked_official_doc_type else transaction_basis,
+                "comparison_target": linked_official_doc_type or transaction_target,
+                "difference_description": "비교 가능한 연결 축은 찾았지만 구조화 금액 또는 비교 근거가 약해 참고용으로만 전달합니다",
+            }
+        )
+        return result
+
+    if reference_type == "설명 메모":
+        result["link_status_key"] = "reference_only"
+        result["link_status"] = "참고용"
+        result["difference_description"] = "설명 메모는 금액 비교보다 보조 설명 확인이 우선이라 참고용으로 전달합니다"
+        return result
+
+    return result
 
 
 def _collect_business_status_rows(user_pk: int) -> list[dict[str, Any]]:
@@ -654,6 +757,7 @@ def _collect_reference_material_rows(
     official_documents: list[dict[str, Any]],
     transactions: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
+    package_month_key = start_dt.strftime("%Y-%m")
     items = (
         ReferenceMaterialItem.query.filter(ReferenceMaterialItem.user_pk == user_pk)
         .filter(ReferenceMaterialItem.created_at >= start_dt, ReferenceMaterialItem.created_at < end_dt)
@@ -665,67 +769,34 @@ def _collect_reference_material_rows(
     for item in items:
         view = reference_material_to_view_model(item)
         merged_text = " ".join(part for part in [view.get("title"), view.get("note")] if part)
+        reference_type = _classify_reference_material_type(
+            str(view.get("title") or ""),
+            str(view.get("note") or ""),
+            str(view.get("material_kind_label") or "참고자료"),
+        )
         linked_official_doc_type = _link_official_document_type(merged_text, official_documents)
+        reported_period = _extract_single_month_token(str(view.get("title") or ""), str(view.get("note") or ""))
         reported_amount = _extract_single_amount_token(str(view.get("title") or ""), str(view.get("note") or ""))
-        official_amount = _official_document_total_for_link(linked_official_doc_type, official_documents) if linked_official_doc_type else None
         transaction_basis, transaction_target, transaction_total = _reference_transaction_comparison(merged_text, transactions)
-        difference = ""
-        link_status_key = "no_comparison"
-        link_status = "비교 기준 없음"
-        needs_review = "예"
-        comparison_basis = "비교 기준 없음"
-        comparison_target = "연결 가능한 공식자료 또는 거래 합계 없음"
-        difference_description = "구조화된 비교 기준이 없어 참고용으로만 전달합니다"
-
-        if linked_official_doc_type and reported_amount != "" and official_amount is not None:
-            comparison_basis = "공식자료 요약 대비"
-            comparison_target = linked_official_doc_type
-            difference = int(reported_amount) - int(official_amount)
-            if difference == 0:
-                link_status_key = "official_match"
-                link_status = "공식자료 요약과 대체로 일치"
-                needs_review = "아니오"
-                difference_description = "기재 금액과 연결된 공식자료 요약값 차이가 없습니다"
-            else:
-                link_status_key = "official_difference"
-                link_status = "공식자료 요약과 차이 있음"
-                difference_description = "기재 금액과 연결된 공식자료 요약값 차이를 확인해 주세요"
-        elif reported_amount != "" and transaction_basis and transaction_total is not None:
-            comparison_basis = transaction_basis
-            comparison_target = transaction_target
-            difference = int(reported_amount) - int(transaction_total)
-            if difference == 0:
-                link_status_key = "transaction_match"
-                link_status = "거래 합계와 대체로 일치"
-                needs_review = "아니오"
-                difference_description = "기재 금액과 대상 월 거래 합계 차이가 없습니다"
-            else:
-                link_status_key = "transaction_difference"
-                link_status = "거래 합계와 차이 있음"
-                difference_description = "기재 금액과 대상 월 거래 합계 차이를 확인해 주세요"
-        elif linked_official_doc_type:
-            link_status_key = "reference_only"
-            link_status = "참고용"
-            comparison_basis = "공식자료 요약 대비"
-            comparison_target = linked_official_doc_type
-            difference_description = "연결 가능한 공식자료는 찾았지만 차이 금액을 계산할 구조화 금액이 부족합니다"
-        elif transaction_basis:
-            link_status_key = "reference_only"
-            link_status = "참고용"
-            comparison_basis = transaction_basis
-            comparison_target = transaction_target
-            if reported_amount == "":
-                difference_description = "관련 거래 합계는 확인되지만 기재 금액을 구조화하지 못해 참고용으로 전달합니다"
-            else:
-                difference_description = "관련 거래 합계는 확인되지만 비교 근거가 충분하지 않아 참고용으로 전달합니다"
+        comparison = _resolve_reference_material_comparison(
+            reference_type=reference_type,
+            reported_period=reported_period,
+            reported_amount=reported_amount,
+            linked_official_doc_type=linked_official_doc_type,
+            official_documents=official_documents,
+            transaction_basis=transaction_basis,
+            transaction_target=transaction_target,
+            transaction_total=transaction_total,
+            package_month_key=package_month_key,
+        )
 
         note_parts: list[str] = []
         if view.get("note"):
             note_parts.append(str(view["note"]))
-        if link_status_key in {"reference_only", "no_comparison"}:
+        if comparison["link_status_key"] in {"reference_only", "no_comparison"}:
             note_parts.append("공식자료 대체가 아니라 보조 설명 자료로 전달합니다")
-        elif link_status_key in {"official_difference", "transaction_difference"}:
-            note_parts.append("연결된 공식자료와 금액 차이가 있어 세무사 확인이 필요합니다")
+        elif comparison["link_status_key"] in {"official_difference", "transaction_difference"}:
+            note_parts.append("연결된 기준값과 금액 차이가 있어 세무사 확인이 필요합니다")
         elif reported_amount == "":
             note_parts.append("금액은 구조화하지 못해 참고용으로만 표기했습니다")
 
@@ -733,21 +804,21 @@ def _collect_reference_material_rows(
             {
                 "reference_material_id": int(item.id),
                 "title": view.get("title", ""),
-                "reference_type": view.get("material_kind_label", "참고자료"),
-                "reported_period": _extract_single_month_token(str(view.get("title") or ""), str(view.get("note") or "")),
+                "reference_type": reference_type,
+                "reported_period": reported_period,
                 "reported_amount_krw": reported_amount,
                 "linked_official_doc_type": linked_official_doc_type,
-                "link_status": link_status,
-                "link_status_key": link_status_key,
-                "comparison_basis": comparison_basis,
-                "comparison_target": comparison_target,
-                "difference_krw": difference,
-                "difference_description": difference_description,
-                "needs_review": needs_review,
+                "link_status": comparison["link_status"],
+                "link_status_key": comparison["link_status_key"],
+                "comparison_basis": comparison["comparison_basis"],
+                "comparison_target": comparison["comparison_target"],
+                "difference_krw": comparison["difference_krw"],
+                "difference_description": comparison["difference_description"],
+                "needs_review": comparison["needs_review"],
                 "note": " / ".join(dict.fromkeys(part for part in note_parts if part)),
                 "_original_filename": item.original_filename,
                 "_attachment_index_key": f"reference-{int(item.id)}",
-                "_period_basis": _extract_single_month_token(str(view.get("title") or ""), str(view.get("note") or "")),
+                "_period_basis": reported_period,
             }
         )
 
@@ -953,15 +1024,19 @@ def _extend_review_items(
         if row.get("link_status_key") == "official_difference":
             summary = "참고자료와 공식자료 금액 차이 확인 필요"
             needed = "참고자료의 설명 금액과 공식자료 요약값 차이를 확인해 주세요"
-            priority = "보통"
+            note = f"{row.get('comparison_target', '')} / {row.get('difference_description', '')}".strip(" /")
         elif row.get("link_status_key") == "transaction_difference":
             summary = "참고자료와 거래 합계 차이 확인 필요"
             needed = "참고자료 기재 금액과 대상 월 거래 합계 차이를 확인해 주세요"
-            priority = "보통"
+            note = f"{row.get('comparison_target', '')} / {row.get('difference_description', '')}".strip(" /")
+        elif row.get("link_status_key") == "no_comparison":
+            summary = "참고자료 비교 기준 확인 필요"
+            needed = "기준 기간과 비교 대상이 모호해 참고자료를 보조 설명으로만 전달했습니다. 비교 가능 기준을 확인해 주세요"
+            note = f"{row.get('reference_type', '')} / {row.get('difference_description', '')}".strip(" /")
         else:
             summary = "참고자료 보조 설명 연결 확인 필요"
             needed = "공식자료 또는 거래 합계와 연결되는 설명인지, 참고용 메모인지 확인해 주세요"
-            priority = "보통"
+            note = f"{row.get('reference_type', '')} / {row.get('difference_description', '')}".strip(" /")
         _append_review_item(
             rows,
             item_type="참고자료검토",
@@ -970,8 +1045,8 @@ def _extend_review_items(
             summary=summary,
             status=str(row.get("link_status", "reference_only")),
             needed=needed,
-            priority=priority,
-            note=str(row.get("title", "")),
+            priority="보통",
+            note=note or str(row.get("title", "")),
         )
 
     return _finalize_review_items(rows)
@@ -2389,7 +2464,7 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "- 07_첨부인덱스.xlsx : 패키지 첨부 전체 인덱스와 상대경로 링크",
         "- 08_부가세_자료_요약.xlsx : 과세 상태, 부가세 신고 여부, 매입/매출 관련 요약",
         "- 09_건보_연금_요약.xlsx : 건강보험 상태, 건보/연금 자료 존재 여부와 합계 요약",
-        "- 10_참고자료_요약.xlsx : 참고자료 제목/유형/비교 기준/차이 설명 중심 요약",
+        "- 10_참고자료_요약.xlsx : 공식자료 우선, 거래 합계 보조 기준으로 참고자료 비교/차이 설명 요약",
         "- attachments/evidence/ : 현재 연결된 대표 증빙 파일",
         "",
         "[권장 읽는 순서]",
@@ -2424,7 +2499,7 @@ def _render_package_guide(snapshot: PackageSnapshot) -> str:
         "[현재 한계]",
         "- 거래당 대표 증빙 1개 기준으로 정리됩니다. 전체 첨부 접근은 07_첨부인덱스.xlsx를 기준으로 봐 주세요.",
         f"- 공식자료는 {stats.official_data_total}건이 목록에 반영될 수 있지만, 현재는 교차검증 없이 목록/상태/핵심값만 제공합니다.",
-        "- 참고자료는 공식자료를 대체하지 않고 보조 설명/맥락 전달용으로만 요약합니다.",
+        "- 참고자료는 공식자료를 대체하지 않고, 공식자료 우선·거래 합계 보조 기준의 비교 설명 자료로만 요약합니다.",
         "- 사업 상태 요약의 사용자 입력값은 세무사 확인 전까지 참고용으로 봐 주세요.",
         "- 공식자료의 검증상태가 '검증 미실시'이면 세무사 확인이 필요합니다.",
         "- ZIP 내부 링크는 압축을 푼 뒤 여는 방식이 가장 안정적입니다.",
